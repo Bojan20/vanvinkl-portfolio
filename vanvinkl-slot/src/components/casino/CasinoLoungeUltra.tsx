@@ -1,12 +1,14 @@
 'use client'
 
-import { Suspense, useState, useMemo } from 'react'
+import { Suspense, useState, useMemo, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { SlotMachineRealistic } from './SlotMachineRealistic'
 import { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
 import { CasinoEntrance } from './CasinoEntrance'
+import { SlotMachineDetailView } from './SlotMachineDetailView'
+import { AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
 
 interface CasinoLoungeUltraProps {
@@ -26,11 +28,39 @@ const PORTFOLIO_MACHINES = [
 export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps) {
   const [showEntrance, setShowEntrance] = useState(true)
   const [isEntered, setIsEntered] = useState(false)
+  const [nearMachine, setNearMachine] = useState<string | null>(null)
+  const [selectedMachine, setSelectedMachine] = useState<string | null>(null)
 
   const handleEntranceComplete = () => {
     setShowEntrance(false)
     setIsEntered(true)
   }
+
+  const handleProximityChange = (machineId: string | null) => {
+    setNearMachine(machineId)
+  }
+
+  const handleMachineSelect = (machineId: string) => {
+    setSelectedMachine(machineId)
+    onMachineInteract?.(machineId)
+  }
+
+  const handleCloseDetail = () => {
+    setSelectedMachine(null)
+  }
+
+  // SPACE to interact
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && nearMachine && !selectedMachine) {
+        e.preventDefault()
+        handleMachineSelect(nearMachine)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [nearMachine, selectedMachine])
 
   // Memoized materials for performance
   const floorMaterial = useMemo(() => (
@@ -49,9 +79,23 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
     />
   ), [])
 
+  // Get selected machine label
+  const selectedMachineData = PORTFOLIO_MACHINES.find(m => m.id === selectedMachine)
+
   return (
     <div className="w-full h-screen bg-black relative">
-      {isEntered && <ThirdPersonInstructions />}
+      {isEntered && <ThirdPersonInstructions nearMachine={nearMachine} />}
+
+      {/* Detail view modal */}
+      <AnimatePresence>
+        {selectedMachine && selectedMachineData && (
+          <SlotMachineDetailView
+            machineId={selectedMachine}
+            label={selectedMachineData.label}
+            onClose={handleCloseDetail}
+          />
+        )}
+      </AnimatePresence>
 
       <Canvas
         shadows={false}
@@ -72,7 +116,12 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
         performance={{ min: 0.5 }}
       >
         <Suspense fallback={null}>
-          {isEntered && <ThirdPersonAvatar />}
+          {isEntered && !selectedMachine && (
+            <ThirdPersonAvatar
+              onProximityChange={handleProximityChange}
+              machinePositions={PORTFOLIO_MACHINES}
+            />
+          )}
 
           {/* Floor */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -100,8 +149,8 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
               rotation={machine.rot}
               machineId={machine.id}
               label={machine.label}
-              isActive
-              onInteract={onMachineInteract}
+              isActive={nearMachine === machine.id}
+              onInteract={() => handleMachineSelect(machine.id)}
             />
           ))}
 

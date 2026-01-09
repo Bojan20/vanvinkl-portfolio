@@ -19,6 +19,7 @@ export { CasinoLoungeOptimized } from './CasinoLoungeOptimized'
 export { CasinoLoungeUltra } from './CasinoLoungeUltra'
 export { SlotMachineRealistic } from './SlotMachineRealistic'
 export { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
+export { SlotMachineDetailView } from './SlotMachineDetailView'
 
 // Shared
 export { CasinoEntrance } from './CasinoEntrance'

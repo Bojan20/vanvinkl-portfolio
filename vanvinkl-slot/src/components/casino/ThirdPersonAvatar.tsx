@@ -8,11 +8,15 @@ import * as THREE from 'three'
 interface ThirdPersonAvatarProps {
   position?: [number, number, number]
   speed?: number
+  onProximityChange?: (machineId: string | null) => void
+  machinePositions?: Array<{ id: string; pos: [number, number, number] }>
 }
 
 export function ThirdPersonAvatar({
   position = [0, 0.5, 8],
-  speed = 4
+  speed = 4,
+  onProximityChange,
+  machinePositions = []
 }: ThirdPersonAvatarProps) {
   const { camera } = useThree()
   const avatarRef = useRef<THREE.Group>(null)
@@ -130,6 +134,27 @@ export function ThirdPersonAvatar({
       0.05
     )
     camera.lookAt(idealLookat)
+
+    // Check proximity to machines
+    if (onProximityChange && machinePositions.length > 0) {
+      const avatarPos = avatarRef.current.position
+      let closestMachine: string | null = null
+      let closestDistance = Infinity
+
+      machinePositions.forEach(machine => {
+        const distance = Math.sqrt(
+          Math.pow(avatarPos.x - machine.pos[0], 2) +
+          Math.pow(avatarPos.z - machine.pos[2], 2)
+        )
+
+        if (distance < 2.5 && distance < closestDistance) {
+          closestDistance = distance
+          closestMachine = machine.id
+        }
+      })
+
+      onProximityChange(closestMachine)
+    }
   })
 
   return (
@@ -177,7 +202,7 @@ export function ThirdPersonAvatar({
   )
 }
 
-export function ThirdPersonInstructions() {
+export function ThirdPersonInstructions({ nearMachine }: { nearMachine: string | null }) {
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
       <div className="bg-black/70 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3">
@@ -194,10 +219,12 @@ export function ThirdPersonInstructions() {
             <span className="font-mono text-white">SHIFT</span>
             <span>Sprint</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-white">CLICK</span>
-            <span>Interact</span>
-          </div>
+          {nearMachine && (
+            <div className="flex items-center gap-2 animate-pulse">
+              <span className="font-mono text-green-400 font-bold">SPACE</span>
+              <span className="text-green-400 font-bold">Interact</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
