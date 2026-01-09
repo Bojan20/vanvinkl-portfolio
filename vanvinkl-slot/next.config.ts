@@ -47,13 +47,14 @@ const withPWA = withPWAInit({
       },
       {
         urlPattern: /\.(?:js|css|wasm)$/i,
-        handler: 'StaleWhileRevalidate',
+        handler: 'NetworkFirst',
         options: {
           cacheName: 'static-js-assets',
           expiration: {
             maxEntries: 32,
-            maxAgeSeconds: 24 * 60 * 60 // 24 hours
-          }
+            maxAgeSeconds: 1 * 60 * 60 // 1 hour (was 24h)
+          },
+          networkTimeoutSeconds: 10
         }
       },
       {
