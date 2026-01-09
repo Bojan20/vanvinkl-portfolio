@@ -14,7 +14,7 @@ interface ThirdPersonAvatarProps {
 
 export function ThirdPersonAvatar({
   position = [0, 0.5, 8],
-  speed = 4,
+  speed = 8,
   onProximityChange,
   machinePositions = []
 }: ThirdPersonAvatarProps) {
@@ -27,8 +27,7 @@ export function ThirdPersonAvatar({
     forward: false,
     backward: false,
     left: false,
-    right: false,
-    sprint: false
+    right: false
   })
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export function ThirdPersonAvatar({
         case 'ArrowDown': keys.current.backward = true; break
         case 'ArrowLeft': keys.current.left = true; break
         case 'ArrowRight': keys.current.right = true; break
-        case 'ShiftLeft': keys.current.sprint = true; break
       }
     }
 
@@ -48,7 +46,6 @@ export function ThirdPersonAvatar({
         case 'ArrowDown': keys.current.backward = false; break
         case 'ArrowLeft': keys.current.left = false; break
         case 'ArrowRight': keys.current.right = false; break
-        case 'ShiftLeft': keys.current.sprint = false; break
       }
     }
 
@@ -81,7 +78,7 @@ export function ThirdPersonAvatar({
   useFrame((state, delta) => {
     if (!avatarRef.current) return
 
-    const currentSpeed = keys.current.sprint ? speed * 1.8 : speed
+    const currentSpeed = speed
 
     // Movement direction based on camera
     const direction = new THREE.Vector3()
@@ -233,10 +230,6 @@ export function ThirdPersonInstructions({ nearMachine }: { nearMachine: string |
           <div className="flex items-center gap-2">
             <span className="font-mono text-white">MOUSE</span>
             <span>Look</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-white">SHIFT</span>
-            <span>Sprint</span>
           </div>
           {nearMachine && (
             <div className="flex items-center gap-2 animate-pulse">
