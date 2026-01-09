@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
-import RegisterServiceWorker from "./register-sw";
 import { Analytics } from "@vercel/analytics/react";
 import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 
@@ -56,7 +55,6 @@ export default function RootLayout({
           fontFamily: "var(--font-inter), system-ui, sans-serif",
         }}
       >
-        <RegisterServiceWorker />
         <AnalyticsProvider>
           {children}
         </AnalyticsProvider>
