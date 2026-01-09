@@ -15,5 +15,10 @@ export { SlotMachine3DSimple } from './SlotMachine3DSimple'
 // Optimized version (performance-focused)
 export { CasinoLoungeOptimized } from './CasinoLoungeOptimized'
 
+// Ultra version (60fps, third-person, realistic reels)
+export { CasinoLoungeUltra } from './CasinoLoungeUltra'
+export { SlotMachineRealistic } from './SlotMachineRealistic'
+export { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
+
 // Shared
 export { CasinoEntrance } from './CasinoEntrance'
