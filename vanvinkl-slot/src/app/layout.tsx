@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
 import RegisterServiceWorker from "./register-sw";
+import { Analytics } from "@vercel/analytics/react";
+import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -55,7 +57,10 @@ export default function RootLayout({
         }}
       >
         <RegisterServiceWorker />
-        {children}
+        <AnalyticsProvider>
+          {children}
+        </AnalyticsProvider>
+        <Analytics />
       </body>
     </html>
   );
