@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { CasinoLoungeRealistic } from '@/components/casino'
+import { CasinoLoungeSimple } from '@/components/casino'
 import { useSlotAudio } from '@/hooks/useSlotAudio'
 import { VolumeControl } from '@/components/VolumeControl'
 
@@ -35,7 +35,7 @@ export default function Home() {
       onClick={() => audio.resumeAudio()}
     >
       {/* Realistic 3D Casino Lounge */}
-      <CasinoLoungeRealistic onMachineInteract={handleMachineInteract} />
+      <CasinoLoungeSimple onMachineInteract={handleMachineInteract} />
 
       {/* Volume Control Overlay */}
       <div className="absolute top-6 right-6 z-40">
