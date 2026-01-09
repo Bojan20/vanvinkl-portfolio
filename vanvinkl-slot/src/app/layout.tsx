@@ -49,6 +49,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+        {/* Preload critical WASM module */}
+        <link rel="preload" href="/wasm/vanvinkl_dsp_bg.wasm" as="fetch" crossOrigin="anonymous" />
+        <link rel="modulepreload" href="/wasm/vanvinkl_dsp.js" />
       </head>
       <body
         className={`${inter.variable} ${orbitron.variable} antialiased`}

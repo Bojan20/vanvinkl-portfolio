@@ -45,6 +45,13 @@ impl BiquadFilter {
 
     /// Low-pass filter
     pub fn low_pass(sample_rate: f32, frequency: f32, q: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
         let cos_omega = omega.cos();
@@ -70,6 +77,13 @@ impl BiquadFilter {
 
     /// High-pass filter
     pub fn high_pass(sample_rate: f32, frequency: f32, q: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
         let cos_omega = omega.cos();
@@ -95,6 +109,14 @@ impl BiquadFilter {
 
     /// Low shelf filter
     pub fn low_shelf(sample_rate: f32, frequency: f32, q: f32, gain_db: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+        assert!(gain_db.is_finite(), "Gain must be finite");
+
         let a = 10.0_f32.powf(gain_db / 40.0);
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
@@ -122,6 +144,14 @@ impl BiquadFilter {
 
     /// High shelf filter
     pub fn high_shelf(sample_rate: f32, frequency: f32, q: f32, gain_db: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+        assert!(gain_db.is_finite(), "Gain must be finite");
+
         let a = 10.0_f32.powf(gain_db / 40.0);
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
@@ -149,6 +179,14 @@ impl BiquadFilter {
 
     /// Peaking EQ filter
     pub fn peaking_eq(sample_rate: f32, frequency: f32, q: f32, gain_db: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+        assert!(gain_db.is_finite(), "Gain must be finite");
+
         let a = 10.0_f32.powf(gain_db / 40.0);
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
@@ -175,6 +213,13 @@ impl BiquadFilter {
 
     /// Notch filter
     pub fn notch(sample_rate: f32, frequency: f32, q: f32) -> Self {
+        // Validate inputs
+        let nyquist = sample_rate / 2.0;
+        assert!(frequency > 0.0 && frequency < nyquist,
+            "Frequency must be 0 < f < Nyquist ({} Hz)", nyquist);
+        assert!(q > 0.0 && q.is_finite(), "Q must be positive and finite");
+        assert!(sample_rate > 0.0 && sample_rate.is_finite(), "Sample rate invalid");
+
         let omega = 2.0 * PI * frequency / sample_rate;
         let sin_omega = omega.sin();
         let cos_omega = omega.cos();

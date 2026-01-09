@@ -22,9 +22,15 @@ import {
   DepthOfField
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
-import { Suspense, useRef } from 'react'
+import { Suspense, useRef, useState, useEffect } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+
+// Detect mobile device
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  return /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
 
 // Neon light component
 function NeonLight({ position, color, intensity = 2 }: {
@@ -253,6 +259,12 @@ function Chandelier({ position }: { position: [number, number, number] }) {
 
 // Main scene
 function Scene() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice())
+  }, [])
+
   return (
     <>
       {/* Camera */}
@@ -338,29 +350,45 @@ function Scene() {
         far={10}
       />
 
-      {/* Post-processing */}
-      <EffectComposer>
-        <Bloom
-          intensity={0.5}
-          luminanceThreshold={0.3}
-          luminanceSmoothing={0.9}
-          mipmapBlur
-        />
-        <ChromaticAberration
-          blendFunction={BlendFunction.NORMAL}
-          offset={[0.0005, 0.0005] as [number, number]}
-        />
-        <Vignette
-          offset={0.3}
-          darkness={0.5}
-          blendFunction={BlendFunction.NORMAL}
-        />
-        <DepthOfField
-          focusDistance={0.02}
-          focalLength={0.05}
-          bokehScale={3}
-        />
-      </EffectComposer>
+      {/* Post-processing - optimized for mobile */}
+      {isMobile ? (
+        <EffectComposer>
+          <Bloom
+            intensity={0.3}
+            luminanceThreshold={0.3}
+            luminanceSmoothing={0.9}
+            mipmapBlur={false}
+          />
+          <Vignette
+            offset={0.3}
+            darkness={0.5}
+            blendFunction={BlendFunction.NORMAL}
+          />
+        </EffectComposer>
+      ) : (
+        <EffectComposer>
+          <Bloom
+            intensity={0.5}
+            luminanceThreshold={0.3}
+            luminanceSmoothing={0.9}
+            mipmapBlur
+          />
+          <ChromaticAberration
+            blendFunction={BlendFunction.NORMAL}
+            offset={[0.0005, 0.0005] as [number, number]}
+          />
+          <DepthOfField
+            focusDistance={0.02}
+            focalLength={0.05}
+            bokehScale={3}
+          />
+          <Vignette
+            offset={0.3}
+            darkness={0.5}
+            blendFunction={BlendFunction.NORMAL}
+          />
+        </EffectComposer>
+      )}
     </>
   )
 }
@@ -379,9 +407,23 @@ function Loader() {
 
 // Main component
 export default function CasinoLounge3D() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice())
+  }, [])
+
   return (
     <div className="w-full h-screen bg-black">
-      <Canvas shadows gl={{ antialias: true, alpha: false }}>
+      <Canvas
+        shadows={!isMobile}
+        gl={{
+          antialias: !isMobile,
+          alpha: false,
+          powerPreference: isMobile ? 'low-power' : 'high-performance'
+        }}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
+      >
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
