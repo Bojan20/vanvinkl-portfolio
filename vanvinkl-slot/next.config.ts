@@ -74,6 +74,10 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  generateBuildId: async () => {
+    // Force new build ID to bust Vercel cache
+    return `build-${Date.now()}`
+  },
 };
 
 export default withPWA(nextConfig);
