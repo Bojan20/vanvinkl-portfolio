@@ -3,7 +3,7 @@ import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
+  disable: true, // Temporarily disabled to debug cache issues
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
@@ -74,10 +74,6 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   turbopack: {},
-  generateBuildId: async () => {
-    // Force new build ID to bust Vercel cache
-    return `build-${Date.now()}`
-  },
 };
 
 export default withPWA(nextConfig);
