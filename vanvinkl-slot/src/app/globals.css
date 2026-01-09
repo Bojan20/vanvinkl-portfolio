@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+:root {
+  /* Backgrounds - Depth hierarchy */
+  --bg-void: #030305;
+  --bg-deep: #0a0a0f;
+  --bg-mid: #12121a;
+  --bg-surface: #1a1a24;
+  --bg-elevated: #242430;
+
+  /* Accent - Slot Orange */
+  --accent: #ff7a3b;
+  --accent-glow: #ff9a5b;
+  --accent-dark: #cc5a1b;
+
+  /* Spectrum - Audio frequencies */
+  --freq-low: #40c8ff;
+  --freq-mid: #40ff90;
+  --freq-high: #ffdd40;
+  --freq-peak: #ff4060;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --text-muted: #606070;
+
+  /* Glow effects */
+  --glow-orange: 0 0 30px rgba(255, 122, 59, 0.6);
+  --glow-cyan: 0 0 30px rgba(64, 200, 255, 0.6);
+  --glow-green: 0 0 30px rgba(64, 255, 144, 0.6);
+}
+
+@theme inline {
+  --color-background: var(--bg-void);
+  --color-foreground: var(--text-primary);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Slot Machine Styles */
+.slot-container {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.slot-machine {
+  transform-style: preserve-3d;
+  transform: rotateX(-5deg);
+}
+
+.reel-container {
+  perspective: 800px;
+  overflow: hidden;
+}
+
+.reel {
+  transform-style: preserve-3d;
+}
+
+.reel-strip {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.symbol {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Neon glow effect */
+.neon-glow {
+  box-shadow: var(--glow-orange);
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 122, 59, 0.4), 0 0 40px rgba(255, 122, 59, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 122, 59, 0.6), 0 0 60px rgba(255, 122, 59, 0.3);
+  }
+}
+
+/* Win animation */
+@keyframes win-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.win-flash {
+  animation: win-flash 0.2s ease-in-out 5;
+}
+
+/* Particle container */
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Button styles */
+.spin-button {
+  background: linear-gradient(180deg, var(--accent-glow) 0%, var(--accent) 50%, var(--accent-dark) 100%);
+  border: 3px solid var(--accent);
+  box-shadow:
+    0 0 20px rgba(255, 122, 59, 0.5),
+    inset 0 2px 10px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.spin-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 40px rgba(255, 122, 59, 0.8),
+    inset 0 2px 10px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.spin-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.spin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Panel styles */
+.info-panel {
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-mid) 100%);
+  border: 2px solid var(--bg-surface);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Section panel that slides in */
+.section-panel {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-deep);
+  z-index: 50;
+  transform: translateY(100%);
+  will-change: transform;
+}
+
+.section-panel.active {
+  transform: translateY(0);
+}
+
+/* Audio visualizer bars */
+.visualizer-bar {
+  background: linear-gradient(0deg, var(--freq-low) 0%, var(--freq-mid) 50%, var(--freq-high) 100%);
+  border-radius: 2px;
+}
+
+/* Custom scrollbar for panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}

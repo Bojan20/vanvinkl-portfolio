@@ -1,0 +1,1 @@
+export { PixiSlotMachine } from "./PixiSlotMachine";
