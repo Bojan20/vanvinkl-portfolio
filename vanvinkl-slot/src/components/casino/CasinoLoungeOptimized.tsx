@@ -207,7 +207,6 @@ export function CasinoLoungeOptimized({ onMachineInteract }: CasinoLoungeOptimiz
           position: [0, 1.7, 5]
         }}
         performance={{ min: 0.5 }}
-        frameloop="demand"
       >
         <Suspense fallback={null}>
           {isEntered && <OptimizedFPSController />}
