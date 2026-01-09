@@ -11,7 +11,16 @@ interface CasinoEntranceProps {
 
 export function CasinoEntrance({ onComplete, skipEnabled = true }: CasinoEntranceProps) {
   const [step, setStep] = useState(0)
+  const [canSkip, setCanSkip] = useState(true)
   const { haptic } = useHaptic()
+
+  // Click anywhere to skip immediately
+  const handleClickToEnter = () => {
+    if (canSkip) {
+      haptic('selection')
+      onComplete()
+    }
+  }
 
   useEffect(() => {
     const sequence = async () => {
@@ -55,19 +64,39 @@ export function CasinoEntrance({ onComplete, skipEnabled = true }: CasinoEntranc
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-black overflow-hidden"
+      className="fixed inset-0 z-50 bg-black overflow-hidden cursor-pointer"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 1 } }}
+      onClick={handleClickToEnter}
     >
       <AnimatePresence mode="wait">
-        {/* Skip button */}
-        {skipEnabled && (
+        {/* Click to Enter - Large centered button */}
+        {canSkip && step === 0 && (
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleClickToEnter}
+              className="px-16 py-8 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl text-black text-3xl font-black shadow-2xl pointer-events-auto"
+            >
+              CLICK TO ENTER CASINO
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Skip button (top right) */}
+        {skipEnabled && step > 0 && (
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             whileHover={{ opacity: 1, scale: 1.05 }}
             onClick={handleSkip}
-            className="absolute top-8 right-8 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white text-sm font-bold z-50 transition-all"
+            className="absolute top-8 right-8 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white text-sm font-bold z-50 transition-all pointer-events-auto"
           >
             SKIP ENTRANCE
           </motion.button>
