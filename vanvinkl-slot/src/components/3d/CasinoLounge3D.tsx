@@ -280,6 +280,9 @@ export default function CasinoLounge3D() {
       <ambientLight intensity={0.2} />
       <Environment preset="night" />
 
+      {/* Volumetric fog for depth */}
+      <fog attach="fog" args={['#0a0510', 10, 50]} />
+
       {/* Neon lights */}
       <NeonLight position={[-8, 3, -8]} color="#ff0040" intensity={3} />
       <NeonLight position={[8, 3, -8]} color="#4a9eff" intensity={3} />
