@@ -1,4 +1,8 @@
 {
+  "buildCommand": "cd vanvinkl-slot && npm run build",
+  "devCommand": "cd vanvinkl-slot && npm run dev",
+  "installCommand": "cd vanvinkl-slot && npm install",
+  "outputDirectory": "vanvinkl-slot/.next",
   "headers": [
     {
       "source": "/(.*)",
