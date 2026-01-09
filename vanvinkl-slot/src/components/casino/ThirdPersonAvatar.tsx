@@ -34,20 +34,20 @@ export function ThirdPersonAvatar({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.code) {
-        case 'KeyW': keys.current.forward = true; break
-        case 'KeyS': keys.current.backward = true; break
-        case 'KeyA': keys.current.left = true; break
-        case 'KeyD': keys.current.right = true; break
+        case 'ArrowUp': keys.current.forward = true; break
+        case 'ArrowDown': keys.current.backward = true; break
+        case 'ArrowLeft': keys.current.left = true; break
+        case 'ArrowRight': keys.current.right = true; break
         case 'ShiftLeft': keys.current.sprint = true; break
       }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
       switch (e.code) {
-        case 'KeyW': keys.current.forward = false; break
-        case 'KeyS': keys.current.backward = false; break
-        case 'KeyA': keys.current.left = false; break
-        case 'KeyD': keys.current.right = false; break
+        case 'ArrowUp': keys.current.forward = false; break
+        case 'ArrowDown': keys.current.backward = false; break
+        case 'ArrowLeft': keys.current.left = false; break
+        case 'ArrowRight': keys.current.right = false; break
         case 'ShiftLeft': keys.current.sprint = false; break
       }
     }
@@ -115,10 +115,29 @@ export function ThirdPersonAvatar({
       avatarRef.current.rotation.y += diff * 0.1
     }
 
-    // Boundaries
+    // Wall boundaries
     avatarRef.current.position.x = Math.max(-13, Math.min(13, avatarRef.current.position.x))
     avatarRef.current.position.z = Math.max(-13, Math.min(8, avatarRef.current.position.z))
     avatarRef.current.position.y = 0.5
+
+    // Collision detection with machines
+    if (machinePositions.length > 0) {
+      const avatarPos = avatarRef.current.position
+      const collisionRadius = 1.5 // Machine collision radius
+
+      machinePositions.forEach(machine => {
+        const dx = avatarPos.x - machine.pos[0]
+        const dz = avatarPos.z - machine.pos[2]
+        const distance = Math.sqrt(dx * dx + dz * dz)
+
+        if (distance < collisionRadius) {
+          // Push avatar away from machine
+          const angle = Math.atan2(dz, dx)
+          avatarPos.x = machine.pos[0] + Math.cos(angle) * collisionRadius
+          avatarPos.z = machine.pos[2] + Math.sin(angle) * collisionRadius
+        }
+      })
+    }
 
     // Camera follows avatar - third person
     const idealOffset = new THREE.Vector3(0, 3, 6)
@@ -208,7 +227,7 @@ export function ThirdPersonInstructions({ nearMachine }: { nearMachine: string |
       <div className="bg-black/70 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3">
         <div className="flex gap-6 text-sm text-white/80">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-white">W A S D</span>
+            <span className="font-mono text-white">↑ ↓ ← →</span>
             <span>Move</span>
           </div>
           <div className="flex items-center gap-2">

@@ -142,9 +142,6 @@ export function SlotMachineRealistic({
         args={[1.4, 2.6, 1]}
         radius={0.08}
         smoothness={2}
-        onClick={handleClick}
-        onPointerOver={() => setIsHovered(true)}
-        onPointerOut={() => setIsHovered(false)}
       >
         {cabinetMaterial}
       </RoundedBox>
@@ -179,30 +176,42 @@ export function SlotMachineRealistic({
       <mesh
         position={[0, -0.7, 0.6]}
         rotation={[Math.PI / 2, 0, 0]}
-        onClick={handleClick}
-        onPointerOver={() => setIsHovered(true)}
-        onPointerOut={() => setIsHovered(false)}
       >
         <cylinderGeometry args={[0.2, 0.2, 0.12, 32]} />
         <meshStandardMaterial
-          color={isHovered ? "#ff4444" : "#cc0000"}
+          color={isActive ? "#ff4444" : "#cc0000"}
           metalness={0.4}
           roughness={0.2}
         />
       </mesh>
 
-      {/* Top Sign */}
-      <group position={[0, 1.5, 0]}>
-        <RoundedBox args={[1.3, 0.5, 0.15]} radius={0.04}>
+      {/* Top Sign - LARGER & MORE VISIBLE */}
+      <group position={[0, 1.8, 0]}>
+        <RoundedBox args={[1.6, 0.7, 0.2]} radius={0.05}>
           {goldMaterial}
         </RoundedBox>
 
         <Text
-          position={[0, 0, 0.1]}
-          fontSize={0.15}
+          position={[0, 0, 0.12]}
+          fontSize={0.22}
           color="#000000"
           anchorX="center"
           anchorY="middle"
+          font-weight="bold"
+        >
+          {label.toUpperCase()}
+        </Text>
+      </group>
+
+      {/* Floating Label Above Machine - Always Visible */}
+      <group position={[0, 2.8, 0]}>
+        <Text
+          fontSize={0.35}
+          color={isActive ? "#40ff90" : "#ffffff"}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#000000"
         >
           {label.toUpperCase()}
         </Text>
@@ -217,17 +226,20 @@ export function SlotMachineRealistic({
         <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.4} />
       </RoundedBox>
 
-      {/* Hover prompt */}
-      {isHovered && (
-        <Text
-          position={[0, 2.2, 0]}
-          fontSize={0.12}
-          color="#40ff90"
-          anchorX="center"
-          anchorY="middle"
-        >
-          CLICK TO EXPLORE
-        </Text>
+      {/* Proximity indicator */}
+      {isActive && (
+        <group position={[0, 3.3, 0]}>
+          <Text
+            fontSize={0.18}
+            color="#40ff90"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.015}
+            outlineColor="#000000"
+          >
+            PRESS SPACE
+          </Text>
+        </group>
       )}
 
       {/* Point light */}

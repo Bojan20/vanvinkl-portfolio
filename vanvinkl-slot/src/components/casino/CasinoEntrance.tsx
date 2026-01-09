@@ -84,7 +84,7 @@ export function CasinoEntrance({ onComplete, skipEnabled = true }: CasinoEntranc
               onClick={handleClickToEnter}
               className="px-16 py-8 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl text-black text-3xl font-black shadow-2xl pointer-events-auto"
             >
-              CLICK TO ENTER CASINO
+              ENTER PORTFOLIO LOUNGE
             </motion.button>
           </motion.div>
         )}
