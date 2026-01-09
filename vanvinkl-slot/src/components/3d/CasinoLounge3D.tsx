@@ -1,18 +1,14 @@
 'use client'
 
-import { Canvas } from '@react-three/fiber'
 import {
   OrbitControls,
   Environment,
   ContactShadows,
-  PerspectiveCamera,
-  useGLTF,
   Text3D,
   Center,
   Float,
   MeshDistortMaterial,
-  Sparkles,
-  Effects
+  Sparkles
 } from '@react-three/drei'
 import {
   EffectComposer,
@@ -22,7 +18,7 @@ import {
   DepthOfField
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
-import { Suspense, useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 
@@ -121,7 +117,7 @@ function RouletteTable({ position }: { position: [number, number, number] }) {
   const meshRef = useRef<THREE.Group>(null)
 
   useFrame((state) => {
-    if (meshRef.current) {
+    if (meshRef.current && meshRef.current.children[1]) {
       meshRef.current.children[1].rotation.y += 0.02
     }
   })
@@ -257,8 +253,8 @@ function Chandelier({ position }: { position: [number, number, number] }) {
   )
 }
 
-// Main scene
-function Scene() {
+// Main scene component (no Canvas wrapper)
+export default function CasinoLounge3D() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -267,8 +263,7 @@ function Scene() {
 
   return (
     <>
-      {/* Camera */}
-      <PerspectiveCamera makeDefault position={[0, 5, 15]} fov={60} />
+      {/* Camera controls */}
       <OrbitControls
         enablePan
         enableZoom
@@ -277,6 +272,8 @@ function Scene() {
         minDistance={5}
         maxDistance={30}
         target={[0, 2, 0]}
+        enableDamping
+        dampingFactor={0.05}
       />
 
       {/* Lighting */}
@@ -390,44 +387,5 @@ function Scene() {
         </EffectComposer>
       )}
     </>
-  )
-}
-
-// Loading fallback
-function Loader() {
-  return (
-    <div className="flex items-center justify-center h-screen bg-black">
-      <div className="text-center">
-        <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-[#FFD700] border-r-transparent"></div>
-        <p className="mt-4 text-[#FFD700] font-bold text-xl">Loading Casino...</p>
-      </div>
-    </div>
-  )
-}
-
-// Main component
-export default function CasinoLounge3D() {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    setIsMobile(isMobileDevice())
-  }, [])
-
-  return (
-    <div className="w-full h-screen bg-black">
-      <Canvas
-        shadows={!isMobile}
-        gl={{
-          antialias: !isMobile,
-          alpha: false,
-          powerPreference: isMobile ? 'low-power' : 'high-performance'
-        }}
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
-      >
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
-      </Canvas>
-    </div>
   )
 }
