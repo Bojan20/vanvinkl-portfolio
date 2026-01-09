@@ -8,3 +8,4 @@ export { useGameState } from "./useGameState";
 export { useSlotMachine } from "./useSlotMachine";
 export { usePixiRenderer } from "./usePixiRenderer";
 export { useAnalytics } from "./useAnalytics";
+export { useHaptic } from "./useHaptic";
