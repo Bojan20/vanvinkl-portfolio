@@ -197,7 +197,6 @@ export function SlotMachineRealistic({
           color="#000000"
           anchorX="center"
           anchorY="middle"
-          font-weight="bold"
         >
           {label.toUpperCase()}
         </Text>
