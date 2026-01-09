@@ -12,5 +12,8 @@ export { LoungeEnvironment } from './LoungeEnvironment'
 export { CasinoLoungeSimple } from './CasinoLoungeSimple'
 export { SlotMachine3DSimple } from './SlotMachine3DSimple'
 
+// Optimized version (performance-focused)
+export { CasinoLoungeOptimized } from './CasinoLoungeOptimized'
+
 // Shared
 export { CasinoEntrance } from './CasinoEntrance'
