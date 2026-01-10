@@ -211,7 +211,19 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
       mat.opacity = THREE.MathUtils.lerp(0.4, basePulse, act)
     }
 
-    // IDLE attraction effects REMOVED for performance
+    // IDLE attraction effects - beckoning animation when far away
+    if (!isActive && groupRef.current) {
+      // Gentle idle sway to catch attention
+      const sway = Math.sin(t * 0.8) * 0.015
+      groupRef.current.rotation.y = sway
+    }
+
+    // WOW effects when approaching
+    if (isActive && groupRef.current) {
+      // Excitement wobble
+      const wobble = Math.sin(t * 8) * 0.01
+      groupRef.current.rotation.z = wobble
+    }
   })
 
   // Compute isActive for JSX (refs are read synchronously during render)

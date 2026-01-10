@@ -204,7 +204,7 @@ export function IntroCamera({
   return <TeleportParticles active={showParticles} position={avatarSpawnPosition} />
 }
 
-// HTML Overlay for glitch text - NO BLACK SCREEN, transparent overlay
+// HTML Overlay for glitch text - Dark background that fades out smoothly
 export function IntroOverlay({
   active,
   onComplete
@@ -215,6 +215,7 @@ export function IntroOverlay({
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'fade' | 'done'>('glitch')
   const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
   const [opacity, setOpacity] = useState(1)
+  const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
 
   useEffect(() => {
     if (!active) return
@@ -235,6 +236,26 @@ export function IntroOverlay({
 
     return () => timers.forEach(t => clearTimeout(t))
   }, [active, onComplete])
+
+  // Background fade - starts at 1s, completes by 2s
+  useEffect(() => {
+    if (!active) return
+
+    const fadeStart = setTimeout(() => {
+      let startTime = Date.now()
+      const animate = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / 1000, 1)
+        setBgOpacity(1 - progress)
+        if (progress < 1) {
+          requestAnimationFrame(animate)
+        }
+      }
+      requestAnimationFrame(animate)
+    }, 1000)
+
+    return () => clearTimeout(fadeStart)
+  }, [active])
 
   // Glitch effect
   useEffect(() => {
@@ -277,8 +298,8 @@ export function IntroOverlay({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      // NO BLACK BACKGROUND - fully transparent, only text visible
-      backgroundColor: 'transparent',
+      // Dark background that fades out during intro
+      backgroundColor: `rgba(5, 3, 10, ${bgOpacity})`,
       zIndex: 1000,
       pointerEvents: 'none',
       opacity: opacity,
