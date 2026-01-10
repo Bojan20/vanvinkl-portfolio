@@ -9,45 +9,74 @@ interface OnboardingFlowProps {
 
 const ONBOARDING_STEPS = [
   {
-    title: 'Welcome to the Casino Lounge',
-    description: 'Explore my portfolio in a unique 3D Vegas-style experience',
-    icon: '🎰'
+    title: 'Welcome to VanVinkl',
+    description: 'Explore my creative portfolio in a unique 3D Vegas-style experience',
+    icon: '🎰',
+    mobileDescription: 'Use the joystick to explore my portfolio'
   },
   {
-    title: 'Move Around',
-    description: 'Use arrow keys (↑ ↓ ← →) to walk through the casino',
-    icon: '🎮'
+    title: 'Navigate the Lounge',
+    description: 'Use WASD or arrow keys to walk through the casino',
+    icon: '🎮',
+    mobileDescription: 'Drag the joystick in any direction to move'
   },
   {
-    title: 'Interact with Machines',
+    title: 'Discover My Work',
     description: 'Walk close to a slot machine and press SPACE to view details',
-    icon: '✨'
+    icon: '✨',
+    mobileDescription: 'Approach a machine and tap the golden button to interact'
   }
 ]
+
+// Check if this is user's first visit
+export function isFirstVisit(): boolean {
+  if (typeof window === 'undefined') return true
+  return !localStorage.getItem('vanvinkl-onboarding-complete')
+}
+
+// Mark onboarding as complete
+export function markOnboardingComplete(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('vanvinkl-onboarding-complete', 'true')
+  }
+}
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
 
-  // Auto-advance after 3 seconds
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isTouchDevice = 'ontouchstart' in window ||
+                           navigator.maxTouchPoints > 0 ||
+                           window.innerWidth < 1024
+      setIsMobile(isTouchDevice)
+    }
+    checkMobile()
+  }, [])
+
+  // Auto-advance after 4 seconds
   useEffect(() => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       const timer = setTimeout(() => {
         setCurrentStep(currentStep + 1)
-      }, 3000)
+      }, 4000)
 
       return () => clearTimeout(timer)
     } else {
-      // Last step — auto close after 2 seconds
+      // Last step — auto close after 3 seconds
       const timer = setTimeout(() => {
         handleComplete()
-      }, 2000)
+      }, 3000)
 
       return () => clearTimeout(timer)
     }
   }, [currentStep])
 
   const handleComplete = () => {
+    markOnboardingComplete()
     setIsVisible(false)
     setTimeout(() => {
       onComplete()
@@ -61,6 +90,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   if (!isVisible) return null
 
   const step = ONBOARDING_STEPS[currentStep]
+  const description = isMobile && step.mobileDescription ? step.mobileDescription : step.description
 
   return (
     <AnimatePresence>
@@ -88,9 +118,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               {step.title}
             </h2>
 
-            {/* Description */}
+            {/* Description - adapts to device */}
             <p className="text-gray-300 text-center mb-6 leading-relaxed">
-              {step.description}
+              {description}
             </p>
 
             {/* Progress dots */}

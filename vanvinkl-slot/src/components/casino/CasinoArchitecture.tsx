@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { MeshReflectorMaterial, Text } from '@react-three/drei'
+import { AnimatedChandelier } from '../3d/AnimatedChandelier'
 import * as THREE from 'three'
 
 interface CasinoArchitectureProps {
@@ -211,98 +212,93 @@ export function CasinoArchitecture({ animateEntrance }: CasinoArchitectureProps)
         ))}
       </group>
 
-      {/* CEILING SYSTEM - DISABLED (was blocking view) */}
-      {/* <group name="ceiling-system">
-        <mesh position={[0, 6, 0]} receiveShadow>
-          <planeGeometry args={[80, 80]} />
-          {materials.ceiling}
+      {/* COFFERED CEILING SYSTEM - Elegant recessed panels */}
+      <group name="ceiling-system">
+        {/* Main ceiling plane (high up, dark to not obstruct view) */}
+        <mesh position={[0, 12, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[82, 40]} />
+          <meshStandardMaterial
+            color="#0a0808"
+            roughness={0.9}
+            metalness={0.1}
+            side={THREE.DoubleSide}
+          />
         </mesh>
-      </group> */}
 
-      {/* REALISTIC CRYSTAL CHANDELIERS - Hanging from ceiling - Balanced spacing */}
+        {/* Coffered ceiling grid - 3x5 pattern of recessed panels */}
+        {[-24, -12, 0, 12, 24].map((x, xi) =>
+          [-8, 0, 8].map((z, zi) => (
+            <group key={`coffer-${xi}-${zi}`} position={[x, 11.8, z]}>
+              {/* Recessed panel */}
+              <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[10, 6]} />
+                <meshStandardMaterial
+                  color="#050404"
+                  roughness={0.95}
+                  metalness={0.05}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+
+              {/* Gold frame around panel */}
+              {[
+                { pos: [5, 0, 0], size: [0.15, 0.3, 6] },
+                { pos: [-5, 0, 0], size: [0.15, 0.3, 6] },
+                { pos: [0, 0, 3], size: [10, 0.3, 0.15] },
+                { pos: [0, 0, -3], size: [10, 0.3, 0.15] }
+              ].map((frame, fi) => (
+                <mesh
+                  key={`frame-${fi}`}
+                  position={frame.pos as [number, number, number]}
+                >
+                  <boxGeometry args={frame.size as [number, number, number]} />
+                  {materials.brassTrim}
+                </mesh>
+              ))}
+            </group>
+          ))
+        )}
+
+        {/* Crown molding at ceiling perimeter */}
+        {[
+          { pos: [0, 11.5, -14.5], size: [82, 0.8, 0.8], rot: [0, 0, 0] },
+          { pos: [0, 11.5, 14.5], size: [82, 0.8, 0.8], rot: [0, 0, 0] },
+          { pos: [-40.5, 11.5, 0], size: [0.8, 0.8, 30], rot: [0, 0, 0] },
+          { pos: [40.5, 11.5, 0], size: [0.8, 0.8, 30], rot: [0, 0, 0] }
+        ].map((molding, i) => (
+          <mesh
+            key={`crown-${i}`}
+            position={molding.pos as [number, number, number]}
+          >
+            <boxGeometry args={molding.size as [number, number, number]} />
+            {materials.goldTrim}
+          </mesh>
+        ))}
+
+        {/* Decorative ceiling beams (mahogany) */}
+        {[-12, 0, 12].map((x, i) => (
+          <mesh key={`beam-x-${i}`} position={[x, 11.6, 0]}>
+            <boxGeometry args={[0.4, 0.5, 30]} />
+            {materials.woodWall}
+          </mesh>
+        ))}
+        {[-6, 6].map((z, i) => (
+          <mesh key={`beam-z-${i}`} position={[0, 11.6, z]}>
+            <boxGeometry args={[50, 0.5, 0.4]} />
+            {materials.woodWall}
+          </mesh>
+        ))}
+      </group>
+
+      {/* ANIMATED CRYSTAL CHANDELIERS - Gentle sway motion */}
       <group name="chandeliers">
         {[-14, 0, 14].map((x, i) => (
-          <group key={i} position={[x, 0, 0]} rotation={[0, 0, 0]}>
-            {/* Ceiling mount - FIXED to ceiling at y=12 */}
-            <mesh position={[0, 12, 0]}>
-              <cylinderGeometry args={[0.5, 0.4, 0.2, 16]} />
-              {materials.brassTrim}
-            </mesh>
-
-            {/* LONG CHAIN from ceiling to chandelier body (3 units long) */}
-            <mesh position={[0, 10.5, 0]}>
-              <cylinderGeometry args={[0.04, 0.04, 3, 8]} />
-              {materials.goldTrim}
-            </mesh>
-
-            {/* Main chandelier body at y=9 - 3 tiers of lights */}
-            {[9, 8.5, 8.0].map((yPos, tier) => (
-              <group key={tier} position={[0, yPos, 0]}>
-                {/* Tier frame (gold ring) */}
-                <mesh rotation={[Math.PI / 2, 0, 0]}>
-                  <torusGeometry args={[0.6 + tier * 0.2, 0.05, 8, 24]} />
-                  {materials.goldTrim}
-                </mesh>
-
-                {/* Candle-style lights around ring (4 per tier - optimized) */}
-                {Array.from({ length: 4 }).map((_, j) => {
-                  const angle = (j / 4) * Math.PI * 2
-                  const radius = 0.6 + tier * 0.2
-                  const lx = Math.cos(angle) * radius
-                  const lz = Math.sin(angle) * radius
-
-                  return (
-                    <group key={j} position={[lx, 0, lz]}>
-                      {/* Glowing flame/bulb (simplified) */}
-                      <mesh position={[0, 0.12, 0]}>
-                        <sphereGeometry args={[0.1, 8, 8]} />
-                        <meshStandardMaterial
-                          color="#FFF8E7"
-                          emissive="#FFF8E7"
-                          emissiveIntensity={2}
-                          metalness={0}
-                          roughness={0.2}
-                        />
-                      </mesh>
-                    </group>
-                  )
-                })}
-
-                {/* Crystal drops hanging from ring (8 per tier - optimized) */}
-                {Array.from({ length: 8 }).map((_, j) => {
-                  const angle = (j / 8) * Math.PI * 2
-                  const radius = 0.65 + tier * 0.2
-                  const cx = Math.cos(angle) * radius
-                  const cz = Math.sin(angle) * radius
-
-                  return (
-                    <mesh key={`crystal-${j}`} position={[cx, -0.2, cz]}>
-                      <coneGeometry args={[0.04, 0.2, 4]} />
-                      <meshStandardMaterial
-                        color="#ffffff"
-                        metalness={0.9}
-                        roughness={0.1}
-                        emissive="#ffffff"
-                        emissiveIntensity={0.2}
-                      />
-                    </mesh>
-                  )
-                })}
-              </group>
-            ))}
-
-            {/* Central hanging crystal at bottom (y=7.2) */}
-            <mesh position={[0, 7.2, 0]}>
-              <coneGeometry args={[0.15, 0.5, 6]} />
-              <meshStandardMaterial
-                color="#ffffff"
-                metalness={0.9}
-                roughness={0.1}
-                emissive="#ffffff"
-                emissiveIntensity={0.3}
-              />
-            </mesh>
-          </group>
+          <AnimatedChandelier
+            key={i}
+            position={[x, 0, 0]}
+            swayAmount={0.015}
+            swaySpeed={0.4 + i * 0.1}
+          />
         ))}
       </group>
 
@@ -409,12 +405,12 @@ export function CasinoArchitecture({ animateEntrance }: CasinoArchitectureProps)
           </group>
         ))}
 
-        {/* Text on LEFT marble panels - Elegant engraved style */}
+        {/* Text on LEFT marble panels - Professional portfolio copy */}
         {[
-          { z: -8, text: 'FEELS\nGOOD' },
-          { z: -4, text: 'SOUNDS\nBETTER' },
-          { z: 0, text: 'PURE\nVIBES' },
-          { z: 4, text: 'NO\nCAP' }
+          { z: -8, text: 'CREATIVE\nVISION' },
+          { z: -4, text: 'PRECISION\nCRAFT' },
+          { z: 0, text: 'INNOVATIVE\nSOLUTIONS' },
+          { z: 4, text: 'EXCELLENCE\nDELIVERED' }
         ].map((panel, i) => (
           <group key={`left-text-group-${i}`}>
             {/* Warm accent spotlight */}
@@ -458,12 +454,12 @@ export function CasinoArchitecture({ animateEntrance }: CasinoArchitectureProps)
           </group>
         ))}
 
-        {/* Text on RIGHT marble panels - Elegant engraved style */}
+        {/* Text on RIGHT marble panels - Professional portfolio copy */}
         {[
-          { z: -8, text: 'HITS\nDIFFERENT' },
-          { z: -4, text: 'CHEF\'S\nKISS' },
-          { z: 0, text: 'SMOOTH\nAF' },
-          { z: 4, text: 'ELITE\nSTUFF' }
+          { z: -8, text: 'PREMIUM\nQUALITY' },
+          { z: -4, text: 'ATTENTION\nTO DETAIL' },
+          { z: 0, text: 'FLAWLESS\nEXECUTION' },
+          { z: 4, text: 'BEYOND\nEXPECTATIONS' }
         ].map((panel, i) => (
           <group key={`right-text-group-${i}`}>
             {/* Warm accent spotlight */}
@@ -535,11 +531,51 @@ export function CasinoArchitecture({ animateEntrance }: CasinoArchitectureProps)
           </group>
         ))}
 
+        {/* Decorative mirrors between panels */}
+        {[-5, 5].map((x, i) => (
+          <group key={`mirror-${i}`} position={[x, 3, -14.6]}>
+            {/* Mirror surface (dark reflective) */}
+            <mesh>
+              <planeGeometry args={[2.5, 4]} />
+              <meshStandardMaterial
+                color="#0a0a0a"
+                metalness={0.98}
+                roughness={0.02}
+                envMapIntensity={3}
+              />
+            </mesh>
+            {/* Gold ornate frame */}
+            {[
+              { pos: [0, 2.1, 0.02], size: [2.8, 0.15, 0.1] },
+              { pos: [0, -2.1, 0.02], size: [2.8, 0.15, 0.1] },
+              { pos: [-1.35, 0, 0.02], size: [0.15, 4.2, 0.1] },
+              { pos: [1.35, 0, 0.02], size: [0.15, 4.2, 0.1] }
+            ].map((frame, fi) => (
+              <mesh key={`frame-${fi}`} position={frame.pos as [number, number, number]}>
+                <boxGeometry args={frame.size as [number, number, number]} />
+                {materials.goldTrim}
+              </mesh>
+            ))}
+            {/* Corner accents */}
+            {[
+              [-1.2, 1.95],
+              [1.2, 1.95],
+              [-1.2, -1.95],
+              [1.2, -1.95]
+            ].map((corner, ci) => (
+              <mesh key={`corner-${ci}`} position={[corner[0], corner[1], 0.05]}>
+                <sphereGeometry args={[0.12, 8, 8]} />
+                {materials.goldTrim}
+              </mesh>
+            ))}
+          </group>
+        ))}
+
         {/* Text on back marble panels - Elegant engraved style */}
         {[
-          { x: -10, text: 'AUDIO\nTHAT SLAPS' },
-          { x: 0, text: 'EARCANDY\nFOR DAYS' },
-          { x: 10, text: 'YOUR EARS\nWILL THANK YOU' }
+          { x: -10, text: 'PORTFOLIO\nSHOWCASE' },
+          { x: 0, text: 'PROFESSIONAL\nWORK' },
+          { x: 10, text: 'EXPLORE\nMY PROJECTS' }
         ].map((panel, i) => (
           <group key={`back-text-group-${i}`}>
             {/* Warm accent spotlight */}

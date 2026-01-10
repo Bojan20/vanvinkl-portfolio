@@ -1,9 +1,9 @@
 'use client'
 
-import { Suspense, useState, useMemo, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Stars } from '@react-three/drei'
-import { SlotMachineIGT } from '../3d/SlotMachineIGT'
+import { Stars, Environment } from '@react-three/drei'
+import { CyberpunkSlotMachine } from '../3d/CyberpunkSlotMachine'
 import { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
 import { CasinoEntrance } from './CasinoEntrance'
 import { SlotMachineDetailView } from './SlotMachineDetailView'
@@ -13,8 +13,9 @@ import { AdvancedPostProcessing } from '../3d/AdvancedPostProcessing'
 import { CasinoArchitecture } from './CasinoArchitecture'
 import { AvatarFollowLight } from './AvatarFollowLight'
 import { SpatialAudioSystem } from '../3d/SpatialAudioSystem'
-import { OnboardingFlow } from './OnboardingFlow'
-import { AnimatePresence } from 'framer-motion'
+import { OnboardingFlow, isFirstVisit } from './OnboardingFlow'
+import { MobileControls } from './MobileControls'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useRenderingConfig } from '@/contexts/RenderingContext'
 import * as THREE from 'three'
 
@@ -22,7 +23,7 @@ interface CasinoLoungeUltraProps {
   onMachineInteract?: (machineId: string) => void
 }
 
-// Portfolio sections - STRAIGHT LINE (original 6 machines)
+// Portfolio sections - STRAIGHT LINE (6 cyberpunk machines)
 const PORTFOLIO_MACHINES = (() => {
   const machines = [
     { id: 'skills', label: 'Skills' },
@@ -33,13 +34,13 @@ const PORTFOLIO_MACHINES = (() => {
     { id: 'contact', label: 'Contact' }
   ]
 
-  const spacing = 7 // Increased from 5 to prevent label overlap
+  const spacing = 5.5 // Wider for cyberpunk machines
   const totalWidth = (machines.length - 1) * spacing
   const startX = -totalWidth / 2
 
   return machines.map((m, i) => {
     const x = startX + i * spacing
-    const z = -5
+    const z = -6 // Slightly back
     return {
       ...m,
       pos: [x, 0, z] as [number, number, number],
@@ -49,36 +50,74 @@ const PORTFOLIO_MACHINES = (() => {
 })()
 
 export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps) {
-  // Rendering configuration
   const { config } = useRenderingConfig()
 
   const [showEntrance, setShowEntrance] = useState(true)
   const [isEntered, setIsEntered] = useState(false)
-  const [showAvatar, setShowAvatar] = useState(false) // Avatar visible after cinematic
+  const [canvasFadeIn, setCanvasFadeIn] = useState(false)
+  const [showAvatar, setShowAvatar] = useState(true)
   const [cameraMode, setCameraMode] = useState<'cinematic' | 'follow' | 'fixed'>('fixed')
   const [nearMachine, setNearMachine] = useState<string | null>(null)
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null)
   const [hasMovedOnce, setHasMovedOnce] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
 
+  // Check for first-time visitor on mount
+  useEffect(() => {
+    if (isFirstVisit()) {
+      setShowOnboarding(true)
+      setOnboardingComplete(false)
+    } else {
+      setOnboardingComplete(true)
+    }
+  }, [])
+
+  // Mobile controls state
+  const [mobileInput, setMobileInput] = useState<{ x: number; y: number } | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
   const avatarPositionRef = useRef(new THREE.Vector3(0, 0.5, 10))
-  const avatarRotationRef = useRef(0) // Start facing forward toward slots (z=-5)
+  const avatarRotationRef = useRef(0)
+
+  const [canvasReady, setCanvasReady] = useState(false)
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isTouchDevice = 'ontouchstart' in window ||
+                           navigator.maxTouchPoints > 0 ||
+                           window.innerWidth < 1024
+      setIsMobile(isTouchDevice)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setCanvasReady(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (showEntrance) {
+      const timer = setTimeout(() => setCanvasFadeIn(true), 1100)
+      return () => clearTimeout(timer)
+    }
+  }, [showEntrance])
 
   const handleEntranceComplete = () => {
     setShowEntrance(false)
-    // Don't show avatar yet if onboarding is active
-    if (onboardingComplete) {
-      setShowAvatar(true)
-      setIsEntered(true)
-    }
+    setIsEntered(true)
   }
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
     setOnboardingComplete(true)
-    setShowAvatar(true) // Show avatar after onboarding
-    setIsEntered(true) // Enable input
+    setShowAvatar(true)
+    setIsEntered(true)
   }
 
   const handleCinematicComplete = () => {
@@ -93,20 +132,32 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
   const handleAvatarMoved = () => {
     if (!hasMovedOnce && isEntered) {
       setHasMovedOnce(true)
-      setCameraMode('follow') // Switch to follow mode on first movement
+      setCameraMode('follow')
     }
   }
 
-  const handleMachineSelect = (machineId: string) => {
+  const handleMachineSelect = useCallback((machineId: string) => {
     setSelectedMachine(machineId)
     onMachineInteract?.(machineId)
-  }
+  }, [onMachineInteract])
 
   const handleCloseDetail = () => {
     setSelectedMachine(null)
   }
 
-  // SPACE to interact
+  // Mobile joystick handler
+  const handleMobileMove = useCallback((direction: { x: number; y: number } | null) => {
+    setMobileInput(direction)
+  }, [])
+
+  // Mobile interact handler
+  const handleMobileInteract = useCallback(() => {
+    if (nearMachine && !selectedMachine) {
+      handleMachineSelect(nearMachine)
+    }
+  }, [nearMachine, selectedMachine, handleMachineSelect])
+
+  // SPACE to interact (keyboard)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && nearMachine && !selectedMachine) {
@@ -117,20 +168,28 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [nearMachine, selectedMachine])
+  }, [nearMachine, selectedMachine, handleMachineSelect])
 
-
-  // Get selected machine label
   const selectedMachineData = PORTFOLIO_MACHINES.find(m => m.id === selectedMachine)
 
   return (
     <div className="w-full h-screen bg-black relative">
-      {/* Onboarding flow (shows after entrance, before gameplay) */}
-      {!showEntrance && showOnboarding && (
+      {/* Onboarding flow - shows after entrance for first-time visitors */}
+      {!showEntrance && showOnboarding && !onboardingComplete && (
         <OnboardingFlow onComplete={handleOnboardingComplete} />
       )}
 
-      {isEntered && <ThirdPersonInstructions nearMachine={nearMachine} />}
+      {/* Instructions (hidden on mobile) */}
+      {isEntered && <ThirdPersonInstructions nearMachine={nearMachine} isMobile={isMobile} />}
+
+      {/* Mobile controls */}
+      {isEntered && !selectedMachine && (
+        <MobileControls
+          onMove={handleMobileMove}
+          onInteract={handleMobileInteract}
+          showInteract={!!nearMachine}
+        />
+      )}
 
       {/* Detail view modal */}
       <AnimatePresence>
@@ -144,28 +203,34 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
         )}
       </AnimatePresence>
 
-      <Canvas
-        shadows  // ENABLED — Real-time shadow system
-        dpr={config.pixelRatio} // Quality-aware pixel ratio
-        gl={{
-          antialias: config.antialias, // Quality-aware antialiasing
-          alpha: false,
-          powerPreference: 'high-performance',
-          stencil: false,
-          depth: true,
-          preserveDrawingBuffer: false
-        }}
-        camera={{
-          fov: 75,
-          near: 0.1,
-          far: 100,
-          position: [0, 1.7, 5]
-        }}
-        performance={{ min: 0.5 }}
-        frameloop="always"
+      {/* Canvas */}
+      <motion.div
+        className="w-full h-full"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: canvasFadeIn ? 1 : 0 }}
+        transition={{ duration: 1.2, ease: 'easeOut' }}
       >
+        {canvasReady && <Canvas
+          shadows
+          dpr={[1, 1.5]}
+          gl={{
+            antialias: false,
+            alpha: false,
+            powerPreference: 'high-performance',
+            stencil: false,
+            depth: true,
+            preserveDrawingBuffer: false
+          }}
+          camera={{
+            fov: 75,
+            near: 0.1,
+            far: 80,
+            position: [0, 1.7, 5]
+          }}
+          performance={{ min: 0.5, max: 1, debounce: 200 }}
+          frameloop="always"
+        >
         <Suspense fallback={null}>
-          {/* AAA Cinematic Camera System */}
           <CameraRig
             mode={cameraMode}
             target={showAvatar ? avatarPositionRef.current : undefined}
@@ -184,9 +249,9 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
                 rotationRef={avatarRotationRef}
                 onMove={handleAvatarMoved}
                 nearMachine={nearMachine}
+                mobileInput={mobileInput}
               />
 
-              {/* SPATIAL AUDIO SYSTEM — 3D positional sound for slot machines */}
               <SpatialAudioSystem
                 machinePositions={PORTFOLIO_MACHINES}
                 nearMachine={nearMachine}
@@ -194,12 +259,15 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
             </>
           )}
 
-          {/* CASINO ARCHITECTURE (Vegas-style) - Fixed: removed ceiling, lightened fog */}
           <CasinoArchitecture animateEntrance={isEntered} />
 
-          {/* Portfolio Slot Machines (6 total) */}
+          {/* Environment for realistic reflections - warm casino */}
+          <Environment preset="sunset" environmentIntensity={0.6} />
+
+          {/* ContactShadows removed for performance */}
+
           {PORTFOLIO_MACHINES.map((machine) => (
-            <SlotMachineIGT
+            <CyberpunkSlotMachine
               key={machine.id}
               position={machine.pos}
               rotation={machine.rot}
@@ -210,17 +278,14 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
             />
           ))}
 
-          {/* AAA ADVANCED LIGHTING SYSTEM */}
           <AdvancedLighting
             machinePositions={PORTFOLIO_MACHINES}
             nearMachine={nearMachine}
             config={config}
           />
 
-          {/* DYNAMIC AVATAR-FOLLOWING SPOTLIGHT WITH SHADOWS */}
           {showAvatar && <AvatarFollowLight avatarPositionRef={avatarPositionRef} />}
 
-          {/* Stars for atmosphere (minimal for 60fps) */}
           <Stars
             radius={50}
             depth={30}
@@ -230,15 +295,17 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
             speed={0.3}
           />
 
-          <fog attach="fog" args={['#050510', 25, 80]} />
+          <fog attach="fog" args={['#1a1510', 40, 100]} />
 
-          {/* AAA ADVANCED POST-PROCESSING STACK */}
+          
           <AdvancedPostProcessing
             enableSSAO={config.enableSSAO}
             enableDOF={config.enableDOF}
+            quality={isMobile ? 'medium' : 'high'}
           />
         </Suspense>
-      </Canvas>
+        </Canvas>}
+      </motion.div>
 
       {showEntrance && (
         <CasinoEntrance onComplete={handleEntranceComplete} />

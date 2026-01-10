@@ -9,19 +9,23 @@ interface AnimatedAvatarProps {
   isMovingRef: React.MutableRefObject<boolean>
   moveDirectionRef: React.MutableRefObject<THREE.Vector3>
   currentSpeedRef: React.MutableRefObject<number>
-  isNearMachine?: boolean // For facial expressions (smile when near machine)
-  celebrationTrigger?: number // Increment to trigger celebration (jump for joy)
+  isNearMachine?: boolean
+  celebrationTrigger?: number
 }
 
 /**
- * AAA-level Link/Zelda-style anime fighter with:
- * - Walk cycle (leg/arm swing, body bob)
- * - Idle breathing + weight shift
- * - Head tracking (looks toward movement)
- * - Procedural animation (no bones required)
- * - Link's green tunic, blonde hair, Master Sword, Hylian Shield
- * - Triforce emblem on chest and shield
- * - Anime-style blue eyes with blinking
+ * ORIGINAL AVATAR — Professional casino visitor character
+ *
+ * Design: Stylized humanoid in smart casual attire
+ * - Navy blazer with gold accents (matches casino theme)
+ * - Clean, modern silhouette
+ * - Glowing gold details (VIP feel)
+ * - NO copyrighted elements
+ *
+ * Optimized for 60fps:
+ * - Low-poly geometry (6-8 segments)
+ * - Memoized materials
+ * - Direct calculations (no unnecessary lerps)
  */
 export function AnimatedAvatar({
   isMovingRef,
@@ -51,32 +55,39 @@ export function AnimatedAvatar({
 
   // Facial expression state
   const blinkTimer = useRef(0)
-  const blinkDuration = useRef(0.15) // Blink lasts 0.15s
-  const nextBlinkTime = useRef(Math.random() * 3 + 2) // Random 2-5s
+  const blinkDuration = useRef(0.15)
+  const nextBlinkTime = useRef(Math.random() * 3 + 2)
   const isBlinking = useRef(false)
   const eyeScaleY = useRef(1)
-  const mouthCurve = useRef(0) // 0 = neutral, 1 = smile
+  const mouthCurve = useRef(0)
 
-  // Celebration animation state
+  // Celebration state
   const isCelebrating = useRef(false)
   const celebrationTime = useRef(0)
-  const celebrationDuration = 1.5 // 1.5 second celebration
+  const celebrationDuration = 1.5
   const lastCelebrationTrigger = useRef(0)
 
-  // Memoized materials for 60fps performance (ZELDA STYLE)
+  // ═══ MEMOIZED MATERIALS — Casino VIP Theme ═══
   const materials = useMemo(() => ({
-    greenTunic: <meshStandardMaterial color="#2d8659" metalness={0.1} roughness={0.8} />, // Link's green tunic
-    darkGreen: <meshStandardMaterial color="#1a5c3e" metalness={0.2} roughness={0.7} />, // Dark green accents
-    skinTone: <meshStandardMaterial color="#ffcba4" metalness={0.05} roughness={0.9} />, // Anime skin
-    hairBlonde: <meshStandardMaterial color="#f4d03f" metalness={0.2} roughness={0.6} />, // Blonde hair
-    eyesBlue: <meshStandardMaterial color="#4a90e2" emissive="#4a90e2" emissiveIntensity={0.3} />, // Anime blue eyes
-    brownBoots: <meshStandardMaterial color="#6b4423" metalness={0.3} roughness={0.6} />, // Brown leather boots
-    goldBelt: <meshStandardMaterial color="#f4d03f" metalness={0.7} roughness={0.3} />, // Gold belt buckle
-    silverSword: <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} />, // Master Sword metal
-    blueGem: <meshStandardMaterial color="#00bfff" emissive="#00bfff" emissiveIntensity={1.0} metalness={0.8} roughness={0.2} />, // Sword gem
-    shieldMetal: <meshStandardMaterial color="#e8e8e8" metalness={0.8} roughness={0.3} />, // Hylian Shield
-    triforce: <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0.8} metalness={0.7} roughness={0.2} />, // Triforce symbol
-    shadow: <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+    // Clothing — Smart Casual Casino Look
+    navyBlazer: <meshStandardMaterial color="#1a2744" metalness={0.15} roughness={0.7} />,
+    whiteShirt: <meshStandardMaterial color="#f8f8f8" metalness={0.05} roughness={0.85} />,
+    darkPants: <meshStandardMaterial color="#1a1a1a" metalness={0.1} roughness={0.75} />,
+    brownShoes: <meshStandardMaterial color="#4a3728" metalness={0.25} roughness={0.6} />,
+
+    // Accents — Gold VIP Details
+    goldAccent: <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} emissive="#d4af37" emissiveIntensity={0.3} />,
+    goldButton: <meshStandardMaterial color="#ffd700" metalness={0.9} roughness={0.15} emissive="#ffd700" emissiveIntensity={0.5} />,
+
+    // Skin & Features
+    skinTone: <meshStandardMaterial color="#e8c4a0" metalness={0.02} roughness={0.9} />,
+    hairDark: <meshStandardMaterial color="#2a1a0a" metalness={0.1} roughness={0.8} />,
+    eyeWhite: <meshStandardMaterial color="#ffffff" metalness={0} roughness={0.9} />,
+    eyeIris: <meshStandardMaterial color="#4a7c59" emissive="#4a7c59" emissiveIntensity={0.2} />,
+    eyebrow: <meshStandardMaterial color="#1a0a00" metalness={0.05} roughness={0.9} />,
+
+    // Ground shadow
+    shadow: <meshBasicMaterial color="#000000" transparent opacity={0.25} />
   }), [])
 
   useFrame((state, delta) => {
@@ -86,14 +97,14 @@ export function AnimatedAvatar({
     const moveDirection = moveDirectionRef.current
     const currentSpeed = currentSpeedRef.current
 
-    // CELEBRATION TRIGGER (jump for joy when triggered)
+    // ═══ CELEBRATION TRIGGER ═══
     if (celebrationTrigger > lastCelebrationTrigger.current) {
       isCelebrating.current = true
       celebrationTime.current = 0
       lastCelebrationTrigger.current = celebrationTrigger
     }
 
-    // Celebration animation (jump with arms up)
+    // Celebration animation
     if (isCelebrating.current) {
       celebrationTime.current += delta
 
@@ -101,378 +112,335 @@ export function AnimatedAvatar({
         const t = celebrationTime.current
         const progress = t / celebrationDuration
 
-        // Jump arc (parabola)
-        const jumpHeight = Math.sin(progress * Math.PI) * 1.5
+        // Jump arc
+        const jumpHeight = Math.sin(progress * Math.PI) * 1.2
         bodyRef.current.position.y = 0.5 + jumpHeight
 
-        // Arms raise up in excitement
+        // Arms raise in excitement
         if (leftArmRef.current && rightArmRef.current) {
-          const armAngle = -Math.PI / 2 + Math.sin(t * 8) * 0.3 // Wave arms
+          const armAngle = -Math.PI / 2.5 + Math.sin(t * 10) * 0.25
           leftArmRef.current.rotation.x = armAngle
           rightArmRef.current.rotation.x = armAngle
-          leftArmRef.current.rotation.z = -Math.PI / 4
-          rightArmRef.current.rotation.z = Math.PI / 4
+          leftArmRef.current.rotation.z = -Math.PI / 5
+          rightArmRef.current.rotation.z = Math.PI / 5
         }
 
-        // Head tilt back (joy)
+        // Head tilt (joy)
         if (headRef.current) {
-          headRef.current.rotation.x = -0.3
+          headRef.current.rotation.x = -0.25
         }
 
-        // Legs tuck during jump
+        // Legs tuck
         if (leftLegRef.current && rightLegRef.current) {
-          const tuckAngle = Math.sin(progress * Math.PI) * 0.8
+          const tuckAngle = Math.sin(progress * Math.PI) * 0.6
           leftLegRef.current.rotation.x = tuckAngle
           rightLegRef.current.rotation.x = tuckAngle
         }
 
-        // Big smile during celebration
         mouthCurve.current = 1.0
       } else {
-        // Celebration complete
         isCelebrating.current = false
       }
     }
 
-    // FACIAL EXPRESSIONS
-    // Blinking animation (random intervals)
+    // ═══ FACIAL EXPRESSIONS ═══
     blinkTimer.current += delta
 
     if (!isBlinking.current && blinkTimer.current >= nextBlinkTime.current) {
-      // Start blink
       isBlinking.current = true
       blinkTimer.current = 0
     }
 
     if (isBlinking.current) {
       if (blinkTimer.current < blinkDuration.current / 2) {
-        // Close eyes (first half of blink)
-        eyeScaleY.current = THREE.MathUtils.lerp(eyeScaleY.current, 0.1, delta * 20)
+        eyeScaleY.current = THREE.MathUtils.lerp(eyeScaleY.current, 0.1, delta * 25)
       } else if (blinkTimer.current < blinkDuration.current) {
-        // Open eyes (second half)
-        eyeScaleY.current = THREE.MathUtils.lerp(eyeScaleY.current, 1.0, delta * 20)
+        eyeScaleY.current = THREE.MathUtils.lerp(eyeScaleY.current, 1.0, delta * 25)
       } else {
-        // Blink complete
         isBlinking.current = false
         blinkTimer.current = 0
-        nextBlinkTime.current = Math.random() * 3 + 2 // Next blink in 2-5s
+        nextBlinkTime.current = Math.random() * 3 + 2
         eyeScaleY.current = 1.0
       }
     }
 
-    // Apply eye scale (blink effect)
     if (leftEyeRef.current && rightEyeRef.current) {
       leftEyeRef.current.scale.y = eyeScaleY.current
       rightEyeRef.current.scale.y = eyeScaleY.current
     }
 
-    // Smile when near machine (excitement)
+    // Smile when near machine
     const targetSmile = isNearMachine ? 1.0 : 0.0
-    mouthCurve.current = THREE.MathUtils.lerp(mouthCurve.current, targetSmile, delta * 5)
+    mouthCurve.current = THREE.MathUtils.lerp(mouthCurve.current, targetSmile, delta * 6)
 
-    // Apply mouth shape (smile = arc upward)
     if (mouthRef.current) {
-      mouthRef.current.position.y = 0.42 + mouthCurve.current * 0.02
-      mouthRef.current.scale.x = 1 + mouthCurve.current * 0.3
+      mouthRef.current.position.y = 0.38 + mouthCurve.current * 0.015
+      mouthRef.current.scale.x = 1 + mouthCurve.current * 0.25
     }
 
     // Skip walk/idle if celebrating
-    if (isCelebrating.current) {
-      return // Celebration overrides all other animations
-    }
+    if (isCelebrating.current) return
 
     if (isMoving && currentSpeed > 0.1) {
-      // WALK CYCLE - INSTANT responsive animation (no lerp delays)
-      const speedMultiplier = 8 + (currentSpeed / 5) * 8 // Direct calculation (faster than lerp)
+      // ═══ WALK CYCLE ═══
+      const speedMultiplier = 8 + (currentSpeed / 5) * 8
       walkCycle.current += delta * speedMultiplier
       idleTime.current = 0
 
       const t = walkCycle.current
 
-      // Body bob (up/down motion) - direct calculation for instant response
-      const bobAmount = 0.08 + (currentSpeed / 5) * 0.06
+      // Body bob
+      const bobAmount = 0.06 + (currentSpeed / 5) * 0.04
       bodyRef.current.position.y = 0.5 + Math.abs(Math.sin(t * 2)) * bobAmount
 
-      // Body lean forward - instant response to speed changes
-      const leanAmount = 0.05 + (currentSpeed / 5) * 0.08
+      // Body lean
+      const leanAmount = 0.04 + (currentSpeed / 5) * 0.06
       bodyRef.current.rotation.x = Math.sin(t) * leanAmount
+      bodyRef.current.rotation.z = Math.sin(t * 2) * 0.015
 
-      // Body sway side-to-side - reduced for smoother look
-      bodyRef.current.rotation.z = Math.sin(t * 2) * 0.02
-
-      // LEG SWING - INSTANT calculation (no lerp)
+      // Leg swing
       if (leftLegRef.current && rightLegRef.current) {
-        const legSwing = 0.6 + (currentSpeed / 5) * 0.25 // Direct calculation
-        const legLift = 0.1 + (currentSpeed / 5) * 0.08
+        const legSwing = 0.5 + (currentSpeed / 5) * 0.2
+        const legLift = 0.08 + (currentSpeed / 5) * 0.06
 
-        // Left leg
         leftLegRef.current.rotation.x = Math.sin(t) * legSwing
         leftLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t)) * legLift
 
-        // Right leg (opposite phase)
         rightLegRef.current.rotation.x = Math.sin(t + Math.PI) * legSwing
         rightLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t + Math.PI)) * legLift
       }
 
-      // ARM SWING - INSTANT calculation
+      // Arm swing
       if (leftArmRef.current && rightArmRef.current) {
-        const armSwing = 0.4 + (currentSpeed / 5) * 0.25
+        const armSwing = 0.35 + (currentSpeed / 5) * 0.2
 
-        // Left arm swings with right leg
         leftArmRef.current.rotation.x = Math.sin(t + Math.PI) * armSwing
-        leftArmRef.current.rotation.z = -0.2 + Math.sin(t) * 0.08
+        leftArmRef.current.rotation.z = -0.15 + Math.sin(t) * 0.06
 
-        // Right arm (sword) - reduced swing for stability
-        rightArmRef.current.rotation.x = Math.sin(t) * (armSwing * 0.5)
-        rightArmRef.current.rotation.z = 0.2 + Math.sin(t + Math.PI) * 0.08
+        rightArmRef.current.rotation.x = Math.sin(t) * armSwing
+        rightArmRef.current.rotation.z = 0.15 + Math.sin(t + Math.PI) * 0.06
       }
 
-      // HEAD TRACKING - FASTER response (no slow lerp)
+      // Head tracking
       if (headRef.current && moveDirection.length() > 0) {
-        const targetAngle = Math.atan2(moveDirection.x, moveDirection.z) * 0.25
-        // Much faster lerp for instant head turn
-        headLookAngle.current += (targetAngle - headLookAngle.current) * Math.min(delta * 15, 1)
+        const targetAngle = Math.atan2(moveDirection.x, moveDirection.z) * 0.2
+        headLookAngle.current += (targetAngle - headLookAngle.current) * Math.min(delta * 12, 1)
         headRef.current.rotation.y = headLookAngle.current
       }
 
-      breathPhase.current = 0 // Reset breath when moving
+      breathPhase.current = 0
     } else {
-      // IDLE ANIMATIONS
+      // ═══ IDLE ANIMATIONS ═══
       idleTime.current += delta
 
-      // Breathing (chest expand/contract)
+      // Breathing
       breathPhase.current += delta * 2
-      const breathScale = 1 + Math.sin(breathPhase.current) * 0.03
+      const breathScale = 1 + Math.sin(breathPhase.current) * 0.025
       if (bodyRef.current) {
         bodyRef.current.scale.setScalar(breathScale)
       }
 
-      // Weight shift (subtle sway)
+      // Weight shift
       if (bodyRef.current) {
-        bodyRef.current.rotation.z = Math.sin(idleTime.current * 0.5) * 0.02
-        bodyRef.current.position.y = 0.5 + Math.sin(idleTime.current * 0.7) * 0.01
+        bodyRef.current.rotation.z = Math.sin(idleTime.current * 0.5) * 0.015
+        bodyRef.current.position.y = 0.5 + Math.sin(idleTime.current * 0.7) * 0.008
       }
 
-      // Idle leg stance - FASTER transition to rest
+      // Idle legs
       if (leftLegRef.current && rightLegRef.current) {
-        const alpha = Math.min(delta * 8, 1) // Much faster lerp
-        leftLegRef.current.rotation.x += (0.05 - leftLegRef.current.rotation.x) * alpha
+        const alpha = Math.min(delta * 10, 1)
+        leftLegRef.current.rotation.x += (0.03 - leftLegRef.current.rotation.x) * alpha
         leftLegRef.current.position.y = -0.05
 
-        rightLegRef.current.rotation.x += (0.05 - rightLegRef.current.rotation.x) * alpha
+        rightLegRef.current.rotation.x += (0.03 - rightLegRef.current.rotation.x) * alpha
         rightLegRef.current.position.y = -0.05
       }
 
-      // Idle arms - FASTER transition
+      // Idle arms
       if (leftArmRef.current && rightArmRef.current) {
-        const alpha = Math.min(delta * 8, 1)
-        leftArmRef.current.rotation.x += (0.1 - leftArmRef.current.rotation.x) * alpha
-        leftArmRef.current.rotation.z = -0.2
+        const alpha = Math.min(delta * 10, 1)
+        leftArmRef.current.rotation.x += (0.08 - leftArmRef.current.rotation.x) * alpha
+        leftArmRef.current.rotation.z = -0.15
 
-        rightArmRef.current.rotation.x += (0.1 - rightArmRef.current.rotation.x) * alpha
-        rightArmRef.current.rotation.z = 0.2
+        rightArmRef.current.rotation.x += (0.08 - rightArmRef.current.rotation.x) * alpha
+        rightArmRef.current.rotation.z = 0.15
       }
 
-      // Head look around - smoother, less distracting
+      // Head look around
       if (headRef.current) {
-        headRef.current.rotation.y = Math.sin(idleTime.current * 0.25) * 0.15
-        headRef.current.rotation.x = Math.sin(idleTime.current * 0.3) * 0.08
+        headRef.current.rotation.y = Math.sin(idleTime.current * 0.3) * 0.12
+        headRef.current.rotation.x = Math.sin(idleTime.current * 0.35) * 0.06
       }
 
-      walkCycle.current = 0 // Reset walk cycle
+      walkCycle.current = 0
     }
   })
 
   return (
     <group ref={bodyRef} position={[0, 0.5, 0]}>
-      {/* Body (torso) - LINK'S GREEN TUNIC - OPTIMIZED 8 segments */}
-      <Cylinder args={[0.25, 0.3, 0.6, 8]} position={[0, 0, 0]}>
-        {materials.greenTunic}
+      {/* ═══ TORSO — Navy Blazer ═══ */}
+      <Cylinder args={[0.22, 0.28, 0.55, 8]} position={[0, 0.02, 0]}>
+        {materials.navyBlazer}
       </Cylinder>
 
-      {/* Tunic collar/neckline (dark green) */}
-      <Cylinder args={[0.26, 0.26, 0.08, 8]} position={[0, 0.28, 0]}>
-        {materials.darkGreen}
+      {/* Blazer lapels (V-shape) */}
+      <mesh position={[0, 0.18, 0.23]} rotation={[0.2, 0, 0]}>
+        <boxGeometry args={[0.18, 0.2, 0.02]} />
+        {materials.navyBlazer}
+      </mesh>
+
+      {/* White shirt visible at collar */}
+      <Cylinder args={[0.18, 0.18, 0.08, 8]} position={[0, 0.28, 0]}>
+        {materials.whiteShirt}
       </Cylinder>
 
-      {/* Triforce symbol (gold emblem on chest) */}
-      <mesh position={[0, 0.15, 0.31]} rotation={[0, 0, 0]}>
-        <coneGeometry args={[0.1, 0.1, 3]} />
-        {materials.triforce}
-      </mesh>
-      <mesh position={[-0.05, 0.08, 0.31]} rotation={[0, 0, Math.PI]}>
-        <coneGeometry args={[0.05, 0.05, 3]} />
-        {materials.triforce}
-      </mesh>
-      <mesh position={[0.05, 0.08, 0.31]} rotation={[0, 0, Math.PI]}>
-        <coneGeometry args={[0.05, 0.05, 3]} />
-        {materials.triforce}
+      {/* Gold blazer buttons (2) */}
+      <Sphere args={[0.025, 6, 6]} position={[0, 0.08, 0.27]}>
+        {materials.goldButton}
+      </Sphere>
+      <Sphere args={[0.025, 6, 6]} position={[0, -0.05, 0.27]}>
+        {materials.goldButton}
+      </Sphere>
+
+      {/* Gold pocket square accent */}
+      <mesh position={[-0.12, 0.15, 0.24]}>
+        <boxGeometry args={[0.06, 0.04, 0.01]} />
+        {materials.goldAccent}
       </mesh>
 
-      {/* Gold belt (Link's signature belt) */}
-      <Cylinder args={[0.305, 0.305, 0.08, 8]} position={[0, -0.2, 0]}>
-        {materials.goldBelt}
-      </Cylinder>
-
-      {/* Belt buckle (gold square) */}
-      <mesh position={[0, -0.2, 0.31]}>
-        <boxGeometry args={[0.12, 0.08, 0.02]} />
-        {materials.goldBelt}
-      </mesh>
-
-      {/* Head (anime-style) - OPTIMIZED 12 segments */}
-      <Sphere ref={headRef} args={[0.22, 12, 12]} position={[0, 0.5, 0]}>
+      {/* ═══ HEAD ═══ */}
+      <Sphere ref={headRef} args={[0.2, 12, 12]} position={[0, 0.48, 0]}>
         {materials.skinTone}
       </Sphere>
 
-      {/* Blonde hair (Link's signature hair) */}
-      {/* Top hair tuft */}
-      <mesh position={[0, 0.68, 0.05]} rotation={[-0.2, 0, 0]}>
-        <coneGeometry args={[0.15, 0.25, 6]} />
-        {materials.hairBlonde}
+      {/* Hair — Short, styled */}
+      <mesh position={[0, 0.62, -0.02]} rotation={[-0.15, 0, 0]}>
+        <sphereGeometry args={[0.17, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        {materials.hairDark}
       </mesh>
-      {/* Back hair (ponytail style) */}
-      <mesh position={[0, 0.45, -0.2]} rotation={[0.5, 0, 0]}>
-        <cylinderGeometry args={[0.08, 0.05, 0.3, 6]} />
-        {materials.hairBlonde}
+      {/* Side hair */}
+      <mesh position={[-0.12, 0.52, 0.08]}>
+        <boxGeometry args={[0.06, 0.12, 0.08]} />
+        {materials.hairDark}
       </mesh>
-      {/* Side bangs */}
-      <mesh position={[-0.15, 0.55, 0.1]} rotation={[0, 0, -0.3]}>
-        <boxGeometry args={[0.08, 0.2, 0.05]} />
-        {materials.hairBlonde}
-      </mesh>
-      <mesh position={[0.15, 0.55, 0.1]} rotation={[0, 0, 0.3]}>
-        <boxGeometry args={[0.08, 0.2, 0.05]} />
-        {materials.hairBlonde}
+      <mesh position={[0.12, 0.52, 0.08]}>
+        <boxGeometry args={[0.06, 0.12, 0.08]} />
+        {materials.hairDark}
       </mesh>
 
-      {/* Anime blue eyes with blink - OPTIMIZED 6 segments */}
-      <Sphere ref={leftEyeRef} args={[0.05, 6, 6]} position={[-0.08, 0.52, 0.18]}>
-        {materials.eyesBlue}
-      </Sphere>
-      <Sphere ref={rightEyeRef} args={[0.05, 6, 6]} position={[0.08, 0.52, 0.18]}>
-        {materials.eyesBlue}
-      </Sphere>
-
-      {/* Nose (subtle) */}
-      <mesh position={[0, 0.48, 0.22]}>
-        <boxGeometry args={[0.03, 0.06, 0.02]} />
-        {materials.skinTone}
+      {/* Eyebrows */}
+      <mesh position={[-0.065, 0.54, 0.17]} rotation={[0, 0, 0.1]}>
+        <boxGeometry args={[0.06, 0.015, 0.01]} />
+        {materials.eyebrow}
+      </mesh>
+      <mesh position={[0.065, 0.54, 0.17]} rotation={[0, 0, -0.1]}>
+        <boxGeometry args={[0.06, 0.015, 0.01]} />
+        {materials.eyebrow}
       </mesh>
 
-      {/* Mouth (smile curve when near machine) */}
-      <mesh ref={mouthRef} position={[0, 0.42, 0.2]}>
-        <boxGeometry args={[0.08, 0.02, 0.01]} />
-        {materials.skinTone}
-      </mesh>
-
-      {/* Hylian Shield (on back) */}
-      <group position={[0, 0.1, -0.35]} rotation={[0.3, 0, 0]}>
-        {/* Shield body */}
-        <mesh>
-          <cylinderGeometry args={[0.25, 0.25, 0.05, 8]} />
-          {materials.shieldMetal}
-        </mesh>
-        {/* Triforce emblem on shield */}
-        <mesh position={[0, 0, 0.03]}>
-          <coneGeometry args={[0.1, 0.1, 3]} />
-          {materials.triforce}
-        </mesh>
-        {/* Blue accent (Hylian crest) */}
-        <mesh position={[0, -0.1, 0.03]}>
-          <circleGeometry args={[0.08, 6]} />
-          {materials.blueGem}
-        </mesh>
+      {/* Eyes — Green iris with white */}
+      <group position={[-0.065, 0.5, 0.16]}>
+        <Sphere args={[0.035, 6, 6]}>
+          {materials.eyeWhite}
+        </Sphere>
+        <Sphere ref={leftEyeRef} args={[0.022, 6, 6]} position={[0, 0, 0.015]}>
+          {materials.eyeIris}
+        </Sphere>
+      </group>
+      <group position={[0.065, 0.5, 0.16]}>
+        <Sphere args={[0.035, 6, 6]}>
+          {materials.eyeWhite}
+        </Sphere>
+        <Sphere ref={rightEyeRef} args={[0.022, 6, 6]} position={[0, 0, 0.015]}>
+          {materials.eyeIris}
+        </Sphere>
       </group>
 
-      {/* Left Leg - GREEN TIGHTS + BROWN BOOTS - OPTIMIZED */}
-      <group ref={leftLegRef} position={[-0.12, -0.35, 0]}>
-        {/* Thigh (green tights) */}
-        <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
-          {materials.darkGreen}
+      {/* Nose */}
+      <mesh position={[0, 0.45, 0.19]}>
+        <boxGeometry args={[0.025, 0.05, 0.02]} />
+        {materials.skinTone}
+      </mesh>
+
+      {/* Mouth */}
+      <mesh ref={mouthRef} position={[0, 0.38, 0.17]}>
+        <boxGeometry args={[0.06, 0.015, 0.01]} />
+        <meshStandardMaterial color="#c08080" metalness={0} roughness={0.8} />
+      </mesh>
+
+      {/* ═══ LEGS — Dark Pants ═══ */}
+      <group ref={leftLegRef} position={[-0.1, -0.32, 0]}>
+        {/* Thigh */}
+        <Cylinder args={[0.075, 0.07, 0.32, 6]} position={[0, -0.16, 0]}>
+          {materials.darkPants}
         </Cylinder>
-        {/* Shin (brown boot shaft) */}
-        <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
-          {materials.brownBoots}
+        {/* Shin */}
+        <Cylinder args={[0.065, 0.06, 0.28, 6]} position={[0, -0.46, 0]}>
+          {materials.darkPants}
         </Cylinder>
-        {/* Boot foot */}
-        <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          {materials.brownBoots}
+        {/* Shoe */}
+        <RoundedBox args={[0.1, 0.06, 0.18]} radius={0.02} position={[0, -0.64, 0.03]}>
+          {materials.brownShoes}
         </RoundedBox>
       </group>
 
-      {/* Right Leg - GREEN TIGHTS + BROWN BOOTS - OPTIMIZED */}
-      <group ref={rightLegRef} position={[0.12, -0.35, 0]}>
-        {/* Thigh (green tights) */}
-        <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
-          {materials.darkGreen}
+      <group ref={rightLegRef} position={[0.1, -0.32, 0]}>
+        <Cylinder args={[0.075, 0.07, 0.32, 6]} position={[0, -0.16, 0]}>
+          {materials.darkPants}
         </Cylinder>
-        {/* Shin (brown boot shaft) */}
-        <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
-          {materials.brownBoots}
+        <Cylinder args={[0.065, 0.06, 0.28, 6]} position={[0, -0.46, 0]}>
+          {materials.darkPants}
         </Cylinder>
-        {/* Boot foot */}
-        <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          {materials.brownBoots}
+        <RoundedBox args={[0.1, 0.06, 0.18]} radius={0.02} position={[0, -0.64, 0.03]}>
+          {materials.brownShoes}
         </RoundedBox>
       </group>
 
-      {/* Left Arm - GREEN TUNIC SLEEVE - OPTIMIZED */}
-      <group ref={leftArmRef} position={[-0.35, 0.15, 0]}>
-        {/* Upper arm (green sleeve) */}
-        <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
-          {materials.greenTunic}
+      {/* ═══ ARMS — Navy Blazer Sleeves ═══ */}
+      <group ref={leftArmRef} position={[-0.3, 0.12, 0]}>
+        {/* Upper arm (blazer) */}
+        <Cylinder args={[0.055, 0.055, 0.28, 6]} position={[0, -0.14, 0]}>
+          {materials.navyBlazer}
         </Cylinder>
-        {/* Forearm (skin tone) */}
-        <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
-          {materials.skinTone}
+        {/* Forearm (shirt cuff visible) */}
+        <Cylinder args={[0.045, 0.045, 0.22, 6]} position={[0, -0.39, 0]}>
+          {materials.whiteShirt}
         </Cylinder>
-        {/* Hand (fist) */}
-        <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
+        {/* Hand */}
+        <Sphere args={[0.055, 6, 6]} position={[0, -0.52, 0]}>
           {materials.skinTone}
+        </Sphere>
+        {/* Gold cufflink */}
+        <Sphere args={[0.015, 4, 4]} position={[0.045, -0.3, 0]}>
+          {materials.goldButton}
         </Sphere>
       </group>
 
-      {/* Right Arm - GREEN TUNIC SLEEVE + MASTER SWORD - OPTIMIZED */}
-      <group ref={rightArmRef} position={[0.35, 0.15, 0]}>
-        {/* Upper arm (green sleeve) */}
-        <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
-          {materials.greenTunic}
+      <group ref={rightArmRef} position={[0.3, 0.12, 0]}>
+        <Cylinder args={[0.055, 0.055, 0.28, 6]} position={[0, -0.14, 0]}>
+          {materials.navyBlazer}
         </Cylinder>
-        {/* Forearm (skin tone) */}
-        <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
-          {materials.skinTone}
+        <Cylinder args={[0.045, 0.045, 0.22, 6]} position={[0, -0.39, 0]}>
+          {materials.whiteShirt}
         </Cylinder>
-        {/* Hand (fist holding sword) */}
-        <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
+        <Sphere args={[0.055, 6, 6]} position={[0, -0.52, 0]}>
           {materials.skinTone}
         </Sphere>
-
-        {/* MASTER SWORD */}
-        {/* Blade (silver) */}
-        <mesh position={[0, -0.65, 0.2]} rotation={[Math.PI / 2, 0, 0]}>
-          <boxGeometry args={[0.04, 0.5, 0.01]} />
-          {materials.silverSword}
-        </mesh>
-        {/* Crossguard (gold) */}
-        <mesh position={[0, -0.58, 0.2]}>
-          <boxGeometry args={[0.25, 0.03, 0.03]} />
-          {materials.goldBelt}
-        </mesh>
-        {/* Hilt (dark green grip) */}
-        <Cylinder args={[0.025, 0.025, 0.15, 6]} position={[0, -0.5, 0.2]}>
-          {materials.darkGreen}
-        </Cylinder>
-        {/* Pommel gem (blue glowing) */}
-        <Sphere args={[0.04, 6, 6]} position={[0, -0.42, 0.2]}>
-          {materials.blueGem}
+        <Sphere args={[0.015, 4, 4]} position={[-0.045, -0.3, 0]}>
+          {materials.goldButton}
         </Sphere>
       </group>
 
-      {/* Shadow circle (ground contact) - OPTIMIZED 12 segments */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.7, 0]}>
-        <circleGeometry args={[0.35, 12]} />
+      {/* ═══ GROUND SHADOW ═══ */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.68, 0]}>
+        <circleGeometry args={[0.3, 12]} />
         {materials.shadow}
+      </mesh>
+
+      {/* ═══ VIP GLOW RING (subtle gold aura) ═══ */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.67, 0]}>
+        <ringGeometry args={[0.32, 0.38, 24]} />
+        <meshBasicMaterial color="#d4af37" transparent opacity={0.15} />
       </mesh>
     </group>
   )

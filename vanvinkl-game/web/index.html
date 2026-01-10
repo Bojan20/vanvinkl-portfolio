@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>VanVinkl - Creative Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader">
+            <div class="spinner"></div>
+            <p>Loading experience...</p>
+        </div>
+    </div>
+
+    <!-- Mobile Controls (hidden on desktop) -->
+    <div id="mobile-controls">
+        <div id="joystick-zone"></div>
+        <button id="interact-btn" class="hidden">
+            <span>✦</span>
+        </button>
+    </div>
+
+    <!-- WASM Module -->
+    <script type="module">
+        import init from './vanvinkl-game.js';
+
+        async function run() {
+            // Initialize WASM
+            await init();
+
+            // Hide loading screen
+            document.getElementById('loading-screen').classList.add('hidden');
+
+            // Detect mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+                             window.innerWidth < 1024;
+
+            if (isMobile) {
+                document.getElementById('mobile-controls').classList.add('active');
+                initMobileControls();
+            }
+        }
+
+        function initMobileControls() {
+            // Joystick implementation would go here
+            // Using nipplejs or custom touch handling
+            console.log('Mobile controls initialized');
+        }
+
+        run().catch(console.error);
+    </script>
+</body>
+</html>
