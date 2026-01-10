@@ -69,7 +69,7 @@ export function CasinoEntrance({ onComplete, skipEnabled = true }: CasinoEntranc
       exit={{ opacity: 0, transition: { duration: 1 } }}
       onClick={handleClickToEnter}
     >
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {/* Click to Enter - Large centered button */}
         {canSkip && step === 0 && (
           <motion.div

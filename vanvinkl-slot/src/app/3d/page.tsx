@@ -1,8 +1,18 @@
 'use client'
 
-import { CasinoLoungeUltra } from '@/components/casino'
+import dynamic from 'next/dynamic'
+import { RenderingProvider } from '@/contexts/RenderingContext'
 
-// Fixed: R3F hooks error - CasinoLoungeUltra has Canvas wrapper
+// Dynamic import - disable SSR for R3F components
+const CasinoLoungeUltra = dynamic(
+  () => import('@/components/casino').then(mod => ({ default: mod.CasinoLoungeUltra })),
+  { ssr: false }
+)
+
 export default function Casino3DPage() {
-  return <CasinoLoungeUltra />
+  return (
+    <RenderingProvider initialQuality="performance" enableAdaptive={true}>
+      <CasinoLoungeUltra />
+    </RenderingProvider>
+  )
 }

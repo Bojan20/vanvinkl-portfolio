@@ -1,43 +1,88 @@
 'use client'
 
-import { Suspense, useState, useMemo, useEffect } from 'react'
+import { Suspense, useState, useMemo, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Environment, Stars } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
-import { SlotMachineRealistic } from './SlotMachineRealistic'
+import { Stars } from '@react-three/drei'
+import { SlotMachineIGT } from '../3d/SlotMachineIGT'
 import { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
 import { CasinoEntrance } from './CasinoEntrance'
 import { SlotMachineDetailView } from './SlotMachineDetailView'
+import { CameraRig } from '../3d/CameraRig'
+import { AdvancedLighting } from '../3d/AdvancedLighting'
+import { AdvancedPostProcessing } from '../3d/AdvancedPostProcessing'
+import { CasinoArchitecture } from './CasinoArchitecture'
+import { AvatarFollowLight } from './AvatarFollowLight'
 import { AnimatePresence } from 'framer-motion'
+import { useRenderingConfig } from '@/contexts/RenderingContext'
 import * as THREE from 'three'
 
 interface CasinoLoungeUltraProps {
   onMachineInteract?: (machineId: string) => void
 }
 
-// Portfolio sections mapped to slot machines
-const PORTFOLIO_MACHINES = [
-  { id: 'about', label: 'About Me', pos: [0, 0, -6] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-  { id: 'services', label: 'Services', pos: [-4.5, 0, -6] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-  { id: 'projects', label: 'Projects', pos: [4.5, 0, -6] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-  { id: 'skills', label: 'Skills', pos: [-4.5, 0, -10] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-  { id: 'experience', label: 'Experience', pos: [4.5, 0, -10] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-  { id: 'contact', label: 'Contact', pos: [0, 0, -10] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-]
+// Portfolio sections - STRAIGHT LINE (original 6 machines)
+const PORTFOLIO_MACHINES = (() => {
+  const machines = [
+    { id: 'skills', label: 'Skills' },
+    { id: 'services', label: 'Services' },
+    { id: 'about', label: 'About Me' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'experience', label: 'Experience' },
+    { id: 'contact', label: 'Contact' }
+  ]
+
+  const spacing = 7 // Increased from 5 to prevent label overlap
+  const totalWidth = (machines.length - 1) * spacing
+  const startX = -totalWidth / 2
+
+  return machines.map((m, i) => {
+    const x = startX + i * spacing
+    const z = -5
+    return {
+      ...m,
+      pos: [x, 0, z] as [number, number, number],
+      rot: [0, 0, 0] as [number, number, number]
+    }
+  })
+})()
 
 export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps) {
+  // Rendering configuration
+  const { config } = useRenderingConfig()
+
   const [showEntrance, setShowEntrance] = useState(true)
   const [isEntered, setIsEntered] = useState(false)
+  const [showAvatar, setShowAvatar] = useState(false) // Avatar visible after cinematic
+  const [cameraMode, setCameraMode] = useState<'cinematic' | 'follow' | 'fixed'>('fixed')
   const [nearMachine, setNearMachine] = useState<string | null>(null)
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null)
+  const [hasMovedOnce, setHasMovedOnce] = useState(false)
+
+  const avatarPositionRef = useRef(new THREE.Vector3(0, 0.5, 10))
+  const avatarRotationRef = useRef(0) // Start facing forward toward slots (z=-5)
 
   const handleEntranceComplete = () => {
     setShowEntrance(false)
+    setShowAvatar(true) // Show avatar immediately when entrance closes
+    setIsEntered(true) // Enable input immediately
+    // Keep camera in FIXED establishing shot mode initially
+    // User can move to trigger follow mode
+  }
+
+  const handleCinematicComplete = () => {
     setIsEntered(true)
+    setCameraMode('follow')
   }
 
   const handleProximityChange = (machineId: string | null) => {
     setNearMachine(machineId)
+  }
+
+  const handleAvatarMoved = () => {
+    if (!hasMovedOnce && isEntered) {
+      setHasMovedOnce(true)
+      setCameraMode('follow') // Switch to follow mode on first movement
+    }
   }
 
   const handleMachineSelect = (machineId: string) => {
@@ -62,22 +107,6 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [nearMachine, selectedMachine])
 
-  // Memoized materials for performance
-  const floorMaterial = useMemo(() => (
-    <meshStandardMaterial
-      color="#1a0505"
-      metalness={0.9}
-      roughness={0.1}
-    />
-  ), [])
-
-  const wallMaterial = useMemo(() => (
-    <meshStandardMaterial
-      color="#0a0a0a"
-      metalness={0.4}
-      roughness={0.6}
-    />
-  ), [])
 
   // Get selected machine label
   const selectedMachineData = PORTFOLIO_MACHINES.find(m => m.id === selectedMachine)
@@ -90,6 +119,7 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
       <AnimatePresence>
         {selectedMachine && selectedMachineData && (
           <SlotMachineDetailView
+            key={selectedMachine}
             machineId={selectedMachine}
             label={selectedMachineData.label}
             onClose={handleCloseDetail}
@@ -98,52 +128,52 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
       </AnimatePresence>
 
       <Canvas
-        shadows={false}
-        dpr={[1, 1.5]}
+        shadows  // ENABLED — Real-time shadow system
+        dpr={config.pixelRatio} // Quality-aware pixel ratio
         gl={{
-          antialias: false,
+          antialias: config.antialias, // Quality-aware antialiasing
           alpha: false,
           powerPreference: 'high-performance',
           stencil: false,
-          depth: true
+          depth: true,
+          preserveDrawingBuffer: false
         }}
         camera={{
-          fov: 70,
+          fov: 75,
           near: 0.1,
-          far: 80,
-          position: [0, 3, 10]
+          far: 100,
+          position: [0, 1.7, 5]
         }}
         performance={{ min: 0.5 }}
+        frameloop="always"
       >
         <Suspense fallback={null}>
-          {isEntered && !selectedMachine && (
+          {/* AAA Cinematic Camera System */}
+          <CameraRig
+            mode={cameraMode}
+            target={showAvatar ? avatarPositionRef.current : undefined}
+            avatarRotation={avatarRotationRef.current}
+            followOffset={[0, 6, 12]}
+            cinematicSequence={undefined}
+            onSequenceComplete={handleCinematicComplete}
+          />
+
+          {showAvatar && !selectedMachine && (
             <ThirdPersonAvatar
               onProximityChange={handleProximityChange}
               machinePositions={PORTFOLIO_MACHINES}
+              positionRef={avatarPositionRef}
+              rotationRef={avatarRotationRef}
+              onMove={handleAvatarMoved}
             />
           )}
 
-          {/* Floor */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-            <planeGeometry args={[40, 40]} />
-            {floorMaterial}
-          </mesh>
+          {/* CASINO ARCHITECTURE (Vegas-style) - Fixed: removed ceiling, lightened fog */}
+          <CasinoArchitecture animateEntrance={isEntered} />
 
-          {/* Walls */}
-          {[
-            { pos: [0, 2.5, -14], size: [40, 5, 0.5] },
-            { pos: [-14, 2.5, 0], size: [0.5, 5, 40] },
-            { pos: [14, 2.5, 0], size: [0.5, 5, 40] }
-          ].map((wall, i) => (
-            <mesh key={i} position={wall.pos as [number, number, number]}>
-              <boxGeometry args={wall.size as [number, number, number]} />
-              {wallMaterial}
-            </mesh>
-          ))}
-
-          {/* Portfolio Slot Machines */}
+          {/* Portfolio Slot Machines (6 total) */}
           {PORTFOLIO_MACHINES.map((machine) => (
-            <SlotMachineRealistic
+            <SlotMachineIGT
               key={machine.id}
               position={machine.pos}
               rotation={machine.rot}
@@ -154,58 +184,33 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
             />
           ))}
 
-          {/* Lighting - optimized */}
-          <ambientLight intensity={0.35} />
-          <Environment preset="night" />
+          {/* AAA ADVANCED LIGHTING SYSTEM */}
+          <AdvancedLighting
+            machinePositions={PORTFOLIO_MACHINES}
+            nearMachine={nearMachine}
+            config={config}
+          />
 
+          {/* DYNAMIC AVATAR-FOLLOWING SPOTLIGHT WITH SHADOWS */}
+          {showAvatar && <AvatarFollowLight avatarPositionRef={avatarPositionRef} />}
+
+          {/* Stars for atmosphere (minimal for 60fps) */}
           <Stars
-            radius={40}
-            depth={20}
-            count={800}
-            factor={2}
+            radius={50}
+            depth={30}
+            count={150}
+            factor={3}
             fade
             speed={0.3}
           />
 
-          <fog attach="fog" args={['#050510', 10, 35]} />
+          <fog attach="fog" args={['#050510', 25, 80]} />
 
-          {/* Key lights */}
-          <spotLight
-            position={[0, 8, -4]}
-            angle={Math.PI / 3}
-            penumbra={0.6}
-            intensity={1.2}
-            castShadow={false}
+          {/* AAA ADVANCED POST-PROCESSING STACK */}
+          <AdvancedPostProcessing
+            enableSSAO={config.enableSSAO}
+            enableDOF={config.enableDOF}
           />
-
-          <spotLight
-            position={[0, 6, 0]}
-            angle={Math.PI / 4}
-            penumbra={0.5}
-            intensity={0.8}
-            castShadow={false}
-          />
-
-          {/* Accent rim light */}
-          <directionalLight
-            position={[-5, 3, 5]}
-            intensity={0.4}
-            color="#4a9eff"
-          />
-
-          {/* Post-processing - ultra optimized */}
-          <EffectComposer multisampling={0}>
-            <Bloom
-              intensity={0.35}
-              luminanceThreshold={0.6}
-              luminanceSmoothing={0.8}
-              mipmapBlur={false}
-            />
-            <Vignette
-              offset={0.35}
-              darkness={0.55}
-            />
-          </EffectComposer>
         </Suspense>
       </Canvas>
 

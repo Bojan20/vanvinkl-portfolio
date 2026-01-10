@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Sphere, Cylinder } from '@react-three/drei'
+import { AnimatedAvatar } from '../3d/AnimatedAvatar'
 import * as THREE from 'three'
 
 interface ThirdPersonAvatarProps {
@@ -10,18 +10,29 @@ interface ThirdPersonAvatarProps {
   speed?: number
   onProximityChange?: (machineId: string | null) => void
   machinePositions?: Array<{ id: string; pos: [number, number, number] }>
+  positionRef?: React.MutableRefObject<THREE.Vector3>
+  rotationRef?: React.MutableRefObject<number>
+  onMove?: () => void
 }
 
 export function ThirdPersonAvatar({
   position = [0, 0.5, 8],
-  speed = 8,
+  speed = 5, // Slower movement (was 8)
   onProximityChange,
-  machinePositions = []
+  machinePositions = [],
+  positionRef,
+  rotationRef,
+  onMove
 }: ThirdPersonAvatarProps) {
   const { camera } = useThree()
   const avatarRef = useRef<THREE.Group>(null)
   const velocity = useRef(new THREE.Vector3())
-  const targetRotation = useRef(0)
+  const targetRotation = useRef(Math.PI) // Start facing forward (toward slots)
+
+  // Animation state for AnimatedAvatar
+  const isMoving = useRef(false)
+  const moveDirection = useRef(new THREE.Vector3())
+  const currentSpeed = useRef(0)
 
   const keys = useRef({
     forward: false,
@@ -78,7 +89,7 @@ export function ThirdPersonAvatar({
   useFrame((state, delta) => {
     if (!avatarRef.current) return
 
-    const currentSpeed = speed
+    const avatarSpeed = speed
 
     // Movement direction based on camera
     const direction = new THREE.Vector3()
@@ -98,29 +109,47 @@ export function ThirdPersonAvatar({
     if (keys.current.left) velocity.current.sub(right)
 
     if (velocity.current.length() > 0) {
-      velocity.current.normalize().multiplyScalar(currentSpeed * delta)
+      const velocityNormalized = velocity.current.clone().normalize()
+      velocity.current.normalize().multiplyScalar(avatarSpeed * delta)
       avatarRef.current.position.add(velocity.current)
+
+      // Notify parent that avatar moved
+      onMove?.()
+
+      // Update animation state
+      isMoving.current = true
+      moveDirection.current.copy(velocityNormalized)
+      currentSpeed.current = avatarSpeed
 
       // Rotate avatar towards movement
       const angle = Math.atan2(velocity.current.x, velocity.current.z)
       targetRotation.current = angle
+    } else {
+      isMoving.current = false
+      currentSpeed.current = 0
     }
 
-    // Smooth rotation
-    if (avatarRef.current.rotation.y !== targetRotation.current) {
-      const diff = targetRotation.current - avatarRef.current.rotation.y
-      avatarRef.current.rotation.y += diff * 0.1
-    }
+    // Smooth rotation (lerp toward target)
+    let rotationDiff = targetRotation.current - avatarRef.current.rotation.y
 
-    // Wall boundaries
-    avatarRef.current.position.x = Math.max(-13, Math.min(13, avatarRef.current.position.x))
-    avatarRef.current.position.z = Math.max(-13, Math.min(8, avatarRef.current.position.z))
+    // Normalize to shortest path (-PI to PI)
+    while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2
+    while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2
+
+    avatarRef.current.rotation.y += rotationDiff * 0.08 // Slower, smoother
+
+    // Wall boundaries - TIGHT collision (avatar cannot pass through walls)
+    // Left wall at x=-40, right wall at x=40, back wall at z=-15, front open at z=8
+    // Avatar size ~0.5 radius, so boundaries are wall position ± 0.5
+    const wallPadding = 1.5 // Avatar collision radius
+    avatarRef.current.position.x = Math.max(-40 + wallPadding, Math.min(40 - wallPadding, avatarRef.current.position.x))
+    avatarRef.current.position.z = Math.max(-15 + wallPadding, Math.min(8, avatarRef.current.position.z))
     avatarRef.current.position.y = 0.5
 
     // Collision detection with machines
     if (machinePositions.length > 0) {
       const avatarPos = avatarRef.current.position
-      const collisionRadius = 1.5 // Machine collision radius
+      const collisionRadius = 3.2 // Collision radius for 2.0x scale machines
 
       machinePositions.forEach(machine => {
         const dx = avatarPos.x - machine.pos[0]
@@ -136,20 +165,13 @@ export function ThirdPersonAvatar({
       })
     }
 
-    // Camera follows avatar - third person
-    const idealOffset = new THREE.Vector3(0, 3, 6)
-    const idealLookat = new THREE.Vector3(
-      avatarRef.current.position.x,
-      avatarRef.current.position.y + 1.5,
-      avatarRef.current.position.z
-    )
-
-    // Smooth camera
-    camera.position.lerp(
-      idealLookat.clone().add(idealOffset),
-      0.05
-    )
-    camera.lookAt(idealLookat)
+    // Update position & rotation refs for CameraRig
+    if (positionRef) {
+      positionRef.current.copy(avatarRef.current.position)
+    }
+    if (rotationRef) {
+      rotationRef.current = avatarRef.current.rotation.y
+    }
 
     // Check proximity to machines
     if (onProximityChange && machinePositions.length > 0) {
@@ -163,7 +185,7 @@ export function ThirdPersonAvatar({
           Math.pow(avatarPos.z - machine.pos[2], 2)
         )
 
-        if (distance < 2.5 && distance < closestDistance) {
+        if (distance < 4.5 && distance < closestDistance) {
           closestDistance = distance
           closestMachine = machine.id
         }
@@ -174,46 +196,12 @@ export function ThirdPersonAvatar({
   })
 
   return (
-    <group ref={avatarRef} position={position}>
-      {/* Body */}
-      <Cylinder args={[0.25, 0.3, 1, 16]} position={[0, 0.5, 0]}>
-        <meshStandardMaterial color="#2a4a7f" metalness={0.3} roughness={0.7} />
-      </Cylinder>
-
-      {/* Head */}
-      <Sphere args={[0.3, 16, 16]} position={[0, 1.2, 0]}>
-        <meshStandardMaterial color="#ffdbac" metalness={0.1} roughness={0.9} />
-      </Sphere>
-
-      {/* Eyes */}
-      <Sphere args={[0.05, 8, 8]} position={[-0.1, 1.25, 0.25]}>
-        <meshBasicMaterial color="#000000" />
-      </Sphere>
-      <Sphere args={[0.05, 8, 8]} position={[0.1, 1.25, 0.25]}>
-        <meshBasicMaterial color="#000000" />
-      </Sphere>
-
-      {/* Arms */}
-      <Cylinder args={[0.08, 0.08, 0.6, 8]} position={[-0.35, 0.6, 0]} rotation={[0, 0, Math.PI / 6]}>
-        <meshStandardMaterial color="#2a4a7f" metalness={0.3} roughness={0.7} />
-      </Cylinder>
-      <Cylinder args={[0.08, 0.08, 0.6, 8]} position={[0.35, 0.6, 0]} rotation={[0, 0, -Math.PI / 6]}>
-        <meshStandardMaterial color="#2a4a7f" metalness={0.3} roughness={0.7} />
-      </Cylinder>
-
-      {/* Legs */}
-      <Cylinder args={[0.1, 0.09, 0.6, 8]} position={[-0.12, -0.3, 0]}>
-        <meshStandardMaterial color="#1a1a2e" metalness={0.2} roughness={0.8} />
-      </Cylinder>
-      <Cylinder args={[0.1, 0.09, 0.6, 8]} position={[0.12, -0.3, 0]}>
-        <meshStandardMaterial color="#1a1a2e" metalness={0.2} roughness={0.8} />
-      </Cylinder>
-
-      {/* Shadow indicator */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[0.4, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.3} />
-      </mesh>
+    <group ref={avatarRef} position={position} rotation={[0, Math.PI, 0]}>
+      <AnimatedAvatar
+        isMovingRef={isMoving}
+        moveDirectionRef={moveDirection}
+        currentSpeedRef={currentSpeed}
+      />
     </group>
   )
 }
@@ -226,10 +214,6 @@ export function ThirdPersonInstructions({ nearMachine }: { nearMachine: string |
           <div className="flex items-center gap-2">
             <span className="font-mono text-white">↑ ↓ ← →</span>
             <span>Move</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-white">MOUSE</span>
-            <span>Look</span>
           </div>
           {nearMachine && (
             <div className="flex items-center gap-2 animate-pulse">

@@ -33,8 +33,12 @@ export function triggerHaptic(pattern: HapticPattern = 'medium'): void {
 
   // Check if device supports vibration
   if (!('vibrate' in navigator)) {
-    console.log('[Haptics] Vibration API not supported')
-    return
+    return // Silent fail - not supported
+  }
+
+  // Chrome requires user gesture - skip if no interaction yet
+  if (!(document as any).hasStoredUserActivation) {
+    return // Silent fail - no user interaction yet
   }
 
   const vibrationPattern = patterns[pattern]
@@ -42,7 +46,7 @@ export function triggerHaptic(pattern: HapticPattern = 'medium'): void {
   try {
     navigator.vibrate(vibrationPattern)
   } catch (error) {
-    console.warn('[Haptics] Vibration failed:', error)
+    // Silent fail - vibration blocked
   }
 }
 
