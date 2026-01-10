@@ -23,7 +23,8 @@ const COLORS = {
   gold: '#ffd700'
 }
 
-// GPU-optimized teleport particles with fade out
+// GPU-optimized teleport particles with ultra smooth fade out
+// NEVER disappears abruptly - always fades to zero
 function TeleportParticles({
   active,
   position,
@@ -36,7 +37,9 @@ function TeleportParticles({
   const particlesRef = useRef<THREE.Points>(null!)
   const velocitiesRef = useRef<Float32Array | null>(null)
   const lifetimesRef = useRef<Float32Array | null>(null)
-  const opacityRef = useRef(0.9)
+  const opacityRef = useRef(0)
+  const hasStartedRef = useRef(false)
+  const fullyFadedRef = useRef(false)
 
   const particleCount = 200 // More particles for WOW
 
@@ -90,7 +93,7 @@ function TeleportParticles({
       size: 0.15,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0, // Start at 0, fade in
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       toneMapped: false
@@ -101,32 +104,48 @@ function TeleportParticles({
 
   useFrame((_, delta) => {
     if (!particlesRef.current || !velocitiesRef.current || !lifetimesRef.current) return
+    if (fullyFadedRef.current) return // Already fully faded, skip
 
-    // Fade out smoothly
-    if (fadeOut) {
-      opacityRef.current = Math.max(0, opacityRef.current - delta * 0.5)
+    // Smooth fade IN when active starts
+    if (active && !fadeOut) {
+      hasStartedRef.current = true
+      // Fade in smoothly
+      opacityRef.current = Math.min(0.9, opacityRef.current + delta * 1.5)
       material.opacity = opacityRef.current
     }
 
-    if (!active && !fadeOut) return
+    // Smooth fade OUT - very slow for smooth transition
+    if (fadeOut) {
+      opacityRef.current = Math.max(0, opacityRef.current - delta * 0.35) // Slower fade
+      material.opacity = opacityRef.current
+      if (opacityRef.current <= 0) {
+        fullyFadedRef.current = true
+      }
+    }
+
+    // Don't animate particles if not started or fully faded
+    if (!hasStartedRef.current || fullyFadedRef.current) return
 
     const posAttr = geometry.attributes.position as THREE.BufferAttribute
     const posArray = posAttr.array as Float32Array
     const velocities = velocitiesRef.current
     const lifetimes = lifetimesRef.current
 
+    // During fade out, stop respawning but keep animating existing
+    const canRespawn = !fadeOut
+
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3
 
-      lifetimes[i] -= delta * 0.6 // Slower decay
+      lifetimes[i] -= delta * 0.6
 
-      if (lifetimes[i] <= 0) {
-        // Respawn
+      if (lifetimes[i] <= 0 && canRespawn) {
+        // Respawn only if not fading
         posArray[i3] = position[0] + (Math.random() - 0.5) * 0.8
         posArray[i3 + 1] = position[1] + Math.random() * 0.5
         posArray[i3 + 2] = position[2] + (Math.random() - 0.5) * 0.8
         lifetimes[i] = 1
-      } else {
+      } else if (lifetimes[i] > 0) {
         // Move upward with spiral
         posArray[i3] += velocities[i3] * delta
         posArray[i3 + 1] += velocities[i3 + 1] * delta
@@ -144,8 +163,8 @@ function TeleportParticles({
     posAttr.needsUpdate = true
   })
 
-  if (!active && !fadeOut) return null
-
+  // Always render - opacity controls visibility
+  // This prevents any abrupt disappearance
   return (
     <points ref={particlesRef} geometry={geometry} material={material} />
   )
@@ -184,8 +203,8 @@ export function IntroCamera({
     // Trigger particles early (at 1s) for longer WOW effect
     const particleTimer = setTimeout(() => setShowParticles(true), 1000)
 
-    // Start fading particles at 4s
-    const fadeTimer = setTimeout(() => setFadeOutParticles(true), 4000)
+    // Start fading particles at 2.5s - gives 2.5s to fully fade (slow fade)
+    const fadeTimer = setTimeout(() => setFadeOutParticles(true), 2500)
 
     // End intro - smooth completion
     const endTimer = setTimeout(() => {
