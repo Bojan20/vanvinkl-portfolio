@@ -37,10 +37,11 @@ export function ThirdPersonAvatar({
   const moveDirection = useRef(new THREE.Vector3())
   const currentSpeed = useRef(0)
 
-  // Acceleration constants (AAA feel)
-  const ACCELERATION = 18 // Units/s² — responsive but smooth
-  const DECELERATION = 22 // Units/s² — slightly faster stop
+  // Acceleration constants (instant response, smooth motion)
+  const ACCELERATION = 35 // Units/s² — instant but smooth
+  const DECELERATION = 30 // Units/s² — quick stop without slide
   const MAX_SPEED = speed
+  const ROTATION_SPEED = 0.18 // Faster rotation for snappier feel
 
   const keys = useRef({
     forward: false,
@@ -155,14 +156,14 @@ export function ThirdPersonAvatar({
       }
     }
 
-    // Smooth rotation (lerp toward target)
+    // Smooth rotation (lerp toward target) - FASTER for instant feel
     let rotationDiff = targetRotation.current - avatarRef.current.rotation.y
 
     // Normalize to shortest path (-PI to PI)
     while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2
     while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2
 
-    avatarRef.current.rotation.y += rotationDiff * 0.08 // Slower, smoother
+    avatarRef.current.rotation.y += rotationDiff * ROTATION_SPEED
 
     // Wall boundaries - TIGHT collision (avatar cannot pass through walls)
     // Left wall at x=-40, right wall at x=40, back wall at z=-15, front open at z=8

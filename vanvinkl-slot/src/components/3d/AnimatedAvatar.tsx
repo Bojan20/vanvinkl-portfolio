@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sphere, Cylinder, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -59,6 +59,19 @@ export function AnimatedAvatar({
   const celebrationTime = useRef(0)
   const celebrationDuration = 1.5 // 1.5 second celebration
   const lastCelebrationTrigger = useRef(0)
+
+  // Memoized materials for 60fps performance
+  const materials = useMemo(() => ({
+    batmanSuit: <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />,
+    batmanCowl: <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />,
+    batmanBoots: <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />,
+    goldBelt: <meshStandardMaterial color="#FFD700" metalness={0.7} roughness={0.3} />,
+    goldSymbol: <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} />,
+    gauntletBlade: <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.1} />,
+    glowingEyes: <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={2.0} />,
+    cape: <meshStandardMaterial color="#0a0a0a" metalness={0.3} roughness={0.8} side={2} transparent opacity={0.95} />,
+    shadow: <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+  }), [])
 
   useFrame((state, delta) => {
     if (!bodyRef.current) return
@@ -275,150 +288,115 @@ export function AnimatedAvatar({
 
   return (
     <group ref={bodyRef} position={[0, 0.5, 0]}>
-      {/* Body (torso) - BATMAN SUIT (dark gray) */}
-      <Cylinder args={[0.25, 0.3, 0.6, 12]} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+      {/* Body (torso) - BATMAN SUIT - OPTIMIZED 8 segments */}
+      <Cylinder args={[0.25, 0.3, 0.6, 8]} position={[0, 0, 0]}>
+        {materials.batmanSuit}
       </Cylinder>
 
       {/* Batman symbol (yellow bat on chest) */}
       <mesh position={[0, 0.15, 0.31]} rotation={[0, 0, 0]}>
         <planeGeometry args={[0.3, 0.15]} />
-        <meshStandardMaterial
-          color="#FFD700"
-          emissive="#FFD700"
-          emissiveIntensity={0.5}
-          metalness={0.8}
-          roughness={0.2}
-        />
+        {materials.goldSymbol}
       </mesh>
 
       {/* Utility belt (yellow) */}
-      <Cylinder args={[0.305, 0.305, 0.08, 12]} position={[0, -0.2, 0]}>
-        <meshStandardMaterial color="#FFD700" metalness={0.7} roughness={0.3} />
+      <Cylinder args={[0.305, 0.305, 0.08, 8]} position={[0, -0.2, 0]}>
+        {materials.goldBelt}
       </Cylinder>
 
-      {/* Head (with Batman cowl) */}
-      <Sphere ref={headRef} args={[0.22, 16, 16]} position={[0, 0.5, 0]}>
-        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+      {/* Head (with Batman cowl) - OPTIMIZED 12 segments */}
+      <Sphere ref={headRef} args={[0.22, 12, 12]} position={[0, 0.5, 0]}>
+        {materials.batmanSuit}
       </Sphere>
 
       {/* Batman cowl ears (pointed ears) */}
       <mesh position={[-0.12, 0.68, 0]} rotation={[0, 0, Math.PI / 8]}>
         <coneGeometry args={[0.05, 0.2, 4]} />
-        <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />
+        {materials.batmanCowl}
       </mesh>
       <mesh position={[0.12, 0.68, 0]} rotation={[0, 0, -Math.PI / 8]}>
         <coneGeometry args={[0.05, 0.2, 4]} />
-        <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />
+        {materials.batmanCowl}
       </mesh>
 
-      {/* Eye holes (white glowing eyes with blink) */}
-      <Sphere ref={leftEyeRef} args={[0.04, 8, 8]} position={[-0.08, 0.55, 0.18]}>
-        <meshStandardMaterial
-          color="#FFFFFF"
-          emissive="#FFFFFF"
-          emissiveIntensity={2.0}
-        />
+      {/* Eye holes (white glowing eyes with blink) - OPTIMIZED 6 segments */}
+      <Sphere ref={leftEyeRef} args={[0.04, 6, 6]} position={[-0.08, 0.55, 0.18]}>
+        {materials.glowingEyes}
       </Sphere>
-      <Sphere ref={rightEyeRef} args={[0.04, 8, 8]} position={[0.08, 0.55, 0.18]}>
-        <meshStandardMaterial
-          color="#FFFFFF"
-          emissive="#FFFFFF"
-          emissiveIntensity={2.0}
-        />
+      <Sphere ref={rightEyeRef} args={[0.04, 6, 6]} position={[0.08, 0.55, 0.18]}>
+        {materials.glowingEyes}
       </Sphere>
 
-      {/* Left Leg - BATMAN SUIT */}
+      {/* Left Leg - BATMAN SUIT - OPTIMIZED */}
       <group ref={leftLegRef} position={[-0.12, -0.35, 0]}>
-        {/* Thigh */}
-        <Cylinder args={[0.08, 0.08, 0.35, 8]} position={[0, -0.175, 0]}>
-          <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+        <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
+          {materials.batmanSuit}
         </Cylinder>
-        {/* Shin */}
-        <Cylinder args={[0.07, 0.07, 0.3, 8]} position={[0, -0.5, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />
+        <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
+          {materials.batmanCowl}
         </Cylinder>
-        {/* Boot (armored) */}
         <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+          {materials.batmanBoots}
         </RoundedBox>
       </group>
 
-      {/* Right Leg - BATMAN SUIT */}
+      {/* Right Leg - BATMAN SUIT - OPTIMIZED */}
       <group ref={rightLegRef} position={[0.12, -0.35, 0]}>
-        {/* Thigh */}
-        <Cylinder args={[0.08, 0.08, 0.35, 8]} position={[0, -0.175, 0]}>
-          <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+        <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
+          {materials.batmanSuit}
         </Cylinder>
-        {/* Shin */}
-        <Cylinder args={[0.07, 0.07, 0.3, 8]} position={[0, -0.5, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />
+        <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
+          {materials.batmanCowl}
         </Cylinder>
-        {/* Boot (armored) */}
         <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+          {materials.batmanBoots}
         </RoundedBox>
       </group>
 
-      {/* Left Arm - BATMAN SUIT */}
+      {/* Left Arm - BATMAN SUIT - OPTIMIZED */}
       <group ref={leftArmRef} position={[-0.35, 0.15, 0]}>
-        {/* Upper arm (armored) */}
-        <Cylinder args={[0.06, 0.06, 0.3, 8]} position={[0, -0.15, 0]}>
-          <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+        <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
+          {materials.batmanSuit}
         </Cylinder>
-        {/* Forearm (armored gauntlet) */}
-        <Cylinder args={[0.055, 0.055, 0.25, 8]} position={[0, -0.425, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+        <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
+          {materials.batmanBoots}
         </Cylinder>
-        {/* Glove (armored fist) */}
-        <Sphere args={[0.07, 8, 8]} position={[0, -0.58, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+        <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
+          {materials.batmanBoots}
         </Sphere>
-        {/* Gauntlet blade accent */}
         <mesh position={[0, -0.45, 0.06]} rotation={[0, 0, 0]}>
           <boxGeometry args={[0.03, 0.12, 0.02]} />
-          <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.1} />
+          {materials.gauntletBlade}
         </mesh>
       </group>
 
-      {/* Right Arm - BATMAN SUIT */}
+      {/* Right Arm - BATMAN SUIT - OPTIMIZED */}
       <group ref={rightArmRef} position={[0.35, 0.15, 0]}>
-        {/* Upper arm (armored) */}
-        <Cylinder args={[0.06, 0.06, 0.3, 8]} position={[0, -0.15, 0]}>
-          <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />
+        <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
+          {materials.batmanSuit}
         </Cylinder>
-        {/* Forearm (armored gauntlet) */}
-        <Cylinder args={[0.055, 0.055, 0.25, 8]} position={[0, -0.425, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+        <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
+          {materials.batmanBoots}
         </Cylinder>
-        {/* Glove (armored fist) */}
-        <Sphere args={[0.07, 8, 8]} position={[0, -0.58, 0]}>
-          <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />
+        <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
+          {materials.batmanBoots}
         </Sphere>
-        {/* Gauntlet blade accent */}
         <mesh position={[0, -0.45, 0.06]} rotation={[0, 0, 0]}>
           <boxGeometry args={[0.03, 0.12, 0.02]} />
-          <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.1} />
+          {materials.gauntletBlade}
         </mesh>
       </group>
 
-      {/* BATMAN CAPE (flowing behind) */}
+      {/* BATMAN CAPE (flowing behind) - OPTIMIZED */}
       <mesh position={[0, 0.3, -0.25]} rotation={[Math.PI / 6, 0, 0]}>
         <planeGeometry args={[0.6, 1.0]} />
-        <meshStandardMaterial
-          color="#0a0a0a"
-          metalness={0.3}
-          roughness={0.8}
-          side={2}
-          transparent
-          opacity={0.95}
-        />
+        {materials.cape}
       </mesh>
 
-      {/* Shadow circle (ground contact) */}
+      {/* Shadow circle (ground contact) - OPTIMIZED 12 segments */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.7, 0]}>
-        <circleGeometry args={[0.35, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+        <circleGeometry args={[0.35, 12]} />
+        {materials.shadow}
       </mesh>
     </group>
   )
