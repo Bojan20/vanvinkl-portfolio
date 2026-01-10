@@ -22,6 +22,7 @@ export { ThirdPersonAvatar, ThirdPersonInstructions } from './ThirdPersonAvatar'
 export { SlotMachineDetailView } from './SlotMachineDetailView'
 export { AvatarFollowLight } from './AvatarFollowLight'
 export { FloatingMachineLabel } from './FloatingMachineLabel'
+export { OnboardingFlow } from './OnboardingFlow'
 
 // Shared
 export { CasinoEntrance } from './CasinoEntrance'

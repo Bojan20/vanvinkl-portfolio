@@ -12,6 +12,8 @@ import { AdvancedLighting } from '../3d/AdvancedLighting'
 import { AdvancedPostProcessing } from '../3d/AdvancedPostProcessing'
 import { CasinoArchitecture } from './CasinoArchitecture'
 import { AvatarFollowLight } from './AvatarFollowLight'
+import { SpatialAudioSystem } from '../3d/SpatialAudioSystem'
+import { OnboardingFlow } from './OnboardingFlow'
 import { AnimatePresence } from 'framer-motion'
 import { useRenderingConfig } from '@/contexts/RenderingContext'
 import * as THREE from 'three'
@@ -57,16 +59,26 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
   const [nearMachine, setNearMachine] = useState<string | null>(null)
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null)
   const [hasMovedOnce, setHasMovedOnce] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [onboardingComplete, setOnboardingComplete] = useState(false)
 
   const avatarPositionRef = useRef(new THREE.Vector3(0, 0.5, 10))
   const avatarRotationRef = useRef(0) // Start facing forward toward slots (z=-5)
 
   const handleEntranceComplete = () => {
     setShowEntrance(false)
-    setShowAvatar(true) // Show avatar immediately when entrance closes
-    setIsEntered(true) // Enable input immediately
-    // Keep camera in FIXED establishing shot mode initially
-    // User can move to trigger follow mode
+    // Don't show avatar yet if onboarding is active
+    if (onboardingComplete) {
+      setShowAvatar(true)
+      setIsEntered(true)
+    }
+  }
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false)
+    setOnboardingComplete(true)
+    setShowAvatar(true) // Show avatar after onboarding
+    setIsEntered(true) // Enable input
   }
 
   const handleCinematicComplete = () => {
@@ -113,6 +125,11 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
 
   return (
     <div className="w-full h-screen bg-black relative">
+      {/* Onboarding flow (shows after entrance, before gameplay) */}
+      {!showEntrance && showOnboarding && (
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      )}
+
       {isEntered && <ThirdPersonInstructions nearMachine={nearMachine} />}
 
       {/* Detail view modal */}
@@ -159,13 +176,22 @@ export function CasinoLoungeUltra({ onMachineInteract }: CasinoLoungeUltraProps)
           />
 
           {showAvatar && !selectedMachine && (
-            <ThirdPersonAvatar
-              onProximityChange={handleProximityChange}
-              machinePositions={PORTFOLIO_MACHINES}
-              positionRef={avatarPositionRef}
-              rotationRef={avatarRotationRef}
-              onMove={handleAvatarMoved}
-            />
+            <>
+              <ThirdPersonAvatar
+                onProximityChange={handleProximityChange}
+                machinePositions={PORTFOLIO_MACHINES}
+                positionRef={avatarPositionRef}
+                rotationRef={avatarRotationRef}
+                onMove={handleAvatarMoved}
+                nearMachine={nearMachine}
+              />
+
+              {/* SPATIAL AUDIO SYSTEM — 3D positional sound for slot machines */}
+              <SpatialAudioSystem
+                machinePositions={PORTFOLIO_MACHINES}
+                nearMachine={nearMachine}
+              />
+            </>
           )}
 
           {/* CASINO ARCHITECTURE (Vegas-style) - Fixed: removed ceiling, lightened fog */}

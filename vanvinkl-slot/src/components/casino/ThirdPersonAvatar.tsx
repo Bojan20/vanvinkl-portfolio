@@ -13,6 +13,7 @@ interface ThirdPersonAvatarProps {
   positionRef?: React.MutableRefObject<THREE.Vector3>
   rotationRef?: React.MutableRefObject<number>
   onMove?: () => void
+  nearMachine?: string | null // For facial expressions
 }
 
 export function ThirdPersonAvatar({
@@ -22,17 +23,24 @@ export function ThirdPersonAvatar({
   machinePositions = [],
   positionRef,
   rotationRef,
-  onMove
+  onMove,
+  nearMachine
 }: ThirdPersonAvatarProps) {
   const { camera } = useThree()
   const avatarRef = useRef<THREE.Group>(null)
   const velocity = useRef(new THREE.Vector3())
+  const targetVelocity = useRef(new THREE.Vector3()) // For smooth acceleration
   const targetRotation = useRef(Math.PI) // Start facing forward (toward slots)
 
   // Animation state for AnimatedAvatar
   const isMoving = useRef(false)
   const moveDirection = useRef(new THREE.Vector3())
   const currentSpeed = useRef(0)
+
+  // Acceleration constants (AAA feel)
+  const ACCELERATION = 18 // Units/s² — responsive but smooth
+  const DECELERATION = 22 // Units/s² — slightly faster stop
+  const MAX_SPEED = speed
 
   const keys = useRef({
     forward: false,
@@ -89,8 +97,6 @@ export function ThirdPersonAvatar({
   useFrame((state, delta) => {
     if (!avatarRef.current) return
 
-    const avatarSpeed = speed
-
     // Movement direction based on camera
     const direction = new THREE.Vector3()
     const right = new THREE.Vector3()
@@ -101,32 +107,52 @@ export function ThirdPersonAvatar({
 
     right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize()
 
-    velocity.current.set(0, 0, 0)
+    // Calculate desired movement direction (target velocity)
+    targetVelocity.current.set(0, 0, 0)
 
-    if (keys.current.forward) velocity.current.add(direction)
-    if (keys.current.backward) velocity.current.sub(direction)
-    if (keys.current.right) velocity.current.add(right)
-    if (keys.current.left) velocity.current.sub(right)
+    if (keys.current.forward) targetVelocity.current.add(direction)
+    if (keys.current.backward) targetVelocity.current.sub(direction)
+    if (keys.current.right) targetVelocity.current.add(right)
+    if (keys.current.left) targetVelocity.current.sub(right)
 
-    if (velocity.current.length() > 0) {
-      const velocityNormalized = velocity.current.clone().normalize()
-      velocity.current.normalize().multiplyScalar(avatarSpeed * delta)
-      avatarRef.current.position.add(velocity.current)
+    const isInputActive = targetVelocity.current.length() > 0
+
+    if (isInputActive) {
+      // Normalize and scale to max speed
+      targetVelocity.current.normalize().multiplyScalar(MAX_SPEED)
+
+      // Smooth acceleration toward target velocity
+      velocity.current.lerp(targetVelocity.current, Math.min(ACCELERATION * delta, 1))
+
+      // Apply movement
+      const movement = velocity.current.clone().multiplyScalar(delta)
+      avatarRef.current.position.add(movement)
 
       // Notify parent that avatar moved
       onMove?.()
 
       // Update animation state
       isMoving.current = true
-      moveDirection.current.copy(velocityNormalized)
-      currentSpeed.current = avatarSpeed
+      moveDirection.current.copy(velocity.current).normalize()
+      currentSpeed.current = velocity.current.length()
 
       // Rotate avatar towards movement
       const angle = Math.atan2(velocity.current.x, velocity.current.z)
       targetRotation.current = angle
     } else {
-      isMoving.current = false
-      currentSpeed.current = 0
+      // Smooth deceleration when no input
+      velocity.current.lerp(new THREE.Vector3(0, 0, 0), Math.min(DECELERATION * delta, 1))
+
+      // Apply residual movement
+      if (velocity.current.length() > 0.01) {
+        const movement = velocity.current.clone().multiplyScalar(delta)
+        avatarRef.current.position.add(movement)
+        currentSpeed.current = velocity.current.length()
+      } else {
+        velocity.current.set(0, 0, 0)
+        isMoving.current = false
+        currentSpeed.current = 0
+      }
     }
 
     // Smooth rotation (lerp toward target)
@@ -201,6 +227,7 @@ export function ThirdPersonAvatar({
         isMovingRef={isMoving}
         moveDirectionRef={moveDirection}
         currentSpeedRef={currentSpeed}
+        isNearMachine={!!nearMachine}
       />
     </group>
   )
