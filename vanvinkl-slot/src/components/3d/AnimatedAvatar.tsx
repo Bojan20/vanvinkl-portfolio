@@ -182,59 +182,56 @@ export function AnimatedAvatar({
     }
 
     if (isMoving && currentSpeed > 0.1) {
-      // WALK CYCLE - faster animation to match responsive movement
-      const speedMultiplier = THREE.MathUtils.lerp(8, 14, currentSpeed / 5) // Scale with speed
+      // WALK CYCLE - INSTANT responsive animation (no lerp delays)
+      const speedMultiplier = 8 + (currentSpeed / 5) * 8 // Direct calculation (faster than lerp)
       walkCycle.current += delta * speedMultiplier
       idleTime.current = 0
 
       const t = walkCycle.current
 
-      // Body bob (up/down motion) - more pronounced for faster movement
-      const bobAmount = THREE.MathUtils.lerp(0.08, 0.12, currentSpeed / 5)
+      // Body bob (up/down motion) - direct calculation for instant response
+      const bobAmount = 0.08 + (currentSpeed / 5) * 0.06
       bodyRef.current.position.y = 0.5 + Math.abs(Math.sin(t * 2)) * bobAmount
 
-      // Body lean forward slightly when walking - more lean at speed
-      const leanAmount = THREE.MathUtils.lerp(0.05, 0.1, currentSpeed / 5)
+      // Body lean forward - instant response to speed changes
+      const leanAmount = 0.05 + (currentSpeed / 5) * 0.08
       bodyRef.current.rotation.x = Math.sin(t) * leanAmount
 
-      // Body sway side-to-side
-      bodyRef.current.rotation.z = Math.sin(t * 2) * 0.03
+      // Body sway side-to-side - reduced for smoother look
+      bodyRef.current.rotation.z = Math.sin(t * 2) * 0.02
 
-      // LEG SWING (opposite phases) - faster and more pronounced
+      // LEG SWING - INSTANT calculation (no lerp)
       if (leftLegRef.current && rightLegRef.current) {
-        const legSwing = THREE.MathUtils.lerp(0.6, 0.8, currentSpeed / 5)
-        const legLift = THREE.MathUtils.lerp(0.1, 0.15, currentSpeed / 5)
+        const legSwing = 0.6 + (currentSpeed / 5) * 0.25 // Direct calculation
+        const legLift = 0.1 + (currentSpeed / 5) * 0.08
 
         // Left leg
-        leftLegRef.current.rotation.x = Math.sin(t) * legSwing // Forward/back swing
-        leftLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t)) * legLift // Lift on swing
+        leftLegRef.current.rotation.x = Math.sin(t) * legSwing
+        leftLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t)) * legLift
 
         // Right leg (opposite phase)
         rightLegRef.current.rotation.x = Math.sin(t + Math.PI) * legSwing
         rightLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t + Math.PI)) * legLift
       }
 
-      // ARM SWING (opposite to legs for natural gait) - faster swing
+      // ARM SWING - INSTANT calculation
       if (leftArmRef.current && rightArmRef.current) {
-        const armSwing = THREE.MathUtils.lerp(0.4, 0.6, currentSpeed / 5)
+        const armSwing = 0.4 + (currentSpeed / 5) * 0.25
 
         // Left arm swings with right leg
         leftArmRef.current.rotation.x = Math.sin(t + Math.PI) * armSwing
-        leftArmRef.current.rotation.z = -0.2 + Math.sin(t) * 0.1
+        leftArmRef.current.rotation.z = -0.2 + Math.sin(t) * 0.08
 
-        // Right arm swings with left leg (holding sword - less swing)
-        rightArmRef.current.rotation.x = Math.sin(t) * (armSwing * 0.6) // Reduced for sword arm
-        rightArmRef.current.rotation.z = 0.2 + Math.sin(t + Math.PI) * 0.1
+        // Right arm (sword) - reduced swing for stability
+        rightArmRef.current.rotation.x = Math.sin(t) * (armSwing * 0.5)
+        rightArmRef.current.rotation.z = 0.2 + Math.sin(t + Math.PI) * 0.08
       }
 
-      // HEAD TRACKING (looks in movement direction)
+      // HEAD TRACKING - FASTER response (no slow lerp)
       if (headRef.current && moveDirection.length() > 0) {
-        const targetAngle = Math.atan2(moveDirection.x, moveDirection.z)
-        headLookAngle.current = THREE.MathUtils.lerp(
-          headLookAngle.current,
-          targetAngle * 0.3, // 30% head turn
-          delta * 5
-        )
+        const targetAngle = Math.atan2(moveDirection.x, moveDirection.z) * 0.25
+        // Much faster lerp for instant head turn
+        headLookAngle.current += (targetAngle - headLookAngle.current) * Math.min(delta * 15, 1)
         headRef.current.rotation.y = headLookAngle.current
       }
 
@@ -256,44 +253,30 @@ export function AnimatedAvatar({
         bodyRef.current.position.y = 0.5 + Math.sin(idleTime.current * 0.7) * 0.01
       }
 
-      // Idle leg stance (slight rest pose)
+      // Idle leg stance - FASTER transition to rest
       if (leftLegRef.current && rightLegRef.current) {
-        leftLegRef.current.rotation.x = THREE.MathUtils.lerp(
-          leftLegRef.current.rotation.x,
-          0.05, // Slight forward bend
-          delta * 3
-        )
+        const alpha = Math.min(delta * 8, 1) // Much faster lerp
+        leftLegRef.current.rotation.x += (0.05 - leftLegRef.current.rotation.x) * alpha
         leftLegRef.current.position.y = -0.05
 
-        rightLegRef.current.rotation.x = THREE.MathUtils.lerp(
-          rightLegRef.current.rotation.x,
-          0.05,
-          delta * 3
-        )
+        rightLegRef.current.rotation.x += (0.05 - rightLegRef.current.rotation.x) * alpha
         rightLegRef.current.position.y = -0.05
       }
 
-      // Idle arms (relaxed at sides)
+      // Idle arms - FASTER transition
       if (leftArmRef.current && rightArmRef.current) {
-        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(
-          leftArmRef.current.rotation.x,
-          0.1,
-          delta * 3
-        )
+        const alpha = Math.min(delta * 8, 1)
+        leftArmRef.current.rotation.x += (0.1 - leftArmRef.current.rotation.x) * alpha
         leftArmRef.current.rotation.z = -0.2
 
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(
-          rightArmRef.current.rotation.x,
-          0.1,
-          delta * 3
-        )
+        rightArmRef.current.rotation.x += (0.1 - rightArmRef.current.rotation.x) * alpha
         rightArmRef.current.rotation.z = 0.2
       }
 
-      // Head look around (curiosity)
+      // Head look around - smoother, less distracting
       if (headRef.current) {
-        headRef.current.rotation.y = Math.sin(idleTime.current * 0.3) * 0.2
-        headRef.current.rotation.x = Math.sin(idleTime.current * 0.4) * 0.1
+        headRef.current.rotation.y = Math.sin(idleTime.current * 0.25) * 0.15
+        headRef.current.rotation.x = Math.sin(idleTime.current * 0.3) * 0.08
       }
 
       walkCycle.current = 0 // Reset walk cycle
