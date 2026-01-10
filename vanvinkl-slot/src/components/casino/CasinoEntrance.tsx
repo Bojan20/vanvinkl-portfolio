@@ -10,324 +10,262 @@ interface CasinoEntranceProps {
 }
 
 export function CasinoEntrance({ onComplete, skipEnabled = true }: CasinoEntranceProps) {
-  const [step, setStep] = useState(0)
-  const [canSkip, setCanSkip] = useState(true)
+  const [started, setStarted] = useState(false)
   const { haptic } = useHaptic()
 
-  // Click anywhere to skip immediately
-  const handleClickToEnter = () => {
-    if (canSkip) {
-      haptic('selection')
-      onComplete()
-    }
-  }
-
+  // Auto-start after brief moment
   useEffect(() => {
-    const sequence = async () => {
-      // Step 0: Black screen (0-0.5s)
-      await new Promise(r => setTimeout(r, 500))
+    const timer = setTimeout(() => {
+      if (!started) {
+        handleStart()
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [started])
 
-      // Step 1: Exterior view (0.5-2.5s)
-      setStep(1)
-      haptic('light')
-      await new Promise(r => setTimeout(r, 2000))
+  const handleStart = () => {
+    setStarted(true)
+    haptic('heavy')
 
-      // Step 2: Doors begin to open (2.5-4s)
-      setStep(2)
-      haptic('medium')
-      await new Promise(r => setTimeout(r, 1500))
-
-      // Step 3: Golden light flood (4-5s)
-      setStep(3)
-      haptic('heavy')
-      await new Promise(r => setTimeout(r, 1000))
-
-      // Step 4: Walk through doors (5-7s)
-      setStep(4)
-      await new Promise(r => setTimeout(r, 2000))
-
-      // Step 5: Fade to lounge (7-8s)
-      setStep(5)
-      await new Promise(r => setTimeout(r, 1000))
-
-      // Complete
+    // Complete after 2.5 seconds (short WOW entrance)
+    setTimeout(() => {
       onComplete()
-    }
-
-    sequence()
-  }, [onComplete, haptic])
-
-  const handleSkip = () => {
-    haptic('selection')
-    onComplete()
+    }, 2500)
   }
 
   return (
     <motion.div
       className="fixed inset-0 z-50 bg-black overflow-hidden cursor-pointer"
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 1 } }}
-      onClick={handleClickToEnter}
+      exit={{ opacity: 0, transition: { duration: 0.8 } }}
+      onClick={handleStart}
     >
       <AnimatePresence>
-        {/* Click to Enter - Large centered button */}
-        {canSkip && step === 0 && (
+        {/* Initial "Click to Enter" button */}
+        {!started && (
           <motion.div
             className="absolute inset-0 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.3 }}
           >
             <motion.button
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 100px rgba(255,165,0,0.8)' }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleClickToEnter}
-              className="px-16 py-8 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl text-black text-3xl font-black shadow-2xl pointer-events-auto"
+              onClick={handleStart}
+              className="group relative px-20 py-10 bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-600 rounded-3xl text-black text-4xl font-black shadow-2xl overflow-hidden pointer-events-auto"
+              animate={{
+                boxShadow: [
+                  '0 0 40px rgba(255,165,0,0.4)',
+                  '0 0 80px rgba(255,165,0,0.7)',
+                  '0 0 40px rgba(255,165,0,0.4)'
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
             >
-              ENTER PORTFOLIO LOUNGE
+              {/* Animated shine effect */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                animate={{ x: ['-200%', '200%'] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              />
+              <span className="relative z-10 tracking-wider">ENTER LOUNGE</span>
             </motion.button>
           </motion.div>
         )}
 
-        {/* Skip button (top right) */}
-        {skipEnabled && step > 0 && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            whileHover={{ opacity: 1, scale: 1.05 }}
-            onClick={handleSkip}
-            className="absolute top-8 right-8 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white text-sm font-bold z-50 transition-all pointer-events-auto"
-          >
-            SKIP ENTRANCE
-          </motion.button>
-        )}
-
-        {/* Step 1: Exterior building view */}
-        {step === 1 && (
+        {/* WOW ENTRANCE - Fast & Spectacular */}
+        {started && (
           <motion.div
-            key="exterior"
-            initial={{ opacity: 0, scale: 1.2 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-purple-900 via-red-900 to-black"
-          >
-            {/* Building silhouette */}
-            <div className="relative w-full h-full flex items-end justify-center pb-20">
-              <motion.div
-                className="relative w-96 h-[600px] bg-gradient-to-b from-gray-900 to-black rounded-t-3xl border-4 border-orange-500/50 shadow-2xl"
-                animate={{
-                  boxShadow: [
-                    '0 0 50px rgba(255,122,59,0.3)',
-                    '0 0 100px rgba(255,122,59,0.5)',
-                    '0 0 50px rgba(255,122,59,0.3)'
-                  ]
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                {/* Entrance doors (closed) */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-72 bg-gradient-to-b from-orange-700 to-orange-900 rounded-t-2xl border-t-4 border-x-4 border-orange-400">
-                  {/* Door handles */}
-                  <div className="absolute top-1/2 left-4 w-4 h-8 bg-gradient-to-r from-yellow-300 to-yellow-600 rounded-full" />
-                  <div className="absolute top-1/2 right-4 w-4 h-8 bg-gradient-to-r from-yellow-300 to-yellow-600 rounded-full" />
-                </div>
-
-                {/* Neon sign above door */}
-                <motion.div
-                  className="absolute -top-16 left-1/2 -translate-x-1/2 text-6xl font-black"
-                  animate={{
-                    textShadow: [
-                      '0 0 20px #FFD700, 0 0 40px #FFD700',
-                      '0 0 40px #FFD700, 0 0 80px #FFD700',
-                      '0 0 20px #FFD700, 0 0 40px #FFD700'
-                    ]
-                  }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500">
-                    VANVINKL
-                  </span>
-                </motion.div>
-
-                <motion.p
-                  className="absolute -top-6 left-1/2 -translate-x-1/2 text-xl tracking-[0.5em] text-orange-400"
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  CASINO
-                </motion.p>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Step 2: Doors opening */}
-        {step === 2 && (
-          <motion.div
-            key="doors-opening"
+            className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center bg-black"
+            transition={{ duration: 0.3 }}
           >
-            <div className="relative w-full h-full flex items-center justify-center perspective-1000">
-              {/* Left door */}
-              <motion.div
-                className="absolute w-48 h-96 bg-gradient-to-r from-orange-900 to-orange-700 border-r-4 border-orange-400 origin-left"
-                style={{ transformStyle: 'preserve-3d' }}
-                initial={{ rotateY: 0 }}
-                animate={{ rotateY: -120 }}
-                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {/* Door details */}
-                <div className="absolute top-1/2 right-4 w-6 h-12 bg-gradient-to-r from-yellow-300 to-yellow-600 rounded-full" />
-              </motion.div>
-
-              {/* Right door */}
-              <motion.div
-                className="absolute w-48 h-96 bg-gradient-to-l from-orange-900 to-orange-700 border-l-4 border-orange-400 origin-right"
-                style={{ transformStyle: 'preserve-3d' }}
-                initial={{ rotateY: 0 }}
-                animate={{ rotateY: 120 }}
-                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {/* Door details */}
-                <div className="absolute top-1/2 left-4 w-6 h-12 bg-gradient-to-r from-yellow-300 to-yellow-600 rounded-full" />
-              </motion.div>
-
-              {/* Door opening sound effect text */}
-              <motion.div
-                className="absolute text-sm text-orange-400/50 tracking-widest"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: [0, 1, 0], y: 0 }}
-                transition={{ duration: 1.5 }}
-              >
-                *CREEK*
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Step 3: Golden light flood */}
-        {step === 3 && (
-          <motion.div
-            key="light-flood"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black flex items-center justify-center"
-          >
+            {/* Golden explosion from center */}
             <motion.div
-              className="absolute inset-0 bg-gradient-radial from-orange-500 via-orange-800 to-black"
+              className="absolute inset-0 bg-gradient-radial from-yellow-400 via-orange-600 to-black"
               initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 3, opacity: 1 }}
-              transition={{ duration: 1, ease: 'easeOut' }}
+              animate={{ scale: 8, opacity: [0, 1, 0.5, 0] }}
+              transition={{ duration: 2.5, ease: [0.16, 1, 0.3, 1] }}
             />
 
-            {/* Light rays */}
-            {Array.from({ length: 12 }).map((_, i) => {
-              const angle = (i / 12) * 360
+            {/* Circular light rays burst */}
+            {Array.from({ length: 24 }).map((_, i) => {
+              const angle = (i / 24) * 360
               return (
                 <motion.div
                   key={i}
-                  className="absolute w-2 h-full bg-gradient-to-b from-yellow-400/80 via-orange-500/40 to-transparent origin-bottom"
+                  className="absolute w-3 h-full bg-gradient-to-b from-yellow-300/90 via-orange-500/50 to-transparent origin-bottom"
                   style={{
                     rotate: `${angle}deg`,
                     left: '50%',
-                    bottom: '50%'
+                    bottom: '50%',
+                    transformOrigin: 'bottom center'
                   }}
                   initial={{ scaleY: 0, opacity: 0 }}
-                  animate={{ scaleY: 1, opacity: 1 }}
+                  animate={{
+                    scaleY: [0, 1.5, 1],
+                    opacity: [0, 1, 0.3, 0],
+                    rotate: `${angle + 180}deg`
+                  }}
                   transition={{
-                    duration: 0.8,
-                    delay: i * 0.05,
+                    duration: 2.5,
+                    delay: i * 0.02,
                     ease: 'easeOut'
                   }}
                 />
               )
             })}
 
-            <motion.div
-              className="relative z-10 text-center"
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-            >
-              <h1 className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-orange-400 to-yellow-200">
-                WELCOME
-              </h1>
-            </motion.div>
-          </motion.div>
-        )}
+            {/* Cascading slot machine symbols */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {[...Array(5)].map((_, ring) => (
+                <div key={ring} className="absolute">
+                  {[...Array(8)].map((_, i) => {
+                    const radius = 100 + ring * 150
+                    const angle = (i / 8) * Math.PI * 2
+                    const x = Math.cos(angle) * radius
+                    const y = Math.sin(angle) * radius
+                    const symbols = ['🎰', '🎲', '🃏', '💎', '⭐', '🎯', '🏆', '💰']
 
-        {/* Step 4: Walking through (first-person POV) */}
-        {step === 4 && (
-          <motion.div
-            key="walking"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black"
-          >
-            {/* Tunnel vision effect */}
+                    return (
+                      <motion.div
+                        key={`${ring}-${i}`}
+                        className="absolute text-6xl"
+                        style={{ x, y }}
+                        initial={{ scale: 0, opacity: 0, rotate: 0 }}
+                        animate={{
+                          scale: [0, 1.5, 0],
+                          opacity: [0, 1, 0],
+                          rotate: 360,
+                          x: x * 2,
+                          y: y * 2
+                        }}
+                        transition={{
+                          duration: 2,
+                          delay: ring * 0.15 + i * 0.05,
+                          ease: 'easeOut'
+                        }}
+                      >
+                        {symbols[i % symbols.length]}
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {/* Central "VANVINKL LOUNGE" text explosion */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                className="text-center"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  scale: [0, 1.2, 1],
+                  opacity: [0, 1, 1, 0]
+                }}
+                transition={{
+                  duration: 2.5,
+                  times: [0, 0.3, 0.7, 1],
+                  ease: [0.16, 1, 0.3, 1]
+                }}
+              >
+                <motion.h1
+                  className="text-[12rem] font-black leading-none"
+                  style={{
+                    textShadow: '0 0 60px rgba(255,165,0,0.8), 0 0 120px rgba(255,215,0,0.6)'
+                  }}
+                >
+                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-orange-400 to-yellow-200 animate-pulse">
+                    VANVINKL
+                  </span>
+                </motion.h1>
+                <motion.p
+                  className="text-4xl tracking-[0.5em] text-orange-300 font-bold mt-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: [0, 1, 1, 0], y: 0 }}
+                  transition={{ duration: 2.5, delay: 0.2 }}
+                >
+                  PORTFOLIO LOUNGE
+                </motion.p>
+              </motion.div>
+            </div>
+
+            {/* Particles explosion */}
+            {Array.from({ length: 80 }).map((_, i) => {
+              const angle = (i / 80) * Math.PI * 2
+              const distance = 50 + Math.random() * 500
+              const x = Math.cos(angle) * distance
+              const y = Math.sin(angle) * distance
+
+              return (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full bg-gradient-to-br from-yellow-300 to-orange-500"
+                  style={{
+                    left: '50%',
+                    top: '50%'
+                  }}
+                  initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+                  animate={{
+                    scale: [0, 1, 0],
+                    x,
+                    y,
+                    opacity: [1, 1, 0]
+                  }}
+                  transition={{
+                    duration: 1.5 + Math.random() * 0.5,
+                    delay: Math.random() * 0.5,
+                    ease: 'easeOut'
+                  }}
+                />
+              )
+            })}
+
+            {/* Flash effect */}
             <motion.div
-              className="absolute inset-0 bg-gradient-radial from-transparent via-black/50 to-black"
-              initial={{ scale: 2 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 2, ease: 'linear' }}
+              className="absolute inset-0 bg-white"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.8, 0] }}
+              transition={{ duration: 0.5, times: [0, 0.1, 1] }}
             />
 
-            {/* Approaching slot machines (motion blur) */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center gap-8"
-              initial={{ scale: 0.3, opacity: 0 }}
-              animate={{ scale: 1.5, opacity: 1 }}
-              transition={{ duration: 2, ease: 'easeIn' }}
-            >
-              {[-1, 0, 1].map((x) => (
+            {/* Bottom progress indicator */}
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+              <motion.div
+                className="text-orange-300 text-sm tracking-[0.3em] font-bold"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                LOADING EXPERIENCE
+              </motion.div>
+              <motion.div
+                className="mt-3 w-64 h-1 bg-black/50 rounded-full overflow-hidden"
+              >
                 <motion.div
-                  key={x}
-                  className="text-9xl"
-                  style={{ x: x * 200 }}
-                  animate={{ y: [0, -20, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                >
-                  🎰
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* Walking motion indicators */}
-            <motion.div
-              className="absolute bottom-20 left-1/2 -translate-x-1/2 text-orange-400 text-sm tracking-widest"
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-            >
-              ENTERING LOUNGE...
-            </motion.div>
+                  className="h-full bg-gradient-to-r from-orange-500 to-yellow-400"
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '0%' }}
+                  transition={{ duration: 2.5, ease: 'easeInOut' }}
+                />
+              </motion.div>
+            </div>
           </motion.div>
-        )}
-
-        {/* Step 5: Final fade */}
-        {step === 5 && (
-          <motion.div
-            key="fade"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-            className="absolute inset-0 bg-black"
-          />
         )}
       </AnimatePresence>
 
-      {/* Ambient sound effect text (throughout) */}
-      <motion.div
-        className="absolute bottom-8 left-8 text-xs text-white/30 tracking-widest font-mono"
-        animate={{ opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        *AMBIENT CASINO SOUNDS*
-      </motion.div>
+      {/* Skip indicator (subtle) */}
+      {started && skipEnabled && (
+        <motion.div
+          className="absolute top-8 right-8 text-white/50 text-xs tracking-widest"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.5 }}
+          whileHover={{ opacity: 1 }}
+        >
+          CLICK TO SKIP
+        </motion.div>
+      )}
     </motion.div>
   )
 }
