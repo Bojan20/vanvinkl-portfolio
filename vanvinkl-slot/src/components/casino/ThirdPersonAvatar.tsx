@@ -36,12 +36,14 @@ export function ThirdPersonAvatar({
   const isMoving = useRef(false)
   const moveDirection = useRef(new THREE.Vector3())
   const currentSpeed = useRef(0)
+  const wasMovingLastFrame = useRef(false) // Track if we just started moving
 
   // Acceleration constants (ULTRA RESPONSIVE - instant input, butter smooth)
   const ACCELERATION = 60 // Units/s² — near-instant acceleration
   const DECELERATION = 50 // Units/s² — instant stop
   const MAX_SPEED = speed
   const ROTATION_SPEED = 0.35 // Much faster rotation for instant direction change
+  const INSTANT_START_SPEED = 2.5 // Instant velocity on first frame of input
 
   const keys = useRef({
     forward: false,
@@ -122,14 +124,25 @@ export function ThirdPersonAvatar({
       // Normalize and scale to max speed
       targetVelocity.current.normalize().multiplyScalar(MAX_SPEED)
 
-      // INSTANT response - use higher lerp alpha for near-instant acceleration
-      const accelAlpha = Math.min(ACCELERATION * delta, 1)
-      velocity.current.lerp(targetVelocity.current, accelAlpha)
+      // Calculate rotation angle first (before setting flags)
+      const angle = Math.atan2(targetVelocity.current.x, targetVelocity.current.z)
 
-      // Boost: Add instant velocity on input for ultra-responsive feel
-      if (velocity.current.length() < MAX_SPEED * 0.3) {
+      // INSTANT START - if we just started moving, set velocity AND rotation immediately (NO LERP!)
+      const justStartedMoving = !wasMovingLastFrame.current
+      if (justStartedMoving) {
+        velocity.current.copy(targetVelocity.current).multiplyScalar(INSTANT_START_SPEED / MAX_SPEED)
+        avatarRef.current.rotation.y = angle // Instant rotation, no lerp delay
+        wasMovingLastFrame.current = true
+      } else {
+        // Already moving - use smooth acceleration
+        const accelAlpha = Math.min(ACCELERATION * delta, 1)
+        velocity.current.lerp(targetVelocity.current, accelAlpha)
+      }
+
+      // Additional boost for very low speeds (helps with direction changes)
+      if (velocity.current.length() < MAX_SPEED * 0.2) {
         velocity.current.add(
-          targetVelocity.current.clone().multiplyScalar(delta * 15)
+          targetVelocity.current.clone().multiplyScalar(delta * 20)
         ).clampLength(0, MAX_SPEED)
       }
 
@@ -145,10 +158,12 @@ export function ThirdPersonAvatar({
       moveDirection.current.copy(velocity.current).normalize()
       currentSpeed.current = velocity.current.length()
 
-      // Rotate avatar towards movement
-      const angle = Math.atan2(velocity.current.x, velocity.current.z)
+      // Set target rotation for smooth lerp (when already moving)
       targetRotation.current = angle
     } else {
+      // Reset "was moving" flag so next input will be instant
+      wasMovingLastFrame.current = false
+
       // Smooth deceleration when no input
       velocity.current.lerp(new THREE.Vector3(0, 0, 0), Math.min(DECELERATION * delta, 1))
 
