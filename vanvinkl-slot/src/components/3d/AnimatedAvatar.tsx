@@ -14,11 +14,14 @@ interface AnimatedAvatarProps {
 }
 
 /**
- * AAA-level animated character with:
+ * AAA-level Link/Zelda-style anime fighter with:
  * - Walk cycle (leg/arm swing, body bob)
  * - Idle breathing + weight shift
  * - Head tracking (looks toward movement)
  * - Procedural animation (no bones required)
+ * - Link's green tunic, blonde hair, Master Sword, Hylian Shield
+ * - Triforce emblem on chest and shield
+ * - Anime-style blue eyes with blinking
  */
 export function AnimatedAvatar({
   isMovingRef,
@@ -60,16 +63,19 @@ export function AnimatedAvatar({
   const celebrationDuration = 1.5 // 1.5 second celebration
   const lastCelebrationTrigger = useRef(0)
 
-  // Memoized materials for 60fps performance
+  // Memoized materials for 60fps performance (ZELDA STYLE)
   const materials = useMemo(() => ({
-    batmanSuit: <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.3} />,
-    batmanCowl: <meshStandardMaterial color="#0a0a0a" metalness={0.7} roughness={0.2} />,
-    batmanBoots: <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.2} />,
-    goldBelt: <meshStandardMaterial color="#FFD700" metalness={0.7} roughness={0.3} />,
-    goldSymbol: <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} />,
-    gauntletBlade: <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.1} />,
-    glowingEyes: <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={2.0} />,
-    cape: <meshStandardMaterial color="#0a0a0a" metalness={0.3} roughness={0.8} side={2} transparent opacity={0.95} />,
+    greenTunic: <meshStandardMaterial color="#2d8659" metalness={0.1} roughness={0.8} />, // Link's green tunic
+    darkGreen: <meshStandardMaterial color="#1a5c3e" metalness={0.2} roughness={0.7} />, // Dark green accents
+    skinTone: <meshStandardMaterial color="#ffcba4" metalness={0.05} roughness={0.9} />, // Anime skin
+    hairBlonde: <meshStandardMaterial color="#f4d03f" metalness={0.2} roughness={0.6} />, // Blonde hair
+    eyesBlue: <meshStandardMaterial color="#4a90e2" emissive="#4a90e2" emissiveIntensity={0.3} />, // Anime blue eyes
+    brownBoots: <meshStandardMaterial color="#6b4423" metalness={0.3} roughness={0.6} />, // Brown leather boots
+    goldBelt: <meshStandardMaterial color="#f4d03f" metalness={0.7} roughness={0.3} />, // Gold belt buckle
+    silverSword: <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} />, // Master Sword metal
+    blueGem: <meshStandardMaterial color="#00bfff" emissive="#00bfff" emissiveIntensity={1.0} metalness={0.8} roughness={0.2} />, // Sword gem
+    shieldMetal: <meshStandardMaterial color="#e8e8e8" metalness={0.8} roughness={0.3} />, // Hylian Shield
+    triforce: <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0.8} metalness={0.7} roughness={0.2} />, // Triforce symbol
     shadow: <meshBasicMaterial color="#000000" transparent opacity={0.3} />
   }), [])
 
@@ -288,110 +294,189 @@ export function AnimatedAvatar({
 
   return (
     <group ref={bodyRef} position={[0, 0.5, 0]}>
-      {/* Body (torso) - BATMAN SUIT - OPTIMIZED 8 segments */}
+      {/* Body (torso) - LINK'S GREEN TUNIC - OPTIMIZED 8 segments */}
       <Cylinder args={[0.25, 0.3, 0.6, 8]} position={[0, 0, 0]}>
-        {materials.batmanSuit}
+        {materials.greenTunic}
       </Cylinder>
 
-      {/* Batman symbol (yellow bat on chest) */}
+      {/* Tunic collar/neckline (dark green) */}
+      <Cylinder args={[0.26, 0.26, 0.08, 8]} position={[0, 0.28, 0]}>
+        {materials.darkGreen}
+      </Cylinder>
+
+      {/* Triforce symbol (gold emblem on chest) */}
       <mesh position={[0, 0.15, 0.31]} rotation={[0, 0, 0]}>
-        <planeGeometry args={[0.3, 0.15]} />
-        {materials.goldSymbol}
+        <coneGeometry args={[0.1, 0.1, 3]} />
+        {materials.triforce}
+      </mesh>
+      <mesh position={[-0.05, 0.08, 0.31]} rotation={[0, 0, Math.PI]}>
+        <coneGeometry args={[0.05, 0.05, 3]} />
+        {materials.triforce}
+      </mesh>
+      <mesh position={[0.05, 0.08, 0.31]} rotation={[0, 0, Math.PI]}>
+        <coneGeometry args={[0.05, 0.05, 3]} />
+        {materials.triforce}
       </mesh>
 
-      {/* Utility belt (yellow) */}
+      {/* Gold belt (Link's signature belt) */}
       <Cylinder args={[0.305, 0.305, 0.08, 8]} position={[0, -0.2, 0]}>
         {materials.goldBelt}
       </Cylinder>
 
-      {/* Head (with Batman cowl) - OPTIMIZED 12 segments */}
+      {/* Belt buckle (gold square) */}
+      <mesh position={[0, -0.2, 0.31]}>
+        <boxGeometry args={[0.12, 0.08, 0.02]} />
+        {materials.goldBelt}
+      </mesh>
+
+      {/* Head (anime-style) - OPTIMIZED 12 segments */}
       <Sphere ref={headRef} args={[0.22, 12, 12]} position={[0, 0.5, 0]}>
-        {materials.batmanSuit}
+        {materials.skinTone}
       </Sphere>
 
-      {/* Batman cowl ears (pointed ears) */}
-      <mesh position={[-0.12, 0.68, 0]} rotation={[0, 0, Math.PI / 8]}>
-        <coneGeometry args={[0.05, 0.2, 4]} />
-        {materials.batmanCowl}
+      {/* Blonde hair (Link's signature hair) */}
+      {/* Top hair tuft */}
+      <mesh position={[0, 0.68, 0.05]} rotation={[-0.2, 0, 0]}>
+        <coneGeometry args={[0.15, 0.25, 6]} />
+        {materials.hairBlonde}
       </mesh>
-      <mesh position={[0.12, 0.68, 0]} rotation={[0, 0, -Math.PI / 8]}>
-        <coneGeometry args={[0.05, 0.2, 4]} />
-        {materials.batmanCowl}
+      {/* Back hair (ponytail style) */}
+      <mesh position={[0, 0.45, -0.2]} rotation={[0.5, 0, 0]}>
+        <cylinderGeometry args={[0.08, 0.05, 0.3, 6]} />
+        {materials.hairBlonde}
+      </mesh>
+      {/* Side bangs */}
+      <mesh position={[-0.15, 0.55, 0.1]} rotation={[0, 0, -0.3]}>
+        <boxGeometry args={[0.08, 0.2, 0.05]} />
+        {materials.hairBlonde}
+      </mesh>
+      <mesh position={[0.15, 0.55, 0.1]} rotation={[0, 0, 0.3]}>
+        <boxGeometry args={[0.08, 0.2, 0.05]} />
+        {materials.hairBlonde}
       </mesh>
 
-      {/* Eye holes (white glowing eyes with blink) - OPTIMIZED 6 segments */}
-      <Sphere ref={leftEyeRef} args={[0.04, 6, 6]} position={[-0.08, 0.55, 0.18]}>
-        {materials.glowingEyes}
+      {/* Anime blue eyes with blink - OPTIMIZED 6 segments */}
+      <Sphere ref={leftEyeRef} args={[0.05, 6, 6]} position={[-0.08, 0.52, 0.18]}>
+        {materials.eyesBlue}
       </Sphere>
-      <Sphere ref={rightEyeRef} args={[0.04, 6, 6]} position={[0.08, 0.55, 0.18]}>
-        {materials.glowingEyes}
+      <Sphere ref={rightEyeRef} args={[0.05, 6, 6]} position={[0.08, 0.52, 0.18]}>
+        {materials.eyesBlue}
       </Sphere>
 
-      {/* Left Leg - BATMAN SUIT - OPTIMIZED */}
+      {/* Nose (subtle) */}
+      <mesh position={[0, 0.48, 0.22]}>
+        <boxGeometry args={[0.03, 0.06, 0.02]} />
+        {materials.skinTone}
+      </mesh>
+
+      {/* Mouth (smile curve when near machine) */}
+      <mesh ref={mouthRef} position={[0, 0.42, 0.2]}>
+        <boxGeometry args={[0.08, 0.02, 0.01]} />
+        {materials.skinTone}
+      </mesh>
+
+      {/* Hylian Shield (on back) */}
+      <group position={[0, 0.1, -0.35]} rotation={[0.3, 0, 0]}>
+        {/* Shield body */}
+        <mesh>
+          <cylinderGeometry args={[0.25, 0.25, 0.05, 8]} />
+          {materials.shieldMetal}
+        </mesh>
+        {/* Triforce emblem on shield */}
+        <mesh position={[0, 0, 0.03]}>
+          <coneGeometry args={[0.1, 0.1, 3]} />
+          {materials.triforce}
+        </mesh>
+        {/* Blue accent (Hylian crest) */}
+        <mesh position={[0, -0.1, 0.03]}>
+          <circleGeometry args={[0.08, 6]} />
+          {materials.blueGem}
+        </mesh>
+      </group>
+
+      {/* Left Leg - GREEN TIGHTS + BROWN BOOTS - OPTIMIZED */}
       <group ref={leftLegRef} position={[-0.12, -0.35, 0]}>
+        {/* Thigh (green tights) */}
         <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
-          {materials.batmanSuit}
+          {materials.darkGreen}
         </Cylinder>
+        {/* Shin (brown boot shaft) */}
         <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
-          {materials.batmanCowl}
+          {materials.brownBoots}
         </Cylinder>
+        {/* Boot foot */}
         <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          {materials.batmanBoots}
+          {materials.brownBoots}
         </RoundedBox>
       </group>
 
-      {/* Right Leg - BATMAN SUIT - OPTIMIZED */}
+      {/* Right Leg - GREEN TIGHTS + BROWN BOOTS - OPTIMIZED */}
       <group ref={rightLegRef} position={[0.12, -0.35, 0]}>
+        {/* Thigh (green tights) */}
         <Cylinder args={[0.08, 0.08, 0.35, 6]} position={[0, -0.175, 0]}>
-          {materials.batmanSuit}
+          {materials.darkGreen}
         </Cylinder>
+        {/* Shin (brown boot shaft) */}
         <Cylinder args={[0.07, 0.07, 0.3, 6]} position={[0, -0.5, 0]}>
-          {materials.batmanCowl}
+          {materials.brownBoots}
         </Cylinder>
+        {/* Boot foot */}
         <RoundedBox args={[0.12, 0.08, 0.2]} radius={0.03} position={[0, -0.68, 0.05]}>
-          {materials.batmanBoots}
+          {materials.brownBoots}
         </RoundedBox>
       </group>
 
-      {/* Left Arm - BATMAN SUIT - OPTIMIZED */}
+      {/* Left Arm - GREEN TUNIC SLEEVE - OPTIMIZED */}
       <group ref={leftArmRef} position={[-0.35, 0.15, 0]}>
+        {/* Upper arm (green sleeve) */}
         <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
-          {materials.batmanSuit}
+          {materials.greenTunic}
         </Cylinder>
+        {/* Forearm (skin tone) */}
         <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
-          {materials.batmanBoots}
+          {materials.skinTone}
         </Cylinder>
+        {/* Hand (fist) */}
         <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
-          {materials.batmanBoots}
+          {materials.skinTone}
         </Sphere>
-        <mesh position={[0, -0.45, 0.06]} rotation={[0, 0, 0]}>
-          <boxGeometry args={[0.03, 0.12, 0.02]} />
-          {materials.gauntletBlade}
-        </mesh>
       </group>
 
-      {/* Right Arm - BATMAN SUIT - OPTIMIZED */}
+      {/* Right Arm - GREEN TUNIC SLEEVE + MASTER SWORD - OPTIMIZED */}
       <group ref={rightArmRef} position={[0.35, 0.15, 0]}>
+        {/* Upper arm (green sleeve) */}
         <Cylinder args={[0.06, 0.06, 0.3, 6]} position={[0, -0.15, 0]}>
-          {materials.batmanSuit}
+          {materials.greenTunic}
         </Cylinder>
+        {/* Forearm (skin tone) */}
         <Cylinder args={[0.055, 0.055, 0.25, 6]} position={[0, -0.425, 0]}>
-          {materials.batmanBoots}
+          {materials.skinTone}
         </Cylinder>
+        {/* Hand (fist holding sword) */}
         <Sphere args={[0.07, 6, 6]} position={[0, -0.58, 0]}>
-          {materials.batmanBoots}
+          {materials.skinTone}
         </Sphere>
-        <mesh position={[0, -0.45, 0.06]} rotation={[0, 0, 0]}>
-          <boxGeometry args={[0.03, 0.12, 0.02]} />
-          {materials.gauntletBlade}
-        </mesh>
-      </group>
 
-      {/* BATMAN CAPE (flowing behind) - OPTIMIZED */}
-      <mesh position={[0, 0.3, -0.25]} rotation={[Math.PI / 6, 0, 0]}>
-        <planeGeometry args={[0.6, 1.0]} />
-        {materials.cape}
-      </mesh>
+        {/* MASTER SWORD */}
+        {/* Blade (silver) */}
+        <mesh position={[0, -0.65, 0.2]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[0.04, 0.5, 0.01]} />
+          {materials.silverSword}
+        </mesh>
+        {/* Crossguard (gold) */}
+        <mesh position={[0, -0.58, 0.2]}>
+          <boxGeometry args={[0.25, 0.03, 0.03]} />
+          {materials.goldBelt}
+        </mesh>
+        {/* Hilt (dark green grip) */}
+        <Cylinder args={[0.025, 0.025, 0.15, 6]} position={[0, -0.5, 0.2]}>
+          {materials.darkGreen}
+        </Cylinder>
+        {/* Pommel gem (blue glowing) */}
+        <Sphere args={[0.04, 6, 6]} position={[0, -0.42, 0.2]}>
+          {materials.blueGem}
+        </Sphere>
+      </group>
 
       {/* Shadow circle (ground contact) - OPTIMIZED 12 segments */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.7, 0]}>
