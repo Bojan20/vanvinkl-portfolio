@@ -254,7 +254,9 @@ export function App() {
   const [modalData, setModalData] = useState<{ id: string; title: string; content: string[] } | null>(null)
   const [showControls, setShowControls] = useState(true)
   const [showIntro, setShowIntro] = useState(true)
-  const [introPhase, setIntroPhase] = useState<'overlay' | 'camera' | 'done'>('overlay')
+  // Both overlay and camera run SIMULTANEOUSLY for smooth intro
+  const [overlayComplete, setOverlayComplete] = useState(false)
+  const [cameraComplete, setCameraComplete] = useState(false)
 
   const handleShowModal = useCallback((id: string, title: string, content: string[]) => {
     setModalData({ id, title, content })
@@ -269,13 +271,19 @@ export function App() {
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
-    setIntroPhase('camera')
+    setOverlayComplete(true)
   }, [])
 
   const handleIntroCameraComplete = useCallback(() => {
-    setIntroPhase('done')
-    setShowIntro(false)
+    setCameraComplete(true)
   }, [])
+
+  // End intro when BOTH camera and overlay are complete
+  useEffect(() => {
+    if (overlayComplete && cameraComplete) {
+      setShowIntro(false)
+    }
+  }, [overlayComplete, cameraComplete])
 
   return (
     <>
@@ -307,8 +315,8 @@ export function App() {
         flat // Disable tone mapping for raw neon colors
       >
         <Suspense fallback={<LoadingScreen />}>
-          {/* Intro camera animation */}
-          {showIntro && introPhase === 'camera' && (
+          {/* Intro camera animation - runs from START, parallel with overlay */}
+          {showIntro && (
             <IntroCamera
               onComplete={handleIntroCameraComplete}
               avatarSpawnPosition={[0, 0, 10]}
@@ -339,9 +347,9 @@ export function App() {
         />
       )}
 
-      {/* Intro overlay - glitch text */}
+      {/* Intro overlay - glitch text (runs PARALLEL with camera) */}
       <IntroOverlay
-        active={showIntro && introPhase === 'overlay'}
+        active={showIntro}
         onComplete={handleIntroOverlayComplete}
       />
     </>

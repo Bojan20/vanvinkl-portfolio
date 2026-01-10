@@ -1,13 +1,17 @@
 /**
- * INTRO SEQUENCE - WOW Entry Animation
+ * INTRO SEQUENCE - ULTRA WOW Entry Animation
  *
- * - Camera fly-in from far away
- * - Glitch text "WELCOME TO VANVINKL CASINO"
- * - Avatar teleport particle effect
- * - Full cyberpunk experience
+ * SMOOTH flow (no black screens):
+ * - Camera starts FAR above the casino
+ * - Glitch text appears while camera swoops down
+ * - Text transitions to reveal while camera continues
+ * - Teleport particles at avatar spawn
+ * - Seamless transition to gameplay
+ *
+ * Total duration: 2.5 seconds (fast but WOW)
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -18,15 +22,15 @@ const COLORS = {
   gold: '#ffd700'
 }
 
-// Teleport particles around avatar spawn point
+// GPU-optimized teleport particles
 function TeleportParticles({ active, position }: { active: boolean, position: [number, number, number] }) {
   const particlesRef = useRef<THREE.Points>(null!)
   const velocitiesRef = useRef<Float32Array | null>(null)
   const lifetimesRef = useRef<Float32Array | null>(null)
 
-  const particleCount = 200
+  const particleCount = 150
 
-  const { positions, colors } = React.useMemo(() => {
+  const { geometry, material } = useMemo(() => {
     const positions = new Float32Array(particleCount * 3)
     const colors = new Float32Array(particleCount * 3)
     const velocities = new Float32Array(particleCount * 3)
@@ -68,13 +72,27 @@ function TeleportParticles({ active, position }: { active: boolean, position: [n
     velocitiesRef.current = velocities
     lifetimesRef.current = lifetimes
 
-    return { positions, colors }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.12,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
+    })
+
+    return { geometry: geo, material: mat }
   }, [position])
 
   useFrame((_, delta) => {
     if (!active || !particlesRef.current || !velocitiesRef.current || !lifetimesRef.current) return
 
-    const posAttr = particlesRef.current.geometry.attributes.position as THREE.BufferAttribute
+    const posAttr = geometry.attributes.position as THREE.BufferAttribute
     const posArray = posAttr.array as Float32Array
     const velocities = velocitiesRef.current
     const lifetimes = lifetimesRef.current
@@ -111,31 +129,7 @@ function TeleportParticles({ active, position }: { active: boolean, position: [n
   if (!active) return null
 
   return (
-    <points ref={particlesRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={particleCount}
-          array={positions}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-color"
-          count={particleCount}
-          array={colors}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.1}
-        vertexColors
-        transparent
-        opacity={0.9}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </points>
+    <points ref={particlesRef} geometry={geometry} material={material} />
   )
 }
 
@@ -150,23 +144,33 @@ export function IntroCamera({
   const { camera } = useThree()
   const startTime = useRef(Date.now())
   const [showParticles, setShowParticles] = useState(false)
+  const completed = useRef(false)
 
-  const INTRO_DURATION = 3.5 // seconds
+  const INTRO_DURATION = 2.5 // seconds - fast but WOW
 
-  // Camera path: start far above and behind, sweep down to final position
-  const startPos = useRef(new THREE.Vector3(0, 40, 60))
-  const endPos = useRef(new THREE.Vector3(0, 5, 18))
-  const startLookAt = useRef(new THREE.Vector3(0, 0, 0))
+  // Camera path: dramatic swoop from sky
+  const startPos = useRef(new THREE.Vector3(0, 50, 70)) // Higher and further
+  const endPos = useRef(new THREE.Vector3(0, 5, 18)) // Final gameplay position
+  const startLookAt = useRef(new THREE.Vector3(0, 0, -5))
   const endLookAt = useRef(new THREE.Vector3(0, 1.5, 7))
 
+  // Set initial camera position immediately
   useEffect(() => {
-    // Trigger particles at 2 seconds
-    const particleTimer = setTimeout(() => setShowParticles(true), 2000)
+    camera.position.copy(startPos.current)
+    camera.lookAt(startLookAt.current)
+  }, [camera])
+
+  useEffect(() => {
+    // Trigger particles at 1.5 seconds (near end)
+    const particleTimer = setTimeout(() => setShowParticles(true), 1500)
 
     // End intro
     const endTimer = setTimeout(() => {
-      setShowParticles(false)
-      onComplete()
+      if (!completed.current) {
+        completed.current = true
+        setShowParticles(false)
+        onComplete()
+      }
     }, INTRO_DURATION * 1000)
 
     return () => {
@@ -176,24 +180,31 @@ export function IntroCamera({
   }, [onComplete])
 
   useFrame(() => {
+    if (completed.current) return
+
     const elapsed = (Date.now() - startTime.current) / 1000
     const progress = Math.min(elapsed / INTRO_DURATION, 1)
 
-    // Easing - dramatic ease out
-    const eased = 1 - Math.pow(1 - progress, 3)
+    // Custom easing - dramatic swoop with acceleration then smooth landing
+    // Fast at start, slow landing
+    const eased = 1 - Math.pow(1 - progress, 4)
 
-    // Interpolate camera position
-    camera.position.lerpVectors(startPos.current, endPos.current, eased)
+    // Interpolate camera position - DIRECT SET, no lerp
+    camera.position.x = THREE.MathUtils.lerp(startPos.current.x, endPos.current.x, eased)
+    camera.position.y = THREE.MathUtils.lerp(startPos.current.y, endPos.current.y, eased)
+    camera.position.z = THREE.MathUtils.lerp(startPos.current.z, endPos.current.z, eased)
 
     // Interpolate look-at
-    const lookAt = new THREE.Vector3().lerpVectors(startLookAt.current, endLookAt.current, eased)
-    camera.lookAt(lookAt)
+    const lookAtX = THREE.MathUtils.lerp(startLookAt.current.x, endLookAt.current.x, eased)
+    const lookAtY = THREE.MathUtils.lerp(startLookAt.current.y, endLookAt.current.y, eased)
+    const lookAtZ = THREE.MathUtils.lerp(startLookAt.current.z, endLookAt.current.z, eased)
+    camera.lookAt(lookAtX, lookAtY, lookAtZ)
   })
 
   return <TeleportParticles active={showParticles} position={avatarSpawnPosition} />
 }
 
-// HTML Overlay for glitch text
+// HTML Overlay for glitch text - NO BLACK SCREEN, transparent overlay
 export function IntroOverlay({
   active,
   onComplete
@@ -201,29 +212,26 @@ export function IntroOverlay({
   active: boolean
   onComplete: () => void
 }) {
-  const [phase, setPhase] = useState<'black' | 'glitch' | 'reveal' | 'fade'>('black')
+  const [phase, setPhase] = useState<'glitch' | 'reveal' | 'fade' | 'done'>('glitch')
   const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
+  const [opacity, setOpacity] = useState(1)
 
   useEffect(() => {
     if (!active) return
 
-    // Phase timing
+    // Start immediately with glitch (no black screen delay)
+    // Fast timing for 2.5s total intro
     const phases = [
-      { time: 300, phase: 'glitch' as const },
-      { time: 1500, phase: 'reveal' as const },
-      { time: 2800, phase: 'fade' as const },
-      { time: 3500, phase: 'done' as const }
+      { time: 800, action: () => setPhase('reveal') },
+      { time: 1600, action: () => setPhase('fade') },
+      { time: 2200, action: () => setOpacity(0) },
+      { time: 2500, action: () => {
+        setPhase('done')
+        onComplete()
+      }}
     ]
 
-    const timers = phases.map(p =>
-      setTimeout(() => {
-        if (p.phase === 'done') {
-          onComplete()
-        } else {
-          setPhase(p.phase)
-        }
-      }, p.time)
-    )
+    const timers = phases.map(p => setTimeout(p.action, p.time))
 
     return () => timers.forEach(t => clearTimeout(t))
   }, [active, onComplete])
@@ -238,14 +246,14 @@ export function IntroOverlay({
     const interval = setInterval(() => {
       let newText = ''
       for (let i = 0; i < originalText.length; i++) {
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.35) {
           newText += glitchChars[Math.floor(Math.random() * glitchChars.length)]
         } else {
           newText += originalText[i]
         }
       }
       setGlitchText(newText)
-    }, 50)
+    }, 40) // Faster glitch
 
     return () => clearInterval(interval)
   }, [phase])
@@ -257,7 +265,7 @@ export function IntroOverlay({
     }
   }, [phase])
 
-  if (!active) return null
+  if (!active || phase === 'done') return null
 
   return (
     <div style={{
@@ -269,77 +277,104 @@ export function IntroOverlay({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: phase === 'fade' ? 'transparent' : 'rgba(0, 0, 0, 0.95)',
+      // NO BLACK BACKGROUND - fully transparent, only text visible
+      backgroundColor: 'transparent',
       zIndex: 1000,
-      transition: 'background-color 0.7s ease-out',
-      pointerEvents: 'none'
+      pointerEvents: 'none',
+      opacity: opacity,
+      transition: 'opacity 0.3s ease-out'
     }}>
-      <div style={{
-        textAlign: 'center',
-        opacity: phase === 'black' ? 0 : phase === 'fade' ? 0 : 1,
-        transform: phase === 'reveal' ? 'scale(1)' : 'scale(1.1)',
-        transition: 'all 0.3s ease-out'
-      }}>
-        <h1 style={{
-          margin: 0,
-          fontSize: 'clamp(28px, 6vw, 72px)',
-          fontFamily: '"Orbitron", "Rajdhani", system-ui, sans-serif',
-          fontWeight: 900,
-          letterSpacing: '8px',
-          color: phase === 'glitch' ? COLORS.magenta : COLORS.cyan,
-          textShadow: phase === 'glitch'
-            ? `0 0 20px ${COLORS.magenta}, 0 0 40px ${COLORS.magenta}, -3px 0 ${COLORS.cyan}, 3px 0 ${COLORS.purple}`
-            : `0 0 30px ${COLORS.cyan}, 0 0 60px ${COLORS.cyan}, 0 0 100px ${COLORS.cyan}`,
-          animation: phase === 'glitch' ? 'glitchShake 0.1s infinite' : 'none',
-          whiteSpace: 'nowrap'
-        }}>
-          {glitchText}
-        </h1>
-
-        {phase === 'reveal' && (
-          <div style={{
-            marginTop: '20px',
-            fontSize: '18px',
-            color: COLORS.purple,
-            letterSpacing: '4px',
-            opacity: 0.8,
-            animation: 'fadeIn 0.5s ease-out'
-          }}>
-            PORTFOLIO EXPERIENCE
-          </div>
-        )}
-      </div>
-
-      {/* Scanlines effect */}
+      {/* Subtle vignette for focus */}
       <div style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)',
+        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)',
+        pointerEvents: 'none'
+      }} />
+
+      <div style={{
+        textAlign: 'center',
+        opacity: 1,
+        transform: phase === 'reveal' ? 'scale(1)' : phase === 'fade' ? 'scale(0.95)' : 'scale(1.05)',
+        transition: 'all 0.3s ease-out'
+      }}>
+        <h1 style={{
+          margin: 0,
+          fontSize: 'clamp(32px, 7vw, 80px)',
+          fontFamily: '"Orbitron", "Rajdhani", system-ui, sans-serif',
+          fontWeight: 900,
+          letterSpacing: '10px',
+          color: phase === 'glitch' ? COLORS.magenta : '#ffffff',
+          textShadow: phase === 'glitch'
+            ? `0 0 30px ${COLORS.magenta}, 0 0 60px ${COLORS.magenta}, -4px 0 ${COLORS.cyan}, 4px 0 ${COLORS.purple}, 0 0 100px ${COLORS.magenta}`
+            : `0 0 40px ${COLORS.cyan}, 0 0 80px ${COLORS.cyan}, 0 0 120px ${COLORS.cyan}, 0 0 160px ${COLORS.purple}`,
+          animation: phase === 'glitch' ? 'glitchShake 0.08s infinite' : 'none',
+          whiteSpace: 'nowrap',
+          // Text stroke for better visibility
+          WebkitTextStroke: phase === 'reveal' ? '1px rgba(0,255,255,0.5)' : 'none'
+        }}>
+          {glitchText}
+        </h1>
+
+        {phase === 'reveal' && (
+          <div style={{
+            marginTop: '25px',
+            fontSize: '20px',
+            color: COLORS.gold,
+            letterSpacing: '6px',
+            textShadow: `0 0 20px ${COLORS.gold}, 0 0 40px ${COLORS.gold}`,
+            animation: 'fadeInUp 0.4s ease-out'
+          }}>
+            PORTFOLIO EXPERIENCE
+          </div>
+        )}
+      </div>
+
+      {/* Scanlines effect - subtle */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 6px)',
         pointerEvents: 'none',
-        opacity: 0.5
+        opacity: 0.4
+      }} />
+
+      {/* Horizontal scan line moving down */}
+      <div style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: '4px',
+        background: `linear-gradient(90deg, transparent, ${COLORS.cyan}40, ${COLORS.magenta}60, ${COLORS.cyan}40, transparent)`,
+        animation: 'scanLine 1.5s linear infinite',
+        pointerEvents: 'none'
       }} />
 
       <style>{`
         @keyframes glitchShake {
-          0% { transform: translate(0); }
-          20% { transform: translate(-2px, 2px); }
-          40% { transform: translate(-2px, -2px); }
-          60% { transform: translate(2px, 2px); }
-          80% { transform: translate(2px, -2px); }
-          100% { transform: translate(0); }
+          0% { transform: translate(0) skewX(0deg); }
+          20% { transform: translate(-3px, 2px) skewX(-1deg); }
+          40% { transform: translate(-2px, -2px) skewX(1deg); }
+          60% { transform: translate(3px, 2px) skewX(-0.5deg); }
+          80% { transform: translate(2px, -2px) skewX(0.5deg); }
+          100% { transform: translate(0) skewX(0deg); }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 0.8; transform: translateY(0); }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scanLine {
+          0% { top: -4px; }
+          100% { top: 100%; }
         }
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
       `}</style>
     </div>
   )
 }
-
-// Need React import for useMemo
-import React from 'react'
