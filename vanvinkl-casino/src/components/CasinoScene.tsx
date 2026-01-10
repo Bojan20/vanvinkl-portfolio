@@ -16,7 +16,35 @@ import * as THREE from 'three'
 import { CyberpunkSlotMachine } from './CyberpunkSlotMachine'
 import { Avatar } from './Avatar'
 import { ProximityIndicator } from './ProximityFeedback'
-// AvatarEffects and SlotMachineEffects removed for performance
+import { WinCelebrationParticles } from './WinCelebrationParticles'
+
+// ============================================
+// SHARED MATERIALS - Created ONCE, reused everywhere
+// This eliminates per-component material creation
+// ============================================
+const SHARED_MATERIALS = {
+  // Floor
+  floor: new THREE.MeshStandardMaterial({ color: '#1a1520', metalness: 0.4, roughness: 0.7 }),
+  // Walls
+  wall: new THREE.MeshStandardMaterial({ color: '#1a1420', metalness: 0.6, roughness: 0.4 }),
+  // Ceiling
+  ceiling: new THREE.MeshStandardMaterial({ color: '#151218', metalness: 0.7, roughness: 0.3 }),
+  ceilingPanel: new THREE.MeshStandardMaterial({ color: '#201828', metalness: 0.8, roughness: 0.2 }),
+  // Furniture
+  velvetPurple: new THREE.MeshStandardMaterial({ color: '#6b2d7b', metalness: 0.05, roughness: 0.9 }),
+  velvetTeal: new THREE.MeshStandardMaterial({ color: '#1a5c6b', metalness: 0.05, roughness: 0.9 }),
+  velvetWine: new THREE.MeshStandardMaterial({ color: '#7b2d4a', metalness: 0.05, roughness: 0.9 }),
+  goldChrome: new THREE.MeshStandardMaterial({ color: '#c9a227', metalness: 1, roughness: 0.15 }),
+  chrome: new THREE.MeshStandardMaterial({ color: '#666', metalness: 1, roughness: 0.1 }),
+  glass: new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.25 }),
+  darkMetal: new THREE.MeshStandardMaterial({ color: '#0a0a12', metalness: 0.7, roughness: 0.3 }),
+  // Bar
+  barTop: new THREE.MeshStandardMaterial({ color: '#1a1a28', metalness: 0.8, roughness: 0.2 }),
+  barBody: new THREE.MeshStandardMaterial({ color: '#080810', metalness: 0.6, roughness: 0.4 }),
+  barShelf: new THREE.MeshStandardMaterial({ color: '#0a0a14', metalness: 0.5, roughness: 0.5 }),
+  // Rope
+  velvetRope: new THREE.MeshStandardMaterial({ color: '#8B0020', metalness: 0.2, roughness: 0.8 })
+}
 
 const COLORS = {
   magenta: '#ff00aa',
@@ -86,39 +114,34 @@ function NeonStrip({ color, position, size, pulse = false }: {
   )
 }
 
-// VIP Lounge Couch - Elegant velvet design
-function VIPCouch({ position, rotation = 0, color = '#4a2060' }: {
-  position: [number, number, number], rotation?: number, color?: string
+// VIP Lounge Couch - Using SHARED materials
+function VIPCouch({ position, rotation = 0, material }: {
+  position: [number, number, number], rotation?: number, material: THREE.Material
 }) {
   return (
     <group position={position} rotation={[0, rotation, 0]}>
       {/* Main seat - plush velvet */}
-      <mesh position={[0, 0.35, 0]}>
+      <mesh position={[0, 0.35, 0]} material={material}>
         <boxGeometry args={[2.8, 0.45, 1.0]} />
-        <meshStandardMaterial color={color} metalness={0.05} roughness={0.9} />
       </mesh>
 
       {/* Back rest */}
-      <mesh position={[0, 0.75, -0.4]}>
+      <mesh position={[0, 0.75, -0.4]} material={material}>
         <boxGeometry args={[2.8, 0.65, 0.25]} />
-        <meshStandardMaterial color={color} metalness={0.05} roughness={0.9} />
       </mesh>
 
       {/* Arm rests */}
-      <mesh position={[-1.3, 0.55, 0]}>
+      <mesh position={[-1.3, 0.55, 0]} material={material}>
         <boxGeometry args={[0.2, 0.5, 0.9]} />
-        <meshStandardMaterial color={color} metalness={0.08} roughness={0.85} />
       </mesh>
-      <mesh position={[1.3, 0.55, 0]}>
+      <mesh position={[1.3, 0.55, 0]} material={material}>
         <boxGeometry args={[0.2, 0.5, 0.9]} />
-        <meshStandardMaterial color={color} metalness={0.08} roughness={0.85} />
       </mesh>
 
-      {/* Gold chrome legs */}
+      {/* Gold chrome legs - SHARED material */}
       {[[-1.2, -0.4], [1.2, -0.4], [-1.2, 0.35], [1.2, 0.35]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.08, z]}>
+        <mesh key={i} position={[x, 0.08, z]} material={SHARED_MATERIALS.goldChrome}>
           <cylinderGeometry args={[0.03, 0.03, 0.16, 8]} />
-          <meshStandardMaterial color="#c9a227" metalness={1} roughness={0.15} />
         </mesh>
       ))}
 
@@ -133,32 +156,23 @@ function VIPCouch({ position, rotation = 0, color = '#4a2060' }: {
   )
 }
 
-// Modern coffee table with glass top
+// Modern coffee table with glass top - SHARED materials
 function CoffeeTable({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
       {/* Glass top */}
-      <mesh position={[0, 0.4, 0]}>
+      <mesh position={[0, 0.4, 0]} material={SHARED_MATERIALS.glass}>
         <boxGeometry args={[1.2, 0.03, 0.7]} />
-        <meshStandardMaterial
-          color="#ffffff"
-          metalness={0.1}
-          roughness={0.05}
-          transparent
-          opacity={0.25}
-        />
       </mesh>
 
       {/* Chrome frame */}
-      <mesh position={[0, 0.38, 0]}>
+      <mesh position={[0, 0.38, 0]} material={SHARED_MATERIALS.chrome}>
         <boxGeometry args={[1.25, 0.015, 0.75]} />
-        <meshStandardMaterial color="#666" metalness={1} roughness={0.1} />
       </mesh>
 
       {/* Base */}
-      <mesh position={[0, 0.2, 0]}>
+      <mesh position={[0, 0.2, 0]} material={SHARED_MATERIALS.darkMetal}>
         <boxGeometry args={[0.8, 0.38, 0.5]} />
-        <meshStandardMaterial color="#0a0a12" metalness={0.7} roughness={0.3} />
       </mesh>
 
       {/* Neon ring */}
@@ -519,10 +533,9 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
 
       {/* Environment removed for performance */}
 
-      {/* ===== FLOOR ===== */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 5]}>
+      {/* ===== FLOOR - SHARED material ===== */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 5]} material={SHARED_MATERIALS.floor}>
         <planeGeometry args={[70, 55]} />
-        <meshStandardMaterial color="#1a1520" metalness={0.4} roughness={0.7} />
       </mesh>
 
       {/* Floor neon grid lines */}
@@ -533,27 +546,23 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
         <NeonStrip key={`fz${z}`} color={COLORS.cyan} position={[0, 0.01, z]} size={[60, 0.01, 0.02]} intensity={0.3} />
       ))}
 
-      {/* ===== WALLS ===== */}
+      {/* ===== WALLS - SHARED material ===== */}
       {/* Back wall */}
-      <mesh position={[0, 4.5, -12]}>
+      <mesh position={[0, 4.5, -12]} material={SHARED_MATERIALS.wall}>
         <boxGeometry args={[70, 11, 0.3]} />
-        <meshStandardMaterial color="#1a1420" metalness={0.6} roughness={0.4} />
       </mesh>
 
       {/* Front wall */}
-      <mesh position={[0, 4.5, 32]}>
+      <mesh position={[0, 4.5, 32]} material={SHARED_MATERIALS.wall}>
         <boxGeometry args={[70, 11, 0.3]} />
-        <meshStandardMaterial color="#1a1420" metalness={0.6} roughness={0.4} />
       </mesh>
 
       {/* Side walls */}
-      <mesh position={[-34, 4.5, 10]}>
+      <mesh position={[-34, 4.5, 10]} material={SHARED_MATERIALS.wall}>
         <boxGeometry args={[0.3, 11, 60]} />
-        <meshStandardMaterial color="#1a1420" metalness={0.6} roughness={0.4} />
       </mesh>
-      <mesh position={[34, 4.5, 10]}>
+      <mesh position={[34, 4.5, 10]} material={SHARED_MATERIALS.wall}>
         <boxGeometry args={[0.3, 11, 60]} />
-        <meshStandardMaterial color="#1a1420" metalness={0.6} roughness={0.4} />
       </mesh>
 
       {/* Wall neon accents - PULSING */}
@@ -562,10 +571,9 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
       <NeonStrip color={COLORS.purple} position={[-33.7, 4.5, 10]} size={[0.06, 8, 0.06]} />
       <NeonStrip color={COLORS.purple} position={[33.7, 4.5, 10]} size={[0.06, 8, 0.06]} />
 
-      {/* ===== CEILING ===== */}
-      <mesh position={[0, 9.5, 10]}>
+      {/* ===== CEILING - SHARED material ===== */}
+      <mesh position={[0, 9.5, 10]} material={SHARED_MATERIALS.ceiling}>
         <boxGeometry args={[70, 0.2, 60]} />
-        <meshStandardMaterial color="#151218" metalness={0.7} roughness={0.3} />
       </mesh>
 
       {/* Ceiling neon grid - PULSING */}
@@ -574,58 +582,54 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
       <NeonStrip color={COLORS.purple} position={[0, 9.3, -5]} size={[65, 0.04, 0.04]} pulse />
       <NeonStrip color={COLORS.purple} position={[0, 9.3, 15]} size={[65, 0.04, 0.04]} pulse />
 
-      {/* Ceiling panels */}
+      {/* Ceiling panels - SHARED material */}
       {[-22, -11, 0, 11, 22].map(x => (
         [-4, 6, 16].map(z => (
-          <mesh key={`cp-${x}-${z}`} position={[x, 9.35, z]}>
+          <mesh key={`cp-${x}-${z}`} position={[x, 9.35, z]} material={SHARED_MATERIALS.ceilingPanel}>
             <boxGeometry args={[9, 0.08, 8]} />
-            <meshStandardMaterial color="#201828" metalness={0.8} roughness={0.2} />
           </mesh>
         ))
       ))}
 
-      {/* ===== VIP LOUNGE AREAS ===== */}
+      {/* ===== VIP LOUNGE AREAS - SHARED materials ===== */}
 
       {/* Left lounge - Royal Purple velvet */}
       <group position={[-26, 0, 8]}>
-        <VIPCouch position={[0, 0, 0]} rotation={Math.PI / 2} color="#6b2d7b" />
-        <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} color="#6b2d7b" />
+        <VIPCouch position={[0, 0, 0]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
+        <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <CoffeeTable position={[1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />
       </group>
 
       {/* Right lounge - Deep Teal velvet */}
       <group position={[26, 0, 8]}>
-        <VIPCouch position={[0, 0, 0]} rotation={-Math.PI / 2} color="#1a5c6b" />
-        <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} color="#1a5c6b" />
+        <VIPCouch position={[0, 0, 0]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
+        <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <CoffeeTable position={[-1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />
       </group>
 
       {/* Center back lounge - Wine Red velvet */}
       <group position={[0, 0, -8]}>
-        <VIPCouch position={[-4, 0, 0]} rotation={0} color="#7b2d4a" />
-        <VIPCouch position={[4, 0, 0]} rotation={0} color="#7b2d4a" />
+        <VIPCouch position={[-4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
+        <VIPCouch position={[4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
         <CoffeeTable position={[0, 0, 1.5]} />
         <pointLight position={[0, 2.5, 0]} color={COLORS.purple} intensity={1.5} distance={8} />
       </group>
 
-      {/* ===== BAR AREA ===== */}
+      {/* ===== BAR AREA - SHARED materials ===== */}
       <group position={[0, 0, -10]}>
         {/* Bar counter */}
-        <mesh position={[0, 0.95, 0]}>
+        <mesh position={[0, 0.95, 0]} material={SHARED_MATERIALS.barTop}>
           <boxGeometry args={[20, 0.08, 1.2]} />
-          <meshStandardMaterial color="#1a1a28" metalness={0.8} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 0.48, 0]}>
+        <mesh position={[0, 0.48, 0]} material={SHARED_MATERIALS.barBody}>
           <boxGeometry args={[19.5, 0.9, 1.0]} />
-          <meshStandardMaterial color="#080810" metalness={0.6} roughness={0.4} />
         </mesh>
 
         {/* Bar back shelves */}
-        <mesh position={[0, 2.5, -1]}>
+        <mesh position={[0, 2.5, -1]} material={SHARED_MATERIALS.barShelf}>
           <boxGeometry args={[18, 4, 0.3]} />
-          <meshStandardMaterial color="#0a0a14" metalness={0.5} roughness={0.5} />
         </mesh>
 
         {/* Bar neon accents */}
@@ -634,33 +638,28 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
 
       </group>
 
-      {/* ===== VIP ROPE BARRIERS ===== */}
+      {/* ===== VIP ROPE BARRIERS - SHARED materials ===== */}
       {[-20, 20].map((x, i) => (
         <group key={`rope-${i}`}>
           {/* Pole 1 */}
-          <mesh position={[x, 0.5, 2]}>
+          <mesh position={[x, 0.5, 2]} material={SHARED_MATERIALS.goldChrome}>
             <cylinderGeometry args={[0.04, 0.05, 1, 8]} />
-            <meshStandardMaterial color={COLORS.gold} metalness={0.95} roughness={0.1} />
           </mesh>
-          <mesh position={[x, 1.02, 2]}>
+          <mesh position={[x, 1.02, 2]} material={SHARED_MATERIALS.goldChrome}>
             <sphereGeometry args={[0.06, 12, 12]} />
-            <meshStandardMaterial color={COLORS.gold} metalness={0.95} roughness={0.1} />
           </mesh>
 
           {/* Pole 2 */}
-          <mesh position={[x, 0.5, 5]}>
+          <mesh position={[x, 0.5, 5]} material={SHARED_MATERIALS.goldChrome}>
             <cylinderGeometry args={[0.04, 0.05, 1, 8]} />
-            <meshStandardMaterial color={COLORS.gold} metalness={0.95} roughness={0.1} />
           </mesh>
-          <mesh position={[x, 1.02, 5]}>
+          <mesh position={[x, 1.02, 5]} material={SHARED_MATERIALS.goldChrome}>
             <sphereGeometry args={[0.06, 12, 12]} />
-            <meshStandardMaterial color={COLORS.gold} metalness={0.95} roughness={0.1} />
           </mesh>
 
           {/* Velvet rope */}
-          <mesh position={[x, 0.9, 3.5]}>
+          <mesh position={[x, 0.9, 3.5]} material={SHARED_MATERIALS.velvetRope}>
             <cylinderGeometry args={[0.025, 0.025, 3, 8]} />
-            <meshStandardMaterial color="#8B0020" metalness={0.2} roughness={0.8} />
           </mesh>
         </group>
       ))}
@@ -689,7 +688,7 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
         />
       )}
 
-      {/* ===== SLOT MACHINES ===== */}
+      {/* ===== SLOT MACHINES with WIN CELEBRATION ===== */}
       {MACHINES.map((m) => (
         <group key={m.id}>
           <CyberpunkSlotMachine
@@ -699,7 +698,12 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
             spinningMachineRef={spinningMachineRef}
             machineId={m.id}
           />
-          {/* SLOT EFFECTS REMOVED FOR PERFORMANCE */}
+          {/* GPU Win Celebration - only renders when active */}
+          <WinCelebrationParticles
+            position={[m.x, 3, MACHINE_Z + 1]}
+            active={winMachineRef.current === m.id}
+            isJackpot={isJackpotRef.current && winMachineRef.current === m.id}
+          />
         </group>
       ))}
 
