@@ -11,230 +11,61 @@ import { CasinoScene } from './components/CasinoScene'
 import { InfoModal } from './components/InfoModal'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
 
-// Controls hint overlay
-function ControlsHint({ onDismiss }: { onDismiss: () => void }) {
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code.startsWith('Arrow')) {
-        onDismiss()
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onDismiss])
-
-  return (
-    <div
-      onClick={onDismiss}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        zIndex: 999,
-        cursor: 'pointer',
-        animation: 'fadeIn 0.5s ease-out'
-      }}
-    >
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '40px 60px',
-          background: 'linear-gradient(135deg, #0a0a14 0%, #1a1028 50%, #0a0814 100%)',
-          border: '2px solid #00ffff',
-          borderRadius: '20px',
-          boxShadow: '0 0 60px rgba(0, 255, 255, 0.3), 0 0 120px rgba(255, 0, 170, 0.2)',
-          animation: 'slideUp 0.6s ease-out'
-        }}
-      >
-        <h1
-          style={{
-            margin: '0 0 30px 0',
-            fontSize: '36px',
-            color: '#00ffff',
-            textShadow: '0 0 10px #00ffff, 0 0 20px #00ffff',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            letterSpacing: '3px'
-          }}
-        >
-          CONTROLS
-        </h1>
-
-        <div style={{ display: 'flex', gap: '50px', justifyContent: 'center', marginBottom: '30px' }}>
-          {/* Arrow keys */}
-          <div>
-            <div style={{ marginBottom: '15px' }}>
-              <span style={{
-                display: 'inline-block',
-                padding: '12px 18px',
-                background: 'rgba(0, 255, 255, 0.2)',
-                border: '2px solid #00ffff',
-                borderRadius: '8px',
-                color: '#ffffff',
-                fontSize: '20px',
-                fontFamily: 'monospace',
-                boxShadow: '0 0 15px rgba(0, 255, 255, 0.3)'
-              }}>
-                ↑
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-              {['←', '↓', '→'].map(key => (
-                <span key={key} style={{
-                  display: 'inline-block',
-                  padding: '12px 18px',
-                  background: 'rgba(0, 255, 255, 0.2)',
-                  border: '2px solid #00ffff',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  fontSize: '20px',
-                  fontFamily: 'monospace',
-                  boxShadow: '0 0 15px rgba(0, 255, 255, 0.3)'
-                }}>
-                  {key}
-                </span>
-              ))}
-            </div>
-            <p style={{
-              margin: '15px 0 0 0',
-              color: '#aaaacc',
-              fontSize: '16px',
-              fontFamily: 'system-ui'
-            }}>
-              MOVE
-            </p>
-          </div>
-
-          {/* Space key */}
-          <div>
-            <span style={{
-              display: 'inline-block',
-              padding: '15px 50px',
-              background: 'rgba(255, 0, 170, 0.2)',
-              border: '2px solid #ff00aa',
-              borderRadius: '8px',
-              color: '#ffffff',
-              fontSize: '18px',
-              fontFamily: 'monospace',
-              boxShadow: '0 0 15px rgba(255, 0, 170, 0.3)'
-            }}>
-              SPACE
-            </span>
-            <p style={{
-              margin: '15px 0 0 0',
-              color: '#aaaacc',
-              fontSize: '16px',
-              fontFamily: 'system-ui'
-            }}>
-              INTERACT
-            </p>
-          </div>
-        </div>
-
-        <p style={{
-          margin: 0,
-          color: '#8844ff',
-          fontSize: '14px',
-          fontFamily: 'system-ui'
-        }}>
-          Press any key or click to start
-        </p>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
-    </div>
-  )
-}
-
-// Mini HUD - persistent controls reminder in corner
+// Controls HUD - compact bottom-center display
 function ControlsHUD() {
   return (
     <div
       style={{
         position: 'fixed',
         bottom: '20px',
-        left: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
         display: 'flex',
-        gap: '15px',
-        padding: '12px 18px',
-        background: 'rgba(10, 10, 20, 0.7)',
-        border: '1px solid rgba(0, 255, 255, 0.3)',
-        borderRadius: '10px',
-        backdropFilter: 'blur(8px)',
+        gap: '20px',
+        padding: '10px 24px',
+        background: 'rgba(5, 5, 15, 0.75)',
+        border: '1px solid rgba(0, 255, 255, 0.25)',
+        borderRadius: '30px',
+        backdropFilter: 'blur(10px)',
         zIndex: 100,
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}
     >
-      {/* Arrow keys mini */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-          <span style={{
-            padding: '3px 6px',
-            background: 'rgba(0, 255, 255, 0.2)',
-            border: '1px solid #00ffff',
+      {/* Arrow keys */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {['←', '↑', '↓', '→'].map(k => (
+          <span key={k} style={{
+            padding: '4px 8px',
+            background: 'rgba(0, 255, 255, 0.15)',
+            border: '1px solid rgba(0, 255, 255, 0.5)',
             borderRadius: '4px',
             color: '#00ffff',
-            fontSize: '10px',
+            fontSize: '12px',
             fontFamily: 'monospace'
           }}>
-            ↑
+            {k}
           </span>
-          <div style={{ display: 'flex', gap: '2px' }}>
-            {['←', '↓', '→'].map(k => (
-              <span key={k} style={{
-                padding: '3px 6px',
-                background: 'rgba(0, 255, 255, 0.2)',
-                border: '1px solid #00ffff',
-                borderRadius: '4px',
-                color: '#00ffff',
-                fontSize: '10px',
-                fontFamily: 'monospace'
-              }}>
-                {k}
-              </span>
-            ))}
-          </div>
-        </div>
-        <span style={{ color: '#888899', fontSize: '11px' }}>MOVE</span>
+        ))}
+        <span style={{ color: '#888899', fontSize: '12px', marginLeft: '4px' }}>MOVE</span>
       </div>
 
       {/* Divider */}
       <div style={{ width: '1px', background: 'rgba(136, 68, 255, 0.4)' }} />
 
-      {/* Space key mini */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Space key */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span style={{
-          padding: '6px 16px',
-          background: 'rgba(255, 0, 170, 0.2)',
-          border: '1px solid #ff00aa',
+          padding: '4px 14px',
+          background: 'rgba(255, 0, 170, 0.15)',
+          border: '1px solid rgba(255, 0, 170, 0.5)',
           borderRadius: '4px',
           color: '#ff00aa',
-          fontSize: '10px',
+          fontSize: '12px',
           fontFamily: 'monospace'
         }}>
           SPACE
         </span>
-        <span style={{ color: '#888899', fontSize: '11px' }}>INTERACT</span>
+        <span style={{ color: '#888899', fontSize: '12px' }}>INTERACT</span>
       </div>
     </div>
   )
@@ -252,7 +83,6 @@ function LoadingScreen() {
 
 export function App() {
   const [modalData, setModalData] = useState<{ id: string; title: string; content: string[] } | null>(null)
-  const [showControls, setShowControls] = useState(true)
   const [showIntro, setShowIntro] = useState(true)
   // Both overlay and camera run SIMULTANEOUSLY for smooth intro
   const [overlayComplete, setOverlayComplete] = useState(false)
@@ -264,10 +94,6 @@ export function App() {
 
   const handleCloseModal = useCallback(() => {
     setModalData(null)
-  }, [])
-
-  const handleDismissControls = useCallback(() => {
-    setShowControls(false)
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -328,13 +154,8 @@ export function App() {
         </Suspense>
       </Canvas>
 
-      {/* Controls hint on start */}
-      {showControls && (
-        <ControlsHint onDismiss={handleDismissControls} />
-      )}
-
-      {/* Persistent mini HUD (shows after initial controls dismissed) */}
-      {!showControls && !modalData && (
+      {/* Controls HUD - always visible at bottom center (unless modal open) */}
+      {!showIntro && !modalData && (
         <ControlsHUD />
       )}
 
