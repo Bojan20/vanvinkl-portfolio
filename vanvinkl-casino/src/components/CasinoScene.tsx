@@ -17,6 +17,7 @@ import { CyberpunkSlotMachine } from './CyberpunkSlotMachine'
 import { Avatar } from './Avatar'
 import { ProximityIndicator } from './ProximityFeedback'
 import { WinCelebrationParticles } from './WinCelebrationParticles'
+import { DustParticles } from './DustParticles'
 
 // ============================================
 // SHARED MATERIALS - Created ONCE, reused everywhere
@@ -706,6 +707,15 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
           />
         </group>
       ))}
+
+      {/* ===== AMBIENT DUST PARTICLES ===== */}
+      <DustParticles
+        count={300}
+        area={[60, 9, 50]}
+        color="#8866ff"
+        opacity={0.25}
+        size={0.04}
+      />
 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
