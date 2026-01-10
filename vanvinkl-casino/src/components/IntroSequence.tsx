@@ -244,8 +244,12 @@ export function IntroOverlay({
 }) {
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'hold' | 'fade' | 'done'>('glitch')
   const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
+  const [revealedChars, setRevealedChars] = useState(0) // For gradual reveal
   const [opacity, setOpacity] = useState(1)
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
+
+  const originalText = 'WELCOME TO VANVINKL CASINO'
+  const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
 
   useEffect(() => {
     if (!active) return
@@ -253,7 +257,7 @@ export function IntroOverlay({
     // Longer timing for 5s total intro - more WOW time
     const phases = [
       { time: 1200, action: () => setPhase('reveal') },     // Glitch for 1.2s
-      { time: 2800, action: () => setPhase('hold') },       // Reveal for 1.6s
+      { time: 2800, action: () => setPhase('hold') },       // Reveal for 1.6s (gradual)
       { time: 3800, action: () => setPhase('fade') },       // Hold for 1s
       { time: 4300, action: () => setOpacity(0) },          // Start fading text
       { time: 5000, action: () => {
@@ -290,34 +294,81 @@ export function IntroOverlay({
     return () => clearTimeout(fadeStart)
   }, [active])
 
-  // Glitch effect
+  // Glitch effect during glitch phase
   useEffect(() => {
     if (phase !== 'glitch') return
-
-    const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
-    const originalText = 'WELCOME TO VANVINKL CASINO'
 
     const interval = setInterval(() => {
       let newText = ''
       for (let i = 0; i < originalText.length; i++) {
-        if (Math.random() < 0.35) {
+        if (Math.random() < 0.4) {
           newText += glitchChars[Math.floor(Math.random() * glitchChars.length)]
         } else {
           newText += originalText[i]
         }
       }
       setGlitchText(newText)
-    }, 50) // Glitch speed
+    }, 50)
 
     return () => clearInterval(interval)
   }, [phase])
 
-  // Reset to real text on reveal
+  // GRADUAL REVEAL - letters transform one by one from glitch to real
   useEffect(() => {
-    if (phase === 'reveal' || phase === 'hold') {
-      setGlitchText('WELCOME TO VANVINKL CASINO')
+    if (phase !== 'reveal') {
+      if (phase === 'hold' || phase === 'fade') {
+        setRevealedChars(originalText.length) // All revealed
+      }
+      return
     }
+
+    // Reset at start of reveal
+    setRevealedChars(0)
+
+    const revealDuration = 1400 // 1.4 seconds to reveal all letters
+    const charsPerInterval = originalText.length / (revealDuration / 40) // ~40ms per step
+    let currentRevealed = 0
+
+    const interval = setInterval(() => {
+      currentRevealed += charsPerInterval
+      if (currentRevealed >= originalText.length) {
+        setRevealedChars(originalText.length)
+        clearInterval(interval)
+      } else {
+        setRevealedChars(Math.floor(currentRevealed))
+      }
+    }, 40)
+
+    return () => clearInterval(interval)
   }, [phase])
+
+  // Update display text based on phase and revealed chars
+  useEffect(() => {
+    if (phase === 'glitch') return // Handled by glitch effect
+
+    if (phase === 'reveal') {
+      // Mix of revealed letters and glitch for unrevealed
+      const interval = setInterval(() => {
+        let newText = ''
+        for (let i = 0; i < originalText.length; i++) {
+          if (i < revealedChars) {
+            // This letter is revealed
+            newText += originalText[i]
+          } else {
+            // Still glitching
+            newText += glitchChars[Math.floor(Math.random() * glitchChars.length)]
+          }
+        }
+        setGlitchText(newText)
+      }, 40)
+
+      return () => clearInterval(interval)
+    }
+
+    if (phase === 'hold' || phase === 'fade') {
+      setGlitchText(originalText)
+    }
+  }, [phase, revealedChars])
 
   if (!active || phase === 'done') return null
 
