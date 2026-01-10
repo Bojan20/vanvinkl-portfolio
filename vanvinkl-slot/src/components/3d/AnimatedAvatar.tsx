@@ -182,40 +182,48 @@ export function AnimatedAvatar({
     }
 
     if (isMoving && currentSpeed > 0.1) {
-      // WALK CYCLE
-      walkCycle.current += delta * 8 // Walk speed multiplier
+      // WALK CYCLE - faster animation to match responsive movement
+      const speedMultiplier = THREE.MathUtils.lerp(8, 14, currentSpeed / 5) // Scale with speed
+      walkCycle.current += delta * speedMultiplier
       idleTime.current = 0
 
       const t = walkCycle.current
 
-      // Body bob (up/down motion)
-      bodyRef.current.position.y = 0.5 + Math.abs(Math.sin(t * 2)) * 0.08
+      // Body bob (up/down motion) - more pronounced for faster movement
+      const bobAmount = THREE.MathUtils.lerp(0.08, 0.12, currentSpeed / 5)
+      bodyRef.current.position.y = 0.5 + Math.abs(Math.sin(t * 2)) * bobAmount
 
-      // Body lean forward slightly when walking
-      bodyRef.current.rotation.x = Math.sin(t) * 0.05
+      // Body lean forward slightly when walking - more lean at speed
+      const leanAmount = THREE.MathUtils.lerp(0.05, 0.1, currentSpeed / 5)
+      bodyRef.current.rotation.x = Math.sin(t) * leanAmount
 
       // Body sway side-to-side
       bodyRef.current.rotation.z = Math.sin(t * 2) * 0.03
 
-      // LEG SWING (opposite phases)
+      // LEG SWING (opposite phases) - faster and more pronounced
       if (leftLegRef.current && rightLegRef.current) {
+        const legSwing = THREE.MathUtils.lerp(0.6, 0.8, currentSpeed / 5)
+        const legLift = THREE.MathUtils.lerp(0.1, 0.15, currentSpeed / 5)
+
         // Left leg
-        leftLegRef.current.rotation.x = Math.sin(t) * 0.6 // Forward/back swing
-        leftLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t)) * 0.1 // Lift on swing
+        leftLegRef.current.rotation.x = Math.sin(t) * legSwing // Forward/back swing
+        leftLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t)) * legLift // Lift on swing
 
         // Right leg (opposite phase)
-        rightLegRef.current.rotation.x = Math.sin(t + Math.PI) * 0.6
-        rightLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t + Math.PI)) * 0.1
+        rightLegRef.current.rotation.x = Math.sin(t + Math.PI) * legSwing
+        rightLegRef.current.position.y = -0.05 + Math.abs(Math.sin(t + Math.PI)) * legLift
       }
 
-      // ARM SWING (opposite to legs for natural gait)
+      // ARM SWING (opposite to legs for natural gait) - faster swing
       if (leftArmRef.current && rightArmRef.current) {
+        const armSwing = THREE.MathUtils.lerp(0.4, 0.6, currentSpeed / 5)
+
         // Left arm swings with right leg
-        leftArmRef.current.rotation.x = Math.sin(t + Math.PI) * 0.4
+        leftArmRef.current.rotation.x = Math.sin(t + Math.PI) * armSwing
         leftArmRef.current.rotation.z = -0.2 + Math.sin(t) * 0.1
 
-        // Right arm swings with left leg
-        rightArmRef.current.rotation.x = Math.sin(t) * 0.4
+        // Right arm swings with left leg (holding sword - less swing)
+        rightArmRef.current.rotation.x = Math.sin(t) * (armSwing * 0.6) // Reduced for sword arm
         rightArmRef.current.rotation.z = 0.2 + Math.sin(t + Math.PI) * 0.1
       }
 

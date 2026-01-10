@@ -37,11 +37,11 @@ export function ThirdPersonAvatar({
   const moveDirection = useRef(new THREE.Vector3())
   const currentSpeed = useRef(0)
 
-  // Acceleration constants (instant response, smooth motion)
-  const ACCELERATION = 35 // Units/s² — instant but smooth
-  const DECELERATION = 30 // Units/s² — quick stop without slide
+  // Acceleration constants (ULTRA RESPONSIVE - instant input, butter smooth)
+  const ACCELERATION = 60 // Units/s² — near-instant acceleration
+  const DECELERATION = 50 // Units/s² — instant stop
   const MAX_SPEED = speed
-  const ROTATION_SPEED = 0.18 // Faster rotation for snappier feel
+  const ROTATION_SPEED = 0.35 // Much faster rotation for instant direction change
 
   const keys = useRef({
     forward: false,
@@ -122,8 +122,16 @@ export function ThirdPersonAvatar({
       // Normalize and scale to max speed
       targetVelocity.current.normalize().multiplyScalar(MAX_SPEED)
 
-      // Smooth acceleration toward target velocity
-      velocity.current.lerp(targetVelocity.current, Math.min(ACCELERATION * delta, 1))
+      // INSTANT response - use higher lerp alpha for near-instant acceleration
+      const accelAlpha = Math.min(ACCELERATION * delta, 1)
+      velocity.current.lerp(targetVelocity.current, accelAlpha)
+
+      // Boost: Add instant velocity on input for ultra-responsive feel
+      if (velocity.current.length() < MAX_SPEED * 0.3) {
+        velocity.current.add(
+          targetVelocity.current.clone().multiplyScalar(delta * 15)
+        ).clampLength(0, MAX_SPEED)
+      }
 
       // Apply movement
       const movement = velocity.current.clone().multiplyScalar(delta)
