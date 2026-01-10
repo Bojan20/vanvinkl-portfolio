@@ -39,11 +39,11 @@ export function ThirdPersonAvatar({
   const wasMovingLastFrame = useRef(false) // Track if we just started moving
 
   // Acceleration constants (ULTRA RESPONSIVE - instant input, butter smooth)
-  const ACCELERATION = 60 // Units/s² — near-instant acceleration
-  const DECELERATION = 50 // Units/s² — instant stop
+  const ACCELERATION = 80 // Units/s² — near-instant acceleration
+  const DECELERATION = 60 // Units/s² — instant stop
   const MAX_SPEED = speed
-  const ROTATION_SPEED = 0.35 // Much faster rotation for instant direction change
-  const INSTANT_START_SPEED = 2.5 // Instant velocity on first frame of input
+  const ROTATION_SPEED = 0.5 // Much faster rotation for instant direction change
+  const INSTANT_START_SPEED = 3.5 // Instant velocity on first frame of input (higher = more instant feel)
 
   const keys = useRef({
     forward: false,
@@ -139,10 +139,10 @@ export function ThirdPersonAvatar({
         velocity.current.lerp(targetVelocity.current, accelAlpha)
       }
 
-      // Additional boost for very low speeds (helps with direction changes)
-      if (velocity.current.length() < MAX_SPEED * 0.2) {
+      // Additional boost for very low speeds (helps with direction changes and instant feel)
+      if (velocity.current.length() < MAX_SPEED * 0.4) {
         velocity.current.add(
-          targetVelocity.current.clone().multiplyScalar(delta * 20)
+          targetVelocity.current.clone().multiplyScalar(delta * 30)
         ).clampLength(0, MAX_SPEED)
       }
 
@@ -179,14 +179,19 @@ export function ThirdPersonAvatar({
       }
     }
 
-    // Smooth rotation (lerp toward target) - FASTER for instant feel
+    // Smooth rotation (lerp toward target) - ULTRA FAST for instant feel
     let rotationDiff = targetRotation.current - avatarRef.current.rotation.y
 
     // Normalize to shortest path (-PI to PI)
     while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2
     while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2
 
-    avatarRef.current.rotation.y += rotationDiff * ROTATION_SPEED
+    // If rotation difference is small, snap instantly to avoid micro-delays
+    if (Math.abs(rotationDiff) < 0.05) {
+      avatarRef.current.rotation.y = targetRotation.current
+    } else {
+      avatarRef.current.rotation.y += rotationDiff * ROTATION_SPEED
+    }
 
     // Wall boundaries - TIGHT collision (avatar cannot pass through walls)
     // Left wall at x=-40, right wall at x=40, back wall at z=-15, front open at z=8
