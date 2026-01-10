@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { PositionalAudio } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface SpatialAudioSystemProps {
   machinePositions: Array<{ id: string; pos: [number, number, number] }>
   nearMachine?: string | null
+  enabled?: boolean // Allow disabling audio system
 }
 
 /**
@@ -19,12 +20,33 @@ interface SpatialAudioSystemProps {
  * - 3D spatialization (distance attenuation)
  *
  * NOTE: Audio files must be placed in /public/sounds/
+ * Set enabled={true} when audio files are available
  */
-export function SpatialAudioSystem({ machinePositions, nearMachine }: SpatialAudioSystemProps) {
+export function SpatialAudioSystem({ machinePositions, nearMachine, enabled = false }: SpatialAudioSystemProps) {
   const audioRefs = useRef<(THREE.PositionalAudio | null)[]>([])
+  const [audioFilesExist, setAudioFilesExist] = useState(false)
+
+  // Check if audio files exist on mount
+  useEffect(() => {
+    if (!enabled) return
+
+    const checkAudioFiles = async () => {
+      try {
+        const response = await fetch('/sounds/slot_attract_1.mp3', { method: 'HEAD' })
+        setAudioFilesExist(response.ok)
+      } catch (err) {
+        console.warn('SpatialAudioSystem: Audio files not found, audio disabled')
+        setAudioFilesExist(false)
+      }
+    }
+
+    checkAudioFiles()
+  }, [enabled])
 
   // Adjust volume based on proximity
   useEffect(() => {
+    if (!enabled || !audioFilesExist) return
+
     audioRefs.current.forEach((audio, i) => {
       if (!audio) return
 
@@ -42,7 +64,12 @@ export function SpatialAudioSystem({ machinePositions, nearMachine }: SpatialAud
         )
       }
     })
-  }, [nearMachine, machinePositions])
+  }, [nearMachine, machinePositions, enabled, audioFilesExist])
+
+  // Don't render audio components if disabled or files don't exist
+  if (!enabled || !audioFilesExist) {
+    return null
+  }
 
   return (
     <group>
