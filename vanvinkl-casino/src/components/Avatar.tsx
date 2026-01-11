@@ -28,6 +28,7 @@ interface AvatarProps {
   collisionBoxes?: CollisionBox[]
   isSittingRef: React.MutableRefObject<boolean>
   sittingRotationRef: React.MutableRefObject<number>
+  inputDisabled?: boolean // When true, avatar ignores all keyboard input
 }
 
 // Movement config - INSTANT start/stop, smooth rotation
@@ -75,7 +76,7 @@ const CYBER = {
   hair: '#1a1a24'
 }
 
-export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef }: AvatarProps) {
+export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef, inputDisabled = false }: AvatarProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const rotationRef = useRef(0)
   const walkCycle = useRef(0)
@@ -115,9 +116,25 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   const bootLedLeftRef = useRef<THREE.Mesh>(null!)
   const bootLedRightRef = useRef<THREE.Mesh>(null!)
 
+  // Track inputDisabled in a ref for use in event handlers
+  const inputDisabledRef = useRef(inputDisabled)
+  useEffect(() => {
+    inputDisabledRef.current = inputDisabled
+    // Reset all keys when input becomes disabled
+    if (inputDisabled) {
+      keysRef.current.forward = false
+      keysRef.current.backward = false
+      keysRef.current.left = false
+      keysRef.current.right = false
+    }
+  }, [inputDisabled])
+
   // Keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore all input when disabled (slot is open)
+      if (inputDisabledRef.current) return
+
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':

@@ -8,9 +8,8 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react'
 import { CasinoScene } from './components/CasinoScene'
-import { InfoModal } from './components/InfoModal'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
-import { SlotTransitionOverlay } from './components/SlotTransition'
+import { SlotFullScreen } from './components/SlotFullScreen'
 import { MobileControls, isMobileDevice } from './components/MobileControls'
 import {
   WebGLErrorBoundary,
@@ -91,7 +90,6 @@ function LoadingScreen() {
 }
 
 export function App() {
-  const [activeMachineId, setActiveMachineId] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(true)
   const [overlayComplete, setOverlayComplete] = useState(false)
   const [cameraComplete, setCameraComplete] = useState(false)
@@ -107,23 +105,13 @@ export function App() {
     setIsMobile(isMobileDevice())
   }, [])
 
-
   // Check WebGL support
   if (!isWebGLSupported()) {
     return <WebGLNotSupported />
   }
 
-  const handleShowModal = useCallback((machineId: string) => {
-    setActiveMachineId(machineId)
-    setSpinningSlot(null)
-  }, [])
-
   const handleSlotSpin = useCallback((machineId: string) => {
     setSpinningSlot(machineId)
-  }, [])
-
-  const handleCloseModal = useCallback(() => {
-    setActiveMachineId(null)
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -212,33 +200,24 @@ export function App() {
           )}
 
           <CasinoScene
-            onShowModal={handleShowModal}
             onSlotSpin={handleSlotSpin}
             introActive={showIntro}
+            slotOpen={!!spinningSlot}
           />
         </Suspense>
       </Canvas>
 
       {/* Desktop Controls HUD - hidden on mobile */}
-      {!showIntro && !activeMachineId && !isMobile && (
+      {!showIntro && !spinningSlot && !isMobile && (
         <ControlsHUD />
       )}
 
       {/* Mobile Controls - only on mobile devices */}
-      {!showIntro && !activeMachineId && (
+      {!showIntro && !spinningSlot && (
         <MobileControls
           onMove={handleMobileMove}
           onAction={handleMobileAction}
           visible={isMobile}
-        />
-      )}
-
-      {/* Info Modal Overlay */}
-      {activeMachineId && (
-        <InfoModal
-          machineId={activeMachineId}
-          onClose={handleCloseModal}
-          onNavigate={setActiveMachineId}
         />
       )}
 
@@ -248,11 +227,14 @@ export function App() {
         onComplete={handleIntroOverlayComplete}
       />
 
-      {/* Slot transition overlay */}
-      <SlotTransitionOverlay
-        active={spinningSlot !== null}
-        machineId={spinningSlot || 'skills'}
-      />
+      {/* Full screen slot experience - includes content after spin */}
+      {spinningSlot && (
+        <SlotFullScreen
+          machineId={spinningSlot}
+          onClose={() => setSpinningSlot(null)}
+          onNavigate={setSpinningSlot}
+        />
+      )}
     </WebGLErrorBoundary>
   )
 }

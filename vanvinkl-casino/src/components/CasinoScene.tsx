@@ -302,9 +302,10 @@ interface CasinoSceneProps {
   onShowModal?: (machineId: string) => void
   onSlotSpin?: (machineId: string) => void
   introActive?: boolean
+  slotOpen?: boolean // When true, avatar input is disabled
 }
 
-export function CasinoScene({ onShowModal, onSlotSpin, introActive = false }: CasinoSceneProps) {
+export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slotOpen = false }: CasinoSceneProps) {
   const { camera } = useThree()
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
@@ -757,6 +758,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false }: Ca
         collisionBoxes={COLLISION_BOXES}
         isSittingRef={isSittingRef}
         sittingRotationRef={sittingRotationRef}
+        inputDisabled={slotOpen}
       />
 
       {/* AVATAR EFFECTS REMOVED FOR PERFORMANCE */}
