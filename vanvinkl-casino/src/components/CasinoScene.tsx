@@ -573,32 +573,31 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false }: Ca
     }
 
     // Proximity check - EVERY FRAME, NO setState (uses refs)
+    // Using distance² to avoid sqrt - compare with threshold²
     if (!isSittingRef.current) {
-      // Check slot machines
+      // Check slot machines (threshold: 4, so 4² = 16)
       let closestMachine: string | null = null
-      let minDistMachine = 4
+      let minDistSqMachine = 16 // 4²
       for (const m of MACHINES) {
-        const dist = Math.sqrt(
-          Math.pow(avatarPos.current.x - m.x, 2) +
-          Math.pow(avatarPos.current.z - MACHINE_Z, 2)
-        )
-        if (dist < minDistMachine) {
-          minDistMachine = dist
+        const dx = avatarPos.current.x - m.x
+        const dz = avatarPos.current.z - MACHINE_Z
+        const distSq = dx * dx + dz * dz
+        if (distSq < minDistSqMachine) {
+          minDistSqMachine = distSq
           closestMachine = m.id
         }
       }
       nearMachineRef.current = closestMachine
 
-      // Check couches
+      // Check couches (threshold: 3, so 3² = 9)
       let closestCouch: typeof COUCH_POSITIONS[0] | null = null
-      let minDistCouch = 3
+      let minDistSqCouch = 9 // 3²
       for (const couch of COUCH_POSITIONS) {
-        const dist = Math.sqrt(
-          Math.pow(avatarPos.current.x - couch.x, 2) +
-          Math.pow(avatarPos.current.z - couch.z, 2)
-        )
-        if (dist < minDistCouch) {
-          minDistCouch = dist
+        const dx = avatarPos.current.x - couch.x
+        const dz = avatarPos.current.z - couch.z
+        const distSq = dx * dx + dz * dz
+        if (distSq < minDistSqCouch) {
+          minDistSqCouch = distSq
           closestCouch = couch
         }
       }

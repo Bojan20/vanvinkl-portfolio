@@ -34,6 +34,30 @@ interface InfoModalProps {
   onNavigate?: (machineId: string) => void
 }
 
+// URL sanitization - only allow safe protocols
+function sanitizeUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    // Only allow http, https, and mailto protocols
+    if (['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+      return url
+    }
+    console.warn('[Security] Blocked unsafe URL protocol:', parsed.protocol)
+    return null
+  } catch {
+    console.warn('[Security] Invalid URL:', url)
+    return null
+  }
+}
+
+// Safe external link opener with noopener/noreferrer
+function openSafeLink(url: string): void {
+  const safeUrl = sanitizeUrl(url)
+  if (safeUrl) {
+    window.open(safeUrl, '_blank', 'noopener,noreferrer')
+  }
+}
+
 // ============================================
 // SKILL BAR COMPONENT
 // ============================================
@@ -422,9 +446,10 @@ function ContactView({ section }: { section: ContactSection }) {
   const handleClick = (method: typeof section.methods[0]) => {
     playSound('click', 0.5)
     if (method.action === 'email' && method.url) {
-      window.location.href = method.url
+      const safeUrl = sanitizeUrl(method.url)
+      if (safeUrl) window.location.href = safeUrl
     } else if (method.action === 'link' && method.url) {
-      window.open(method.url, '_blank')
+      openSafeLink(method.url)
     } else if (method.action === 'copy') {
       navigator.clipboard.writeText(method.value)
     }
@@ -555,7 +580,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
     if (section.cta.machineId) {
       navigateTo(section.cta.machineId)
     } else if (section.cta.external) {
-      window.open(section.cta.external, '_blank')
+      openSafeLink(section.cta.external)
     }
   }, [section.cta, navigateTo])
 
@@ -704,6 +729,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
             onMouseEnter={e => {
               e.currentTarget.style.background = `linear-gradient(135deg, ${section.color}50, ${section.color}30)`
               e.currentTarget.style.transform = 'translateY(-2px)'
+              playSound('hover', 0.3)
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = `linear-gradient(135deg, ${section.color}30, ${section.color}10)`
@@ -735,7 +761,10 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
               borderRadius: '8px',
               transition: 'color 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#00ffff'}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#00ffff'
+              playSound('hover', 0.3)
+            }}
             onMouseLeave={e => e.currentTarget.style.color = '#888899'}
           >
             ← {SLOT_CONTENT[getPrevMachine(currentId)].title}
@@ -766,7 +795,10 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
               borderRadius: '8px',
               transition: 'color 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#00ffff'}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#00ffff'
+              playSound('hover', 0.3)
+            }}
             onMouseLeave={e => e.currentTarget.style.color = '#888899'}
           >
             {SLOT_CONTENT[getNextMachine(currentId)].title} →
