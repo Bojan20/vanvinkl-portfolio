@@ -37,6 +37,53 @@ import {
   playSynthJackpot,
   playSynthWin
 } from '../audio'
+import { achievementStore } from '../store/achievements'
+
+// HAPTIC FEEDBACK - Mobile vibration patterns
+const haptic = {
+  // Light tap - navigation, hover
+  light: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10)
+    }
+  },
+  // Medium tap - selection, button press
+  medium: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(25)
+    }
+  },
+  // Strong tap - important actions
+  strong: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50)
+    }
+  },
+  // Double tap - confirmation
+  double: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([30, 50, 30])
+    }
+  },
+  // Success pattern - win
+  success: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([50, 100, 50, 100, 100])
+    }
+  },
+  // Jackpot pattern - big win
+  jackpot: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([100, 50, 100, 50, 100, 50, 200])
+    }
+  },
+  // Spin pattern - continuous during spin
+  spin: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([20, 80, 20, 80, 20])
+    }
+  }
+}
 
 // GPU-ACCELERATED COLOR CONSTANTS - Precomputed for zero runtime cost
 const COLORS = {
@@ -3380,6 +3427,69 @@ const ParticleBurst = memo(function ParticleBurst({ color }: { color: string }) 
   )
 })
 
+// Win Sparkles - subtle celebration for all wins (not just jackpot)
+const WinSparkles = memo(function WinSparkles({ active, color = '#00ffff' }: { active: boolean, color?: string }) {
+  const sparkles = useMemo(() =>
+    Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 2 + Math.random() * 6,
+      delay: Math.random() * 2,
+      duration: 1 + Math.random() * 1.5
+    })),
+    []
+  )
+
+  if (!active) return null
+
+  return (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      zIndex: 150
+    }}>
+      {sparkles.map(s => (
+        <div
+          key={s.id}
+          style={{
+            position: 'absolute',
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.size}px`,
+            height: `${s.size}px`,
+            background: color,
+            borderRadius: '50%',
+            boxShadow: `0 0 ${s.size * 3}px ${color}, 0 0 ${s.size * 6}px ${color}50`,
+            animation: `sparkleFloat ${s.duration}s ease-in-out ${s.delay}s infinite`,
+            opacity: 0.8
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes sparkleFloat {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            opacity: 0;
+          }
+          20% {
+            opacity: 1;
+          }
+          50% {
+            transform: translateY(-30px) scale(1.5);
+            opacity: 0.8;
+          }
+          80% {
+            opacity: 0.3;
+          }
+        }
+      `}</style>
+    </div>
+  )
+})
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -3444,11 +3554,18 @@ export function SlotFullScreen({
       const totalSpinTime = 1800 + 4 * 500 + 400 // Last reel stop + bounce + buffer
       const timer = setTimeout(() => {
         setPhase('result')
-        // Play win sounds
+        // Play win sounds and haptic feedback
         if (isJackpot) {
           playSynthJackpot(0.7) // Epic jackpot fanfare
+          haptic.jackpot() // Strong haptic pattern for jackpot
+          achievementStore.trackJackpot() // Track jackpot achievement
         } else {
           playSynthWin(0.5) // Regular win sound
+          haptic.success() // Success haptic pattern
+        }
+        // Track section visit for achievement
+        if (section) {
+          achievementStore.trackSectionVisit(section.type)
         }
         // Update discovered skills using segment config
         targetIndices.forEach((idx, reelIdx) => {
@@ -3560,6 +3677,8 @@ export function SlotFullScreen({
     setPhase('spinning')
     setSpinCount(prev => prev + 1)
     setTargetIndices(generateSpinResult())
+    haptic.spin() // Haptic feedback on spin start
+    achievementStore.trackSpin() // Track for achievements
   }, [phase, generateSpinResult])
 
   // INTRO SEQUENCE - Cinematic entrance animation
@@ -3590,6 +3709,9 @@ export function SlotFullScreen({
   // Handle activation (Enter key press on focused item)
   const handleActivate = useCallback((index: number) => {
     if (!section) return
+
+    // Track detail view for achievements
+    achievementStore.trackDetailView()
 
     switch (section.type) {
       case 'skills': {
@@ -3707,16 +3829,19 @@ export function SlotFullScreen({
         case 'ArrowRight':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
+          haptic.light() // Haptic: light tap
           setFocusIndex(prev => (prev + 1) % itemCount)
           break
         case 'ArrowLeft':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
+          haptic.light() // Haptic: light tap
           setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           break
         case 'ArrowDown':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
+          haptic.light() // Haptic: light tap
           if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev + columns
@@ -3729,6 +3854,7 @@ export function SlotFullScreen({
         case 'ArrowUp':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
+          haptic.light() // Haptic: light tap
           if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev - columns
@@ -3742,6 +3868,7 @@ export function SlotFullScreen({
           e.preventDefault()
           playNavSelect() // Sound: item select
           playModalOpen() // Sound: modal open
+          haptic.medium() // Haptic: medium tap for selection
           handleActivate(focusIndex)
           break
       }
@@ -4593,6 +4720,9 @@ export function SlotFullScreen({
                 </div>
               </div>
             )}
+
+            {/* Win Sparkles for all wins */}
+            <WinSparkles active={phase === 'result'} color={primaryColor} />
 
             {/* Coin Rain on jackpot */}
             <CoinRain active={isJackpot && phase === 'result'} />
