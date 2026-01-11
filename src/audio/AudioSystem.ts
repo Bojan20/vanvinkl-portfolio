@@ -24,18 +24,16 @@ export const SOUNDS = {
   winBig: '/audio/slots/win-big.wav',
   jackpot: '/audio/slots/jackpot.wav',
 
-  // UI
-  hover: '/audio/ui/hover.wav',
-  click: '/audio/ui/click.wav',
-  modalOpen: '/audio/ui/modal-open.wav',
-  modalClose: '/audio/ui/modal-close.wav',
-
-  // Navigation sounds (synthesized on-the-fly if files don't exist)
-  navTick: '/audio/ui/nav-tick.wav',
-  navSelect: '/audio/ui/nav-select.wav',
-  navBack: '/audio/ui/nav-back.wav',
-  contentReveal: '/audio/ui/content-reveal.wav',
-  phaseTransition: '/audio/ui/phase-transition.wav',
+  // UI - these are now handled by SynthSounds, only keep if files exist
+  // hover: '/audio/ui/hover.wav',
+  // click: '/audio/ui/click.wav',
+  // modalOpen: '/audio/ui/modal-open.wav',
+  // modalClose: '/audio/ui/modal-close.wav',
+  // navTick: '/audio/ui/nav-tick.wav',
+  // navSelect: '/audio/ui/nav-select.wav',
+  // navBack: '/audio/ui/nav-back.wav',
+  // contentReveal: '/audio/ui/content-reveal.wav',
+  // phaseTransition: '/audio/ui/phase-transition.wav',
 
   // Player
   footstep1: '/audio/player/footstep-1.wav',

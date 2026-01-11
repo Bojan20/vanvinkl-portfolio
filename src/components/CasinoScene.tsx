@@ -22,7 +22,17 @@ import { WinCelebrationGPU } from './GPUParticles'
 import { DustParticles } from './DustParticles'
 import { PostProcessing } from './PostProcessing'
 import { ContextHandler } from './WebGLErrorBoundary'
-import { useAudio, playFootstep, playReelStop, getBassLevel } from '../audio'
+import { useAudio, playReelStop, getBassLevel as getOldBassLevel } from '../audio'
+import { dspGetBassLevel } from '../audio/AudioDSP'
+
+// Combined bass level - tries new DSP first, falls back to old system
+const getBassLevel = (): number => {
+  const dspBass = dspGetBassLevel()
+  if (dspBass > 0) return dspBass
+  return getOldBassLevel()
+}
+import { playSynthFootstep } from '../audio/SynthSounds'
+import { playSynthSpinMech, stopSynthSpinMech } from '../audio/SynthSounds'
 import { COLORS as THEME_COLORS, SLOT_CONFIG, TIMING, DISTANCES } from '../store'
 import { achievementStore, type Achievement } from '../store/achievements'
 
@@ -203,6 +213,64 @@ function GodRaySource({ position, color = '#ffffff', intensity = 2 }: {
       <sphereGeometry args={[0.5, 16, 16]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
+  )
+}
+
+// Permanent "PRESS SPACE TO SIT" holographic sign for lounge areas
+function LoungeSitSign({ position, color = '#8844ff' }: {
+  position: [number, number, number], color?: string
+}) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const time = useRef(Math.random() * 100)
+
+  // Create canvas texture for text
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 96
+    const ctx = canvas.getContext('2d')!
+
+    ctx.fillStyle = 'transparent'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // Glow
+    ctx.shadowColor = color
+    ctx.shadowBlur = 15
+
+    // Text
+    ctx.font = 'bold 36px "Orbitron", system-ui, sans-serif'
+    ctx.fillStyle = color
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('PRESS SPACE TO SIT', canvas.width / 2, canvas.height / 2)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [color])
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return
+    time.current += delta
+    // Subtle floating
+    groupRef.current.position.y = position[1] + Math.sin(time.current * 2) * 0.05
+  })
+
+  return (
+    <group ref={groupRef} position={position}>
+      <mesh>
+        <planeGeometry args={[2.2, 0.4]} />
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          opacity={0.85}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+          depthWrite={false}
+        />
+      </mesh>
+      <pointLight color={color} intensity={0.3} distance={2} />
+    </group>
   )
 }
 
@@ -534,11 +602,12 @@ const SLOT_INFO: Record<string, { title: string; content: string[] }> = {
 interface CasinoSceneProps {
   onShowModal?: (machineId: string) => void
   onSlotSpin?: (machineId: string) => void
+  onSitChange?: (isSitting: boolean) => void
   introActive?: boolean
   slotOpen?: boolean // When true, avatar input is disabled
 }
 
-export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slotOpen = false }: CasinoSceneProps) {
+export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive = false, slotOpen = false }: CasinoSceneProps) {
   const { camera } = useThree()
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
@@ -684,6 +753,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
           orbitKeys.current = { left: false, right: false, up: false, down: false }
           currentCouch.current = null
           isSittingRef.current = false
+          // Notify App
+          onSitChange?.(false)
           return
         }
 
@@ -694,8 +765,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
 
           const machineId = nearMachineRef.current
 
-          // Play spin sound
-          audio.play('spinLoop', { volume: 0.6 })
+          // Play mechanical spin sound (lower volume)
+          playSynthSpinMech(0.15)
 
           // Trigger slot transition overlay
           onSlotSpin?.(machineId)
@@ -705,7 +776,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
           setTimeout(() => playReelStop(1), 800)
           setTimeout(() => playReelStop(2), 1000)
           setTimeout(() => playReelStop(3), 1200)
-          setTimeout(() => playReelStop(4), 1400)
+          setTimeout(() => { playReelStop(4); stopSynthSpinMech() }, 1400) // Stop spin sound on last reel
 
           // After spin completes (1.5s), trigger WIN CELEBRATION
           setTimeout(() => {
@@ -745,6 +816,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
           // Move avatar to seat position
           avatarPos.current.x = nearCouchRef.current.seatX
           avatarPos.current.z = nearCouchRef.current.seatZ
+          // Notify App
+          onSitChange?.(true)
         }
       }
     }
@@ -766,11 +839,11 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
       [camDir.x, camDir.y, camDir.z]
     )
 
-    // Footstep sounds when moving
-    if (isMovingRef.current && !isSittingRef.current) {
+    // Footstep sounds when moving (not during intro)
+    if (isMovingRef.current && !isSittingRef.current && !introActive) {
       const now = state.clock.elapsedTime
       if (now - lastFootstepTime.current > 0.35) { // ~2.8 steps per second
-        playFootstep(0.4)
+        playSynthFootstep(0.25)
         lastFootstepTime.current = now
       }
     }
@@ -946,6 +1019,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
         <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <CoffeeTable position={[1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />
+        {/* Permanent sit hint sign */}
+        <LoungeSitSign position={[0, 2.5, 2]} color={COLORS.magenta} />
       </group>
 
       {/* Right lounge - Deep Teal velvet */}
@@ -954,6 +1029,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
         <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <CoffeeTable position={[-1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />
+        {/* Permanent sit hint sign */}
+        <LoungeSitSign position={[0, 2.5, 2]} color={COLORS.cyan} />
       </group>
 
       {/* Center back lounge - Wine Red velvet */}
@@ -1073,7 +1150,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
       {/* ===== POST-PROCESSING - GPU-driven effects (AAA Stack) ===== */}
       <PostProcessing
         quality="medium"
-        enableSSAO={true}   // Now enabled - adds depth to corners
+        enableSSAO={false}  // Disabled - requires NormalPass which causes warnings
         enableBloom={true}
         enableChromatic={true}
         enableVignette={true}

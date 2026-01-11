@@ -34,6 +34,10 @@ class AudioDSP {
   private sfxGain: GainNode | null = null
   private uiGain: GainNode | null = null
 
+  // Analyzer for visualization
+  private analyser: AnalyserNode | null = null
+  private frequencyData: Uint8Array | null = null
+
   // State
   private ready = false
   private muted = false
@@ -87,6 +91,14 @@ class AudioDSP {
       this.uiGain = this.ctx.createGain()
       this.uiGain.gain.value = 0.6
       this.uiGain.connect(this.masterGain)
+
+      // Create analyzer for visualization (connected to music bus)
+      this.analyser = this.ctx.createAnalyser()
+      this.analyser.fftSize = 256
+      this.analyser.smoothingTimeConstant = 0.8
+      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount)
+      // Connect music to analyzer (before master)
+      this.musicGain.connect(this.analyser)
 
       // Resume if needed
       if (this.ctx.state === 'suspended') {
@@ -261,6 +273,17 @@ class AudioDSP {
   }
 
   /**
+   * Get current volume for a bus
+   */
+  getVolume(bus: 'master' | 'music' | 'sfx' | 'ui'): number {
+    const gain = bus === 'master' ? this.masterGain :
+                 bus === 'music' ? this.musicGain :
+                 bus === 'sfx' ? this.sfxGain : this.uiGain
+
+    return gain?.gain.value ?? 0.5
+  }
+
+  /**
    * Mute/unmute all audio
    */
   setMuted(muted: boolean): void {
@@ -282,6 +305,29 @@ class AudioDSP {
       if (instanceId.startsWith(id)) return true
     }
     return false
+  }
+
+  /**
+   * Get frequency data for visualization
+   */
+  getFrequencyData(): Uint8Array | null {
+    if (!this.analyser || !this.frequencyData) return null
+    this.analyser.getByteFrequencyData(this.frequencyData)
+    return this.frequencyData
+  }
+
+  /**
+   * Get bass level (0-1) for reactive elements
+   */
+  getBassLevel(): number {
+    const data = this.getFrequencyData()
+    if (!data) return 0
+    // Average of first 4 frequency bins (low frequencies)
+    let sum = 0
+    for (let i = 0; i < 4; i++) {
+      sum += data[i]
+    }
+    return (sum / 4) / 255
   }
 
   /**
@@ -329,7 +375,7 @@ export const audioDSP = new AudioDSP()
 
 audioDSP.registerAll({
   // Music
-  lounge: { url: '/audio/ambient/lounge.wav', volume: 0.3, loop: true, bus: 'music' },
+  lounge: { url: '/audio/ambient/lounge.wav', volume: 0.35, loop: true, bus: 'music' },
   casinoHum: { url: '/audio/ambient/casino-hum.wav', volume: 0.2, loop: true, bus: 'music' },
   neonBuzz: { url: '/audio/ambient/neon-buzz.wav', volume: 0.15, loop: true, bus: 'music' },
 
@@ -396,6 +442,10 @@ export function dspVolume(bus: 'master' | 'music' | 'sfx' | 'ui', volume: number
   audioDSP.setVolume(bus, volume)
 }
 
+export function dspGetVolume(bus: 'master' | 'music' | 'sfx' | 'ui'): number {
+  return audioDSP.getVolume(bus)
+}
+
 /**
  * Mute/unmute
  */
@@ -426,4 +476,18 @@ export function dspAdd(id: string, config: SoundConfig): void {
  */
 export async function dspPreload(ids: string[]): Promise<void> {
   await audioDSP.preload(ids)
+}
+
+/**
+ * Get frequency data for visualization
+ */
+export function dspGetFrequencyData(): Uint8Array | null {
+  return audioDSP.getFrequencyData()
+}
+
+/**
+ * Get bass level (0-1) for reactive elements
+ */
+export function dspGetBassLevel(): number {
+  return audioDSP.getBassLevel()
 }

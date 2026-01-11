@@ -22,7 +22,8 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 import { audioSystem, getFrequencyData, getBassLevel } from './audio'
-import { initAudio, dspPlay, dspMute } from './audio/AudioDSP'
+import { initAudio, dspPlay, dspMute, dspVolume, dspGetVolume, dspGetFrequencyData } from './audio/AudioDSP'
+import { setSynthVolume } from './audio/SynthSounds'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 
@@ -302,26 +303,13 @@ function SectionProgressRing() {
   )
 }
 
-// Spectrum Visualizer - Audio reactive bars
+// Spectrum Visualizer - Audio reactive bars (uses DSP frequency data)
 function SpectrumVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
-  const [isActive, setIsActive] = useState(false)
 
   useEffect(() => {
-    // Check if audio is initialized
-    const checkAudio = setInterval(() => {
-      if (audioSystem.isInitialized()) {
-        setIsActive(true)
-        clearInterval(checkAudio)
-      }
-    }, 500)
-
-    return () => clearInterval(checkAudio)
-  }, [])
-
-  useEffect(() => {
-    if (!isActive || !canvasRef.current) return
+    if (!canvasRef.current) return
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -333,13 +321,17 @@ function SpectrumVisualizer() {
     const maxHeight = 30
 
     const draw = () => {
-      const data = getFrequencyData()
+      // Try DSP first, fallback to old audio system
+      let data = dspGetFrequencyData()
+      if (!data) {
+        data = getFrequencyData()
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      if (data) {
+      if (data && data.length > 0) {
         // Sample frequency data to barCount bars
-        const step = Math.floor(data.length / barCount)
+        const step = Math.max(1, Math.floor(data.length / barCount))
 
         for (let i = 0; i < barCount; i++) {
           const value = data[i * step] / 255
@@ -386,7 +378,7 @@ function SpectrumVisualizer() {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [isActive])
+  }, [])
 
   return (
     <div style={{
@@ -917,8 +909,397 @@ function OnboardingTooltip({ onDismiss }: { onDismiss: () => void }) {
   )
 }
 
+// Audio Mixer - sliders for music and SFX (shows when sitting in lounge)
+function AudioMixer({ visible }: { visible: boolean }) {
+  const [musicVol, setMusicVol] = useState(() => dspGetVolume('music'))
+  const [sfxVol, setSfxVol] = useState(() => dspGetVolume('sfx'))
+
+  // Sync SynthSounds volume with DSP sfx volume on mount
+  useEffect(() => {
+    setSynthVolume(sfxVol)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleMusicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value)
+    setMusicVol(val)
+    dspVolume('music', val)
+  }
+
+  const handleSfxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value)
+    setSfxVol(val)
+    dspVolume('sfx', val)
+    // Also update SynthSounds volume (footsteps, UI sounds, intro SFX)
+    setSynthVolume(val)
+  }
+
+  if (!visible) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      right: '20px',
+      bottom: '100px',
+      background: 'rgba(5, 5, 15, 0.92)',
+      border: '1px solid rgba(0, 255, 255, 0.25)',
+      borderRadius: '16px',
+      padding: '20px 24px',
+      backdropFilter: 'blur(12px)',
+      zIndex: 200,
+      minWidth: '200px',
+      boxShadow: '0 0 40px rgba(0, 255, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)',
+      animation: 'mixerSlideIn 0.3s ease-out',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '20px',
+        paddingBottom: '12px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffff" strokeWidth="2">
+          <rect x="4" y="2" width="4" height="20" rx="1" />
+          <rect x="10" y="6" width="4" height="16" rx="1" />
+          <rect x="16" y="10" width="4" height="12" rx="1" />
+        </svg>
+        <span style={{
+          color: '#00ffff',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          letterSpacing: '2px',
+          textTransform: 'uppercase'
+        }}>
+          AUDIO MIXER
+        </span>
+      </div>
+
+      {/* Music Slider */}
+      <div style={{ marginBottom: '18px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <span style={{ color: '#ff00aa', fontSize: '11px', letterSpacing: '1px' }}>MUSIC</span>
+          <span style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
+            {Math.round(musicVol * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={musicVol}
+          onChange={handleMusicChange}
+          style={{
+            width: '100%',
+            height: '6px',
+            WebkitAppearance: 'none',
+            appearance: 'none',
+            background: `linear-gradient(to right, #ff00aa ${musicVol * 100}%, rgba(255,255,255,0.1) ${musicVol * 100}%)`,
+            borderRadius: '3px',
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        />
+      </div>
+
+      {/* SFX Slider */}
+      <div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <span style={{ color: '#00ffff', fontSize: '11px', letterSpacing: '1px' }}>SFX</span>
+          <span style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
+            {Math.round(sfxVol * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={sfxVol}
+          onChange={handleSfxChange}
+          style={{
+            width: '100%',
+            height: '6px',
+            WebkitAppearance: 'none',
+            appearance: 'none',
+            background: `linear-gradient(to right, #00ffff ${sfxVol * 100}%, rgba(255,255,255,0.1) ${sfxVol * 100}%)`,
+            borderRadius: '3px',
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        />
+      </div>
+
+      {/* Hint */}
+      <div style={{
+        marginTop: '16px',
+        paddingTop: '12px',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        textAlign: 'center',
+        color: 'rgba(255, 255, 255, 0.35)',
+        fontSize: '10px',
+        letterSpacing: '1px'
+      }}>
+        RELAX MODE
+      </div>
+
+      <style>{`
+        @keyframes mixerSlideIn {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          background: #fff;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+          transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          background: #fff;
+          border-radius: 50%;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// Click to Enter Splash - enables audio before intro starts
+function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
+  const [isHovered, setIsHovered] = useState(false)
+  const [isClicking, setIsClicking] = useState(false)
+
+  const handleEnter = useCallback(() => {
+    if (isClicking) return
+    setIsClicking(true)
+    // Immediately call onEnter - no delay needed
+    onEnter()
+  }, [isClicking, onEnter])
+
+  // Listen for any key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleEnter()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleEnter])
+
+  return (
+    <div
+      onClick={handleEnter}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'radial-gradient(ellipse at center, #0a0a14 0%, #050508 50%, #000000 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        zIndex: 50000,
+        opacity: isClicking ? 0 : 1,
+        transition: 'opacity 0.4s ease-out',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}
+    >
+      {/* Scanlines overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+        pointerEvents: 'none',
+        opacity: 0.5
+      }} />
+
+      {/* Glowing orb behind text */}
+      <div style={{
+        position: 'absolute',
+        width: '400px',
+        height: '400px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(0,255,255,0.15) 0%, rgba(255,0,170,0.1) 40%, transparent 70%)',
+        filter: 'blur(60px)',
+        animation: 'splashPulse 3s ease-in-out infinite',
+        transform: isHovered ? 'scale(1.2)' : 'scale(1)',
+        transition: 'transform 0.5s ease'
+      }} />
+
+      {/* VanVinkl logo text */}
+      <div style={{
+        fontSize: '48px',
+        fontWeight: 900,
+        letterSpacing: '12px',
+        marginBottom: '60px',
+        background: 'linear-gradient(90deg, #00ffff, #ff00aa, #00ffff)',
+        backgroundSize: '200% 100%',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        animation: 'splashGradient 3s linear infinite',
+        textShadow: '0 0 60px rgba(0, 255, 255, 0.5)',
+        position: 'relative'
+      }}>
+        VANVINKL
+        {/* Glitch layer */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'inherit',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          animation: 'splashGlitch 2s infinite',
+          opacity: 0.8
+        }}>
+          VANVINKL
+        </div>
+      </div>
+
+      {/* Click to Enter button area */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '20px'
+      }}>
+        {/* Hexagon border effect */}
+        <div style={{
+          padding: '24px 64px',
+          background: isHovered
+            ? 'rgba(0, 255, 255, 0.15)'
+            : 'rgba(0, 255, 255, 0.05)',
+          border: `2px solid ${isHovered ? '#00ffff' : 'rgba(0, 255, 255, 0.4)'}`,
+          borderRadius: '8px',
+          position: 'relative',
+          transition: 'all 0.3s ease',
+          boxShadow: isHovered
+            ? '0 0 40px rgba(0, 255, 255, 0.4), inset 0 0 40px rgba(0, 255, 255, 0.1)'
+            : '0 0 20px rgba(0, 255, 255, 0.2)',
+          transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+        }}>
+          {/* Corner accents */}
+          {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => (
+            <div key={pos} style={{
+              position: 'absolute',
+              width: '12px',
+              height: '12px',
+              borderColor: '#ff00aa',
+              borderStyle: 'solid',
+              borderWidth: pos.includes('top') ? '2px 0 0 0' : '0 0 2px 0',
+              ...(pos.includes('left') ? { left: '-1px', borderLeftWidth: '2px' } : { right: '-1px', borderRightWidth: '2px' }),
+              ...(pos.includes('top') ? { top: '-1px' } : { bottom: '-1px' })
+            }} />
+          ))}
+
+          <span style={{
+            color: '#00ffff',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            letterSpacing: '6px',
+            textTransform: 'uppercase',
+            textShadow: isHovered ? '0 0 20px #00ffff' : 'none'
+          }}>
+            PRESS ANY KEY TO ENTER
+          </span>
+        </div>
+
+        {/* Sound hint */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: 'rgba(255, 255, 255, 0.4)',
+          fontSize: '12px',
+          letterSpacing: '2px'
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z" />
+            <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+          </svg>
+          <span>SOUND ON FOR BEST EXPERIENCE</span>
+        </div>
+      </div>
+
+      {/* Floating particles */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none'
+      }}>
+        {Array.from({ length: 30 }, (_, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            width: `${2 + Math.random() * 4}px`,
+            height: `${2 + Math.random() * 4}px`,
+            background: i % 2 === 0 ? '#00ffff' : '#ff00aa',
+            borderRadius: '50%',
+            opacity: 0.3 + Math.random() * 0.4,
+            animation: `splashFloat ${5 + Math.random() * 10}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 5}s`
+          }} />
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes splashPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+        @keyframes splashGradient {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
+        @keyframes splashGlitch {
+          0%, 90%, 100% { clip-path: inset(0); transform: translate(0); }
+          92% { clip-path: inset(40% 0 30% 0); transform: translate(-3px, 0); }
+          94% { clip-path: inset(10% 0 60% 0); transform: translate(3px, 0); }
+          96% { clip-path: inset(70% 0 10% 0); transform: translate(-2px, 0); }
+          98% { clip-path: inset(20% 0 50% 0); transform: translate(2px, 0); }
+        }
+        @keyframes splashFloat {
+          0%, 100% { transform: translateY(0) translateX(0); }
+          25% { transform: translateY(-20px) translateX(10px); }
+          50% { transform: translateY(-10px) translateX(-10px); }
+          75% { transform: translateY(-30px) translateX(5px); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 export function App() {
-  const [showIntro, setShowIntro] = useState(true) // Intro starts immediately
+  const [showSplash, setShowSplash] = useState(true) // Click to enter splash
+  const [showIntro, setShowIntro] = useState(false) // Intro waits for splash
   const [overlayComplete, setOverlayComplete] = useState(false)
   const [cameraComplete, setCameraComplete] = useState(false)
   const [spinningSlot, setSpinningSlot] = useState<string | null>(null)
@@ -927,6 +1308,7 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [konamiActive, resetKonami] = useKonamiCode()
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
+  const [isSitting, setIsSitting] = useState(false)
 
   // Onboarding - show only for first-time visitors
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -941,6 +1323,21 @@ export function App() {
   // Track session on mount
   useEffect(() => {
     trackSession()
+  }, [])
+
+  // Handle splash click - init audio and start intro
+  const handleSplashEnter = useCallback(async () => {
+    // Initialize audio systems (this click enables audio)
+    audioSystem.init()
+
+    if (localStorage.getItem('vanvinkl-muted') !== 'true') {
+      await initAudio()
+      dspPlay('lounge')
+    }
+
+    // Hide splash and start intro
+    setShowSplash(false)
+    setShowIntro(true)
   }, [])
 
   // Subscribe to achievement unlocks
@@ -1015,16 +1412,6 @@ export function App() {
   useEffect(() => {
     if (overlayComplete && cameraComplete) {
       setShowIntro(false)
-
-      // Start looping ambient music using new DSP system
-      initAudio().then(() => {
-        if (localStorage.getItem('vanvinkl-muted') !== 'true') {
-          dspPlay('lounge') // Auto-loops, configured in AudioDSP
-        }
-      })
-
-      // Also init old system for other sounds
-      audioSystem.init()
     }
   }, [overlayComplete, cameraComplete])
 
@@ -1100,6 +1487,7 @@ export function App() {
 
           <CasinoScene
             onSlotSpin={handleSlotSpin}
+            onSitChange={setIsSitting}
             introActive={showIntro}
             slotOpen={!!spinningSlot}
           />
@@ -1110,6 +1498,9 @@ export function App() {
 
       {/* Sound Toggle - always visible after intro */}
       {!showIntro && <SoundToggle />}
+
+      {/* Audio Mixer - shows when sitting in lounge */}
+      <AudioMixer visible={isSitting && !showIntro && !spinningSlot} />
 
       {/* Desktop Controls HUD - hidden on mobile */}
       {!showIntro && !spinningSlot && !isMobile && (
@@ -1172,6 +1563,9 @@ export function App() {
 
       {/* Magic Cursor - particle trail + magnetic effect (desktop only) */}
       {!isMobile && <MagicCursorFull />}
+
+      {/* Click to Enter Splash - first thing user sees */}
+      {showSplash && <ClickToEnterSplash onEnter={handleSplashEnter} />}
     </WebGLErrorBoundary>
   )
 }

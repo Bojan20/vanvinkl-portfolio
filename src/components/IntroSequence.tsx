@@ -15,6 +15,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { playSynthSelect, playCyberReveal, playCyberWow } from '../audio/SynthSounds'
 
 const COLORS = {
   cyan: '#00ffff',
@@ -298,6 +299,7 @@ export function IntroOverlay({
   const [revealedChars, setRevealedChars] = useState(0) // For gradual reveal
   const [opacity, setOpacity] = useState(1)
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
+  const [showBurst, setShowBurst] = useState(false) // WOW burst effect when text complete
 
   const originalText = 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
@@ -320,9 +322,12 @@ export function IntroOverlay({
   useEffect(() => {
     if (!active) return
 
+    // Play single clean enter confirmation sound
+    playSynthSelect(0.4)
+
     // Timing for 5.5s total intro - user has time to read
     const phases = [
-      { time: 1000, action: () => setPhase('reveal') },     // Glitch for 1.0s
+      { time: 1000, action: () => setPhase('reveal') },
       { time: 3200, action: () => setPhase('hold') },       // Reveal for 2.2s (letter by letter)
       { time: 4500, action: () => setPhase('fade') },       // Hold for 1.3s (read time)
       { time: 5000, action: () => setOpacity(0) },          // Start fading text
@@ -376,7 +381,9 @@ export function IntroOverlay({
       setGlitchText(newText)
     }, 50)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [phase])
 
   // GRADUAL REVEAL - letters transform one by one from glitch to real
@@ -397,9 +404,17 @@ export function IntroOverlay({
 
     const interval = setInterval(() => {
       currentChar++
+      // Play cyber reveal sound for each letter (not for spaces)
+      if (originalText[currentChar - 1] !== ' ') {
+        playCyberReveal(0.15)
+      }
       if (currentChar >= originalText.length) {
         setRevealedChars(originalText.length)
         clearInterval(interval)
+        // Play epic WOW sound when all letters are shown
+        playCyberWow(0.5)
+        // Trigger burst animation
+        setShowBurst(true)
       } else {
         setRevealedChars(currentChar)
       }
@@ -604,7 +619,114 @@ export function IntroOverlay({
         </div>
       )}
 
+      {/* WOW Burst Effect - particle explosion when text completes */}
+      {showBurst && (
+        <>
+          {/* Central flash */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '200vw',
+            height: '200vh',
+            background: 'radial-gradient(circle, rgba(0,255,255,0.4) 0%, rgba(255,0,170,0.2) 30%, transparent 60%)',
+            animation: 'burstFlash 0.8s ease-out forwards',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Ring explosion */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            border: '3px solid #00ffff',
+            boxShadow: '0 0 30px #00ffff, 0 0 60px #ff00aa',
+            animation: 'burstRing 0.6s ease-out forwards',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Second ring */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            border: '2px solid #ff00aa',
+            boxShadow: '0 0 20px #ff00aa',
+            animation: 'burstRing 0.8s ease-out 0.1s forwards',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Sparkle particles */}
+          {Array.from({ length: 24 }, (_, i) => {
+            const angle = (i / 24) * Math.PI * 2
+            const distance = 150 + Math.random() * 100
+            const x = Math.cos(angle) * distance
+            const y = Math.sin(angle) * distance
+            const delay = Math.random() * 0.2
+            const size = 4 + Math.random() * 6
+
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: `${size}px`,
+                  height: `${size}px`,
+                  borderRadius: '50%',
+                  background: i % 2 === 0 ? '#00ffff' : '#ff00aa',
+                  boxShadow: `0 0 ${size * 2}px ${i % 2 === 0 ? '#00ffff' : '#ff00aa'}`,
+                  animation: `burstParticle 0.8s ease-out ${delay}s forwards`,
+                  '--tx': `${x}px`,
+                  '--ty': `${y}px`
+                } as React.CSSProperties}
+              />
+            )
+          })}
+
+          {/* Horizontal light streaks */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, #00ffff, #ff00aa, #00ffff, transparent)',
+            animation: 'burstStreak 0.5s ease-out forwards',
+            pointerEvents: 'none'
+          }} />
+        </>
+      )}
+
       <style>{`
+        @keyframes burstFlash {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+          30% { opacity: 1; }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes burstRing {
+          0% { width: 10px; height: 10px; opacity: 1; }
+          100% { width: 800px; height: 800px; opacity: 0; border-width: 1px; }
+        }
+        @keyframes burstParticle {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+        }
+        @keyframes burstStreak {
+          0% { transform: scaleX(0); opacity: 1; }
+          50% { transform: scaleX(1); opacity: 1; }
+          100% { transform: scaleX(1); opacity: 0; }
+        }
         @keyframes glitchShake {
           0% { transform: translate(0) skewX(0deg); }
           20% { transform: translate(-3px, 2px) skewX(-1deg); }
