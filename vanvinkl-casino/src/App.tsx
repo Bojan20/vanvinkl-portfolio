@@ -6,12 +6,21 @@
  */
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useCallback, useEffect } from 'react'
+import { Suspense, useState, useCallback, useEffect, useRef } from 'react'
 import { CasinoScene } from './components/CasinoScene'
 import { InfoModal } from './components/InfoModal'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
+import { SlotTransitionOverlay } from './components/SlotTransition'
+import { MobileControls, isMobileDevice } from './components/MobileControls'
+import {
+  WebGLErrorBoundary,
+  ContextLostOverlay,
+  WebGLNotSupported,
+  isWebGLSupported
+} from './components/WebGLErrorBoundary'
+import { gameRefs } from './store'
 
-// Controls HUD - compact bottom-center display
+// Controls HUD - compact bottom-center display (desktop only)
 function ControlsHUD() {
   return (
     <div
@@ -82,18 +91,39 @@ function LoadingScreen() {
 }
 
 export function App() {
-  const [modalData, setModalData] = useState<{ id: string; title: string; content: string[] } | null>(null)
+  const [activeMachineId, setActiveMachineId] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(true)
-  // Both overlay and camera run SIMULTANEOUSLY for smooth intro
   const [overlayComplete, setOverlayComplete] = useState(false)
   const [cameraComplete, setCameraComplete] = useState(false)
+  const [spinningSlot, setSpinningSlot] = useState<string | null>(null)
+  const [contextLost, setContextLost] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
-  const handleShowModal = useCallback((id: string, title: string, content: string[]) => {
-    setModalData({ id, title, content })
+  // Mobile movement ref - updated by joystick
+  const mobileMovementRef = useRef({ x: 0, y: 0 })
+
+  // Check for mobile on mount
+  useEffect(() => {
+    setIsMobile(isMobileDevice())
+  }, [])
+
+
+  // Check WebGL support
+  if (!isWebGLSupported()) {
+    return <WebGLNotSupported />
+  }
+
+  const handleShowModal = useCallback((machineId: string) => {
+    setActiveMachineId(machineId)
+    setSpinningSlot(null)
+  }, [])
+
+  const handleSlotSpin = useCallback((machineId: string) => {
+    setSpinningSlot(machineId)
   }, [])
 
   const handleCloseModal = useCallback(() => {
-    setModalData(null)
+    setActiveMachineId(null)
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -111,11 +141,40 @@ export function App() {
     }
   }, [overlayComplete, cameraComplete])
 
+  // Mobile joystick handler - directly updates gameRefs for zero latency
+  const handleMobileMove = useCallback((x: number, y: number) => {
+    mobileMovementRef.current.x = x
+    mobileMovementRef.current.y = y
+    // Update game refs directly - Avatar component reads these
+    gameRefs.isMoving = x !== 0 || y !== 0
+  }, [])
+
+  // Mobile action button - simulates SPACE key
+  const handleMobileAction = useCallback(() => {
+    // Dispatch a synthetic keydown event for SPACE
+    const event = new KeyboardEvent('keydown', {
+      code: 'Space',
+      key: ' ',
+      bubbles: true
+    })
+    window.dispatchEvent(event)
+  }, [])
+
+  // Context lost handler
+  const handleContextLost = useCallback(() => {
+    setContextLost(true)
+  }, [])
+
+  // Show context lost overlay
+  if (contextLost) {
+    return <ContextLostOverlay />
+  }
+
   return (
-    <>
+    <WebGLErrorBoundary>
       <Canvas
         shadows={false}
-        dpr={[1, 1.5]} // Cap DPR for performance
+        dpr={[1, 1.5]}
         gl={{
           antialias: true,
           alpha: false,
@@ -138,10 +197,13 @@ export function App() {
           debounce: 200
         }}
         frameloop="always"
-        flat // Disable tone mapping for raw neon colors
+        flat
+        onCreated={({ gl }) => {
+          // Listen for context loss
+          gl.domElement.addEventListener('webglcontextlost', handleContextLost)
+        }}
       >
         <Suspense fallback={<LoadingScreen />}>
-          {/* Intro camera animation - runs from START, parallel with overlay */}
           {showIntro && (
             <IntroCamera
               onComplete={handleIntroCameraComplete}
@@ -149,30 +211,48 @@ export function App() {
             />
           )}
 
-          {/* Main scene - always rendered but intro controls camera initially */}
-          <CasinoScene onShowModal={handleShowModal} introActive={showIntro} />
+          <CasinoScene
+            onShowModal={handleShowModal}
+            onSlotSpin={handleSlotSpin}
+            introActive={showIntro}
+          />
         </Suspense>
       </Canvas>
 
-      {/* Controls HUD - always visible at bottom center (unless modal open) */}
-      {!showIntro && !modalData && (
+      {/* Desktop Controls HUD - hidden on mobile */}
+      {!showIntro && !activeMachineId && !isMobile && (
         <ControlsHUD />
       )}
 
-      {/* Info Modal Overlay */}
-      {modalData && (
-        <InfoModal
-          title={modalData.title}
-          content={modalData.content}
-          onClose={handleCloseModal}
+      {/* Mobile Controls - only on mobile devices */}
+      {!showIntro && !activeMachineId && (
+        <MobileControls
+          onMove={handleMobileMove}
+          onAction={handleMobileAction}
+          visible={isMobile}
         />
       )}
 
-      {/* Intro overlay - glitch text (runs PARALLEL with camera) */}
+      {/* Info Modal Overlay */}
+      {activeMachineId && (
+        <InfoModal
+          machineId={activeMachineId}
+          onClose={handleCloseModal}
+          onNavigate={setActiveMachineId}
+        />
+      )}
+
+      {/* Intro overlay - glitch text */}
       <IntroOverlay
         active={showIntro}
         onComplete={handleIntroOverlayComplete}
       />
-    </>
+
+      {/* Slot transition overlay */}
+      <SlotTransitionOverlay
+        active={spinningSlot !== null}
+        machineId={spinningSlot || 'skills'}
+      />
+    </WebGLErrorBoundary>
   )
 }

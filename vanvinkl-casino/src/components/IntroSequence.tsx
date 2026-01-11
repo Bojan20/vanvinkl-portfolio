@@ -23,8 +23,8 @@ const COLORS = {
   gold: '#ffd700'
 }
 
-// GPU-optimized teleport particles with ultra smooth fade out
-// NEVER disappears abruptly - always fades to zero
+// GPU-optimized teleport particles - GRADUAL DECREASE (no fade)
+// When fadeOut=true, particles stop spawning and existing ones fly away naturally
 function TeleportParticles({
   active,
   position,
@@ -37,9 +37,10 @@ function TeleportParticles({
   const particlesRef = useRef<THREE.Points>(null!)
   const velocitiesRef = useRef<Float32Array | null>(null)
   const lifetimesRef = useRef<Float32Array | null>(null)
-  const opacityRef = useRef(0)
+  const sizesRef = useRef<Float32Array | null>(null) // Individual particle sizes
   const hasStartedRef = useRef(false)
-  const fullyFadedRef = useRef(false)
+  const allGoneRef = useRef(false)
+  const spawnRateRef = useRef(1.0) // 1.0 = full spawn, 0 = no spawn
 
   const particleCount = 200 // More particles for WOW
 
@@ -48,6 +49,7 @@ function TeleportParticles({
     const colors = new Float32Array(particleCount * 3)
     const velocities = new Float32Array(particleCount * 3)
     const lifetimes = new Float32Array(particleCount)
+    const sizes = new Float32Array(particleCount)
 
     const cyanColor = new THREE.Color(COLORS.cyan)
     const magentaColor = new THREE.Color(COLORS.magenta)
@@ -56,10 +58,10 @@ function TeleportParticles({
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3
 
-      // Start at avatar position with wider spread
-      positions[i3] = position[0] + (Math.random() - 0.5) * 1.0
-      positions[i3 + 1] = position[1] + Math.random() * 3
-      positions[i3 + 2] = position[2] + (Math.random() - 0.5) * 1.0
+      // Start off-screen (will spawn when active)
+      positions[i3] = position[0]
+      positions[i3 + 1] = -1000 // Hidden below
+      positions[i3 + 2] = position[2]
 
       // Upward spiral velocity - faster
       const angle = Math.random() * Math.PI * 2
@@ -79,21 +81,24 @@ function TeleportParticles({
       colors[i3 + 1] = color.g
       colors[i3 + 2] = color.b
 
-      lifetimes[i] = Math.random()
+      lifetimes[i] = 0 // Start dead, will spawn gradually
+      sizes[i] = 0.12 + Math.random() * 0.08 // Random size variation
     }
 
     velocitiesRef.current = velocities
     lifetimesRef.current = lifetimes
+    sizesRef.current = sizes
 
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
 
     const mat = new THREE.PointsMaterial({
       size: 0.15,
       vertexColors: true,
       transparent: true,
-      opacity: 0, // Start at 0, fade in
+      opacity: 0.9,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       toneMapped: false
@@ -104,67 +109,89 @@ function TeleportParticles({
 
   useFrame((_, delta) => {
     if (!particlesRef.current || !velocitiesRef.current || !lifetimesRef.current) return
-    if (fullyFadedRef.current) return // Already fully faded, skip
-
-    // Smooth fade IN when active starts
-    if (active && !fadeOut) {
-      hasStartedRef.current = true
-      // Fade in smoothly
-      opacityRef.current = Math.min(0.9, opacityRef.current + delta * 1.5)
-      material.opacity = opacityRef.current
-    }
-
-    // Smooth fade OUT - very slow for smooth transition
-    if (fadeOut) {
-      opacityRef.current = Math.max(0, opacityRef.current - delta * 0.35) // Slower fade
-      material.opacity = opacityRef.current
-      if (opacityRef.current <= 0) {
-        fullyFadedRef.current = true
-      }
-    }
-
-    // Don't animate particles if not started or fully faded
-    if (!hasStartedRef.current || fullyFadedRef.current) return
+    if (allGoneRef.current) return
 
     const posAttr = geometry.attributes.position as THREE.BufferAttribute
     const posArray = posAttr.array as Float32Array
     const velocities = velocitiesRef.current
     const lifetimes = lifetimesRef.current
 
-    // During fade out, stop respawning but keep animating existing
-    const canRespawn = !fadeOut
+    // Handle spawn rate - gradual decrease when fading out
+    if (active && !fadeOut) {
+      hasStartedRef.current = true
+      // Ramp up spawn rate
+      spawnRateRef.current = Math.min(1.0, spawnRateRef.current + delta * 2.0)
+    }
+
+    if (fadeOut) {
+      // Gradually reduce spawn rate to zero
+      spawnRateRef.current = Math.max(0, spawnRateRef.current - delta * 0.8) // ~1.25s to stop spawning
+    }
+
+    if (!hasStartedRef.current) return
+
+    let aliveCount = 0
 
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3
 
-      lifetimes[i] -= delta * 0.6
+      lifetimes[i] -= delta * 0.5 // Slower decay = particles live longer
 
-      if (lifetimes[i] <= 0 && canRespawn) {
-        // Respawn only if not fading
-        posArray[i3] = position[0] + (Math.random() - 0.5) * 0.8
-        posArray[i3 + 1] = position[1] + Math.random() * 0.5
-        posArray[i3 + 2] = position[2] + (Math.random() - 0.5) * 0.8
-        lifetimes[i] = 1
-      } else if (lifetimes[i] > 0) {
+      if (lifetimes[i] <= 0) {
+        // Particle is dead
+        if (spawnRateRef.current > 0 && Math.random() < spawnRateRef.current * delta * 3) {
+          // Respawn with probability based on spawn rate
+          posArray[i3] = position[0] + (Math.random() - 0.5) * 0.8
+          posArray[i3 + 1] = position[1] + Math.random() * 0.3
+          posArray[i3 + 2] = position[2] + (Math.random() - 0.5) * 0.8
+          lifetimes[i] = 0.8 + Math.random() * 0.6 // Random lifetime
+
+          // New random velocity
+          const angle = Math.random() * Math.PI * 2
+          const speed = 3 + Math.random() * 4
+          velocities[i3] = Math.cos(angle) * speed * 0.4
+          velocities[i3 + 1] = speed
+          velocities[i3 + 2] = Math.sin(angle) * speed * 0.4
+
+          aliveCount++
+        } else {
+          // Move off-screen when dead
+          posArray[i3 + 1] = -1000
+        }
+      } else {
+        // Particle is alive - animate it
+        aliveCount++
+
         // Move upward with spiral
         posArray[i3] += velocities[i3] * delta
         posArray[i3 + 1] += velocities[i3 + 1] * delta
         posArray[i3 + 2] += velocities[i3 + 2] * delta
 
         // Add some rotation
-        const angle = delta * 2.5
+        const rotAngle = delta * 2.5
         const x = posArray[i3] - position[0]
         const z = posArray[i3 + 2] - position[2]
-        posArray[i3] = position[0] + x * Math.cos(angle) - z * Math.sin(angle)
-        posArray[i3 + 2] = position[2] + x * Math.sin(angle) + z * Math.cos(angle)
+        posArray[i3] = position[0] + x * Math.cos(rotAngle) - z * Math.sin(rotAngle)
+        posArray[i3 + 2] = position[2] + x * Math.sin(rotAngle) + z * Math.cos(rotAngle)
+
+        // Slow down slightly as particle ages
+        const ageFactor = Math.max(0.3, lifetimes[i])
+        velocities[i3 + 1] *= 1 - delta * 0.3 * (1 - ageFactor)
       }
+    }
+
+    // Check if all particles are gone during fadeout
+    if (fadeOut && spawnRateRef.current <= 0 && aliveCount === 0) {
+      allGoneRef.current = true
     }
 
     posAttr.needsUpdate = true
   })
 
-  // Always render - opacity controls visibility
-  // This prevents any abrupt disappearance
+  // Only render if active or still has particles
+  if (!active && !hasStartedRef.current) return null
+  if (allGoneRef.current) return null
+
   return (
     <points ref={particlesRef} geometry={geometry} material={material} />
   )
@@ -185,13 +212,16 @@ export function IntroCamera({
   const [fadeOutParticles, setFadeOutParticles] = useState(false)
   const completed = useRef(false)
 
-  const INTRO_DURATION = 5.0 // 5 seconds - cinematic WOW
+  const INTRO_DURATION = 3.5 // 3.5 seconds - snappy but impressive
 
   // Camera path: dramatic swoop from sky
+  // END POSITION MUST MATCH GAMEPLAY CAMERA EXACTLY:
+  // Gameplay camera: (avatarX, avatarY+4, avatarZ+10) = (0, 4, 20)
+  // Gameplay lookAt: (avatarX, 1.5, avatarZ-3) = (0, 1.5, 7)
   const startPos = useRef(new THREE.Vector3(0, 60, 80)) // Even higher and further
-  const endPos = useRef(new THREE.Vector3(0, 5, 18)) // Final gameplay position
+  const endPos = useRef(new THREE.Vector3(0, 4, 20)) // EXACT gameplay camera position
   const startLookAt = useRef(new THREE.Vector3(0, 0, -10))
-  const endLookAt = useRef(new THREE.Vector3(0, 1.5, 7))
+  const endLookAt = useRef(new THREE.Vector3(0, 1.5, 7)) // Matches gameplay lookAt
 
   // Set initial camera position immediately
   useEffect(() => {
@@ -200,11 +230,11 @@ export function IntroCamera({
   }, [camera])
 
   useEffect(() => {
-    // Trigger particles early (at 1s) for longer WOW effect
-    const particleTimer = setTimeout(() => setShowParticles(true), 1000)
+    // Trigger particles early (at 0.5s)
+    const particleTimer = setTimeout(() => setShowParticles(true), 500)
 
-    // Start fading particles at 2.5s - gives 2.5s to fully fade (slow fade)
-    const fadeTimer = setTimeout(() => setFadeOutParticles(true), 2500)
+    // Start fading particles at 1.8s
+    const fadeTimer = setTimeout(() => setFadeOutParticles(true), 1800)
 
     // End intro - smooth completion
     const endTimer = setTimeout(() => {
@@ -273,13 +303,13 @@ export function IntroOverlay({
   useEffect(() => {
     if (!active) return
 
-    // Longer timing for 5s total intro - more WOW time
+    // Faster timing for 3.5s total intro
     const phases = [
-      { time: 1200, action: () => setPhase('reveal') },     // Glitch for 1.2s
-      { time: 2800, action: () => setPhase('hold') },       // Reveal for 1.6s (gradual)
-      { time: 3800, action: () => setPhase('fade') },       // Hold for 1s
-      { time: 4300, action: () => setOpacity(0) },          // Start fading text
-      { time: 5000, action: () => {
+      { time: 700, action: () => setPhase('reveal') },      // Glitch for 0.7s
+      { time: 1800, action: () => setPhase('hold') },       // Reveal for 1.1s (gradual)
+      { time: 2600, action: () => setPhase('fade') },       // Hold for 0.8s
+      { time: 3000, action: () => setOpacity(0) },          // Start fading text
+      { time: 3500, action: () => {
         setPhase('done')
         onComplete()
       }}
@@ -290,13 +320,13 @@ export function IntroOverlay({
     return () => timers.forEach(t => clearTimeout(t))
   }, [active, onComplete])
 
-  // Background fade - starts at 2s, completes by 4s (slower, smoother)
+  // Background fade - starts at 1.2s, completes by 2.7s
   useEffect(() => {
     if (!active) return
 
     const fadeStart = setTimeout(() => {
       let startTime = Date.now()
-      const duration = 2000 // 2 seconds to fade
+      const duration = 1500 // 1.5 seconds to fade
       const animate = () => {
         const elapsed = Date.now() - startTime
         const progress = Math.min(elapsed / duration, 1)
@@ -308,7 +338,7 @@ export function IntroOverlay({
         }
       }
       requestAnimationFrame(animate)
-    }, 2000)
+    }, 1200)
 
     return () => clearTimeout(fadeStart)
   }, [active])
@@ -344,7 +374,7 @@ export function IntroOverlay({
     // Reset at start of reveal
     setRevealedChars(0)
 
-    const revealDuration = 1400 // 1.4 seconds to reveal all letters
+    const revealDuration = 900 // 0.9 seconds to reveal all letters
     const charsPerInterval = originalText.length / (revealDuration / 40) // ~40ms per step
     let currentRevealed = 0
 

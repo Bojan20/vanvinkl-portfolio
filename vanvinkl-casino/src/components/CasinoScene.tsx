@@ -10,14 +10,17 @@
 
 import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 import { CyberpunkSlotMachine } from './CyberpunkSlotMachine'
 import { Avatar } from './Avatar'
 import { ProximityIndicator } from './ProximityFeedback'
-import { WinCelebrationParticles } from './WinCelebrationParticles'
+import { WinCelebrationGPU } from './GPUParticles'
 import { DustParticles } from './DustParticles'
+import { PostProcessing } from './PostProcessing'
+import { ContextHandler } from './WebGLErrorBoundary'
+import { useAudio, playFootstep, playReelStop } from '../audio'
+import { COLORS as THEME_COLORS, SLOT_CONFIG, TIMING, DISTANCES } from '../store'
 
 // ============================================
 // SHARED MATERIALS - Created ONCE, reused everywhere
@@ -296,15 +299,21 @@ const SLOT_INFO: Record<string, { title: string; content: string[] }> = {
 }
 
 interface CasinoSceneProps {
-  onShowModal?: (id: string, title: string, content: string[]) => void
+  onShowModal?: (machineId: string) => void
+  onSlotSpin?: (machineId: string) => void
   introActive?: boolean
 }
 
-export function CasinoScene({ onShowModal, introActive = false }: CasinoSceneProps) {
+export function CasinoScene({ onShowModal, onSlotSpin, introActive = false }: CasinoSceneProps) {
   const { camera } = useThree()
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
   const isMovingRef = useRef(false)
+
+  // Audio system
+  const audio = useAudio()
+  const lastFootstepTime = useRef(0)
+  const audioInitialized = useRef(false)
 
   // ALL state as refs to avoid re-renders - ZERO LAG
   const nearMachineRef = useRef<string | null>(null)
@@ -389,6 +398,41 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
     }
   }, []) // Empty deps - never re-create listeners
 
+  // Initialize spatial audio when intro ends
+  useEffect(() => {
+    if (!introActive && !audioInitialized.current) {
+      audioInitialized.current = true
+
+      // Start ambient casino hum (looping, centered)
+      audio.playSpatial('casino-ambient', 'casinoHum', [0, 3, 0], {
+        volume: 0.3,
+        loop: true,
+        refDistance: 20,
+        maxDistance: 100,
+        rolloffFactor: 0.5
+      })
+
+      // Neon buzzes at various positions (spatial)
+      const neonPositions: [number, number, number][] = [
+        [-15, 4, -10],  // Back left
+        [15, 4, -10],   // Back right
+        [-25, 3, 8],    // Left lounge
+        [25, 3, 8],     // Right lounge
+        [0, 4, -10]     // Bar
+      ]
+
+      neonPositions.forEach((pos, i) => {
+        audio.playSpatial(`neon-${i}`, 'neonBuzz', pos, {
+          volume: 0.15,
+          loop: true,
+          refDistance: 3,
+          maxDistance: 15,
+          rolloffFactor: 1.5
+        })
+      })
+    }
+  }, [introActive, audio])
+
   // Handle SPACE key for spinning OR sitting
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -409,36 +453,58 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
           return
         }
 
-        // Slot machine interaction
+        // Slot machine interaction - FAST animation (2.5s total)
         if (nearMachineRef.current && !spinningMachineRef.current) {
           spinningMachineRef.current = nearMachineRef.current
           forceUpdate(n => n + 1) // Update slot machines
+
           const machineId = nearMachineRef.current
 
-          // After spin completes (3s), trigger WIN CELEBRATION
+          // Play spin sound
+          audio.play('spinLoop', { volume: 0.6 })
+
+          // Trigger slot transition overlay
+          onSlotSpin?.(machineId)
+
+          // Play reel stop sounds staggered
+          setTimeout(() => playReelStop(0), 600)
+          setTimeout(() => playReelStop(1), 800)
+          setTimeout(() => playReelStop(2), 1000)
+          setTimeout(() => playReelStop(3), 1200)
+          setTimeout(() => playReelStop(4), 1400)
+
+          // After spin completes (1.5s), trigger WIN CELEBRATION
           setTimeout(() => {
             // Random jackpot chance (20%)
             isJackpotRef.current = Math.random() < 0.2
             winMachineRef.current = machineId
             forceUpdate(n => n + 1)
 
-            // Win celebration lasts 2.5s, then show modal
+            // Play win sound
+            if (isJackpotRef.current) {
+              audio.play('jackpot', { volume: 0.8 })
+            } else {
+              audio.play('winBig', { volume: 0.7 })
+            }
+
+            // Win celebration is SHORTER (1.0s), then show modal
             setTimeout(() => {
-              const info = SLOT_INFO[machineId]
-              if (info && onShowModal) {
-                onShowModal(machineId, info.title, info.content)
+              if (onShowModal) {
+                audio.play('modalOpen', { volume: 0.5 })
+                onShowModal(machineId)
               }
               winMachineRef.current = null
               spinningMachineRef.current = null
               isJackpotRef.current = false
               forceUpdate(n => n + 1)
-            }, 2500)
-          }, 3000)
+            }, 1000)
+          }, 1500)
           return
         }
 
         // Couch sitting interaction
         if (nearCouchRef.current && !isSittingRef.current) {
+          audio.play('sit', { volume: 0.5 })
           isSittingRef.current = true
           sittingRotationRef.current = nearCouchRef.current.rotation
           currentCouch.current = nearCouchRef.current
@@ -451,11 +517,29 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onShowModal]) // Only onShowModal as dep
+  }, [onShowModal, onSlotSpin, audio]) // Include audio
 
-  useFrame(() => {
+  useFrame((state) => {
     // Skip camera control during intro
     if (introActive) return
+
+    // Update audio listener position (follows camera)
+    const camPos = camera.position
+    const camDir = new THREE.Vector3()
+    camera.getWorldDirection(camDir)
+    audio.updateListener(
+      [camPos.x, camPos.y, camPos.z],
+      [camDir.x, camDir.y, camDir.z]
+    )
+
+    // Footstep sounds when moving
+    if (isMovingRef.current && !isSittingRef.current) {
+      const now = state.clock.elapsedTime
+      if (now - lastFootstepTime.current > 0.35) { // ~2.8 steps per second
+        playFootstep(0.4)
+        lastFootstepTime.current = now
+      }
+    }
 
     if (isSittingRef.current) {
       // ZERO LAG orbit - direct set, no lerp
@@ -689,7 +773,7 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
         />
       )}
 
-      {/* ===== SLOT MACHINES with WIN CELEBRATION ===== */}
+      {/* ===== SLOT MACHINES with GPU WIN CELEBRATION ===== */}
       {MACHINES.map((m) => (
         <group key={m.id}>
           <CyberpunkSlotMachine
@@ -699,8 +783,8 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
             spinningMachineRef={spinningMachineRef}
             machineId={m.id}
           />
-          {/* GPU Win Celebration - only renders when active */}
-          <WinCelebrationParticles
+          {/* GPU Win Celebration - shader-driven particles */}
+          <WinCelebrationGPU
             position={[m.x, 3, MACHINE_Z + 1]}
             active={winMachineRef.current === m.id}
             isJackpot={isJackpotRef.current && winMachineRef.current === m.id}
@@ -720,15 +804,18 @@ export function CasinoScene({ onShowModal, introActive = false }: CasinoScenePro
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
 
-      {/* ===== BLOOM - GPU only, minimal settings ===== */}
-      <EffectComposer multisampling={0}>
-        <Bloom
-          intensity={0.8}
-          luminanceThreshold={0.4}
-          luminanceSmoothing={0.9}
-          mipmapBlur
-        />
-      </EffectComposer>
+      {/* ===== POST-PROCESSING - GPU-driven effects ===== */}
+      <PostProcessing
+        quality="medium"
+        enableSSAO={false}  // Heavy, disabled for performance
+        enableBloom={true}
+        enableChromatic={true}
+        enableVignette={true}
+        enableNoise={false}
+      />
+
+      {/* WebGL context loss handler */}
+      <ContextHandler />
     </>
   )
 }

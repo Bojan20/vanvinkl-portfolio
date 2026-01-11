@@ -1,0 +1,384 @@
+/**
+ * Mobile Controls - Virtual joystick and action buttons
+ *
+ * ZERO LATENCY DESIGN:
+ * - Touch events directly update refs (no setState)
+ * - RAF-synced input polling
+ * - Passive event listeners
+ * - Hardware-accelerated transforms
+ *
+ * Layout:
+ * - Left: Movement joystick
+ * - Right: Action button (SPACE equivalent)
+ */
+
+import { useRef, useEffect, useCallback, useState } from 'react'
+import { COLORS } from '../store/theme'
+
+// ============================================
+// TYPES
+// ============================================
+interface JoystickState {
+  active: boolean
+  x: number  // -1 to 1
+  y: number  // -1 to 1
+  angle: number  // radians
+  distance: number  // 0 to 1
+}
+
+interface MobileControlsProps {
+  onMove: (dx: number, dy: number) => void
+  onAction: () => void
+  visible?: boolean
+  joystickSize?: number
+  actionButtonSize?: number
+}
+
+// ============================================
+// DETECT MOBILE
+// ============================================
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false
+
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  )
+}
+
+// ============================================
+// VIRTUAL JOYSTICK COMPONENT
+// ============================================
+interface VirtualJoystickProps {
+  size: number
+  onMove: (x: number, y: number) => void
+  onStart?: () => void
+  onEnd?: () => void
+}
+
+function VirtualJoystick({
+  size,
+  onMove,
+  onStart,
+  onEnd
+}: VirtualJoystickProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const knobRef = useRef<HTMLDivElement>(null)
+  const stateRef = useRef<JoystickState>({
+    active: false,
+    x: 0,
+    y: 0,
+    angle: 0,
+    distance: 0
+  })
+  const touchIdRef = useRef<number | null>(null)
+
+  const maxDistance = size / 2 - 20  // Knob radius padding
+
+  const updateKnobPosition = useCallback((x: number, y: number) => {
+    if (knobRef.current) {
+      // Use transform for GPU acceleration
+      knobRef.current.style.transform = `translate(${x}px, ${y}px)`
+    }
+  }, [])
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (touchIdRef.current !== null) return  // Already tracking a touch
+
+    const touch = e.changedTouches[0]
+    touchIdRef.current = touch.identifier
+
+    stateRef.current.active = true
+    onStart?.()
+
+    // Prevent scrolling
+    e.preventDefault()
+  }, [onStart])
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (touchIdRef.current === null) return
+    if (!containerRef.current) return
+
+    // Find our tracked touch
+    let touch: Touch | undefined
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchIdRef.current) {
+        touch = e.changedTouches[i]
+        break
+      }
+    }
+    if (!touch) return
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+
+    let dx = touch.clientX - centerX
+    let dy = touch.clientY - centerY
+
+    // Calculate distance and angle
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const angle = Math.atan2(dy, dx)
+
+    // Clamp to max distance
+    const clampedDistance = Math.min(distance, maxDistance)
+
+    // Normalize
+    const normalizedDistance = clampedDistance / maxDistance
+    const normalizedX = Math.cos(angle) * normalizedDistance
+    const normalizedY = Math.sin(angle) * normalizedDistance
+
+    // Update state
+    stateRef.current.x = normalizedX
+    stateRef.current.y = normalizedY
+    stateRef.current.angle = angle
+    stateRef.current.distance = normalizedDistance
+
+    // Update visual position
+    const visualX = Math.cos(angle) * clampedDistance
+    const visualY = Math.sin(angle) * clampedDistance
+    updateKnobPosition(visualX, visualY)
+
+    // Callback
+    onMove(normalizedX, normalizedY)
+
+    e.preventDefault()
+  }, [maxDistance, onMove, updateKnobPosition])
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    // Check if our tracked touch ended
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchIdRef.current) {
+        touchIdRef.current = null
+        stateRef.current.active = false
+        stateRef.current.x = 0
+        stateRef.current.y = 0
+        stateRef.current.distance = 0
+
+        // Reset knob position
+        updateKnobPosition(0, 0)
+
+        // Callback
+        onMove(0, 0)
+        onEnd?.()
+
+        break
+      }
+    }
+  }, [onMove, onEnd, updateKnobPosition])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    // Use passive: false to allow preventDefault
+    container.addEventListener('touchstart', handleTouchStart, { passive: false })
+    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    container.addEventListener('touchend', handleTouchEnd)
+    container.addEventListener('touchcancel', handleTouchEnd)
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart)
+      container.removeEventListener('touchmove', handleTouchMove)
+      container.removeEventListener('touchend', handleTouchEnd)
+      container.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: `radial-gradient(circle, rgba(0,255,255,0.1) 0%, rgba(0,0,0,0.3) 100%)`,
+        border: `2px solid ${COLORS.cyan}40`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        position: 'relative'
+      }}
+    >
+      {/* Center indicator */}
+      <div style={{
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        background: `${COLORS.cyan}30`,
+        position: 'absolute'
+      }} />
+
+      {/* Movable knob */}
+      <div
+        ref={knobRef}
+        style={{
+          width: 50,
+          height: 50,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${COLORS.cyan} 0%, ${COLORS.purple} 100%)`,
+          boxShadow: `0 0 20px ${COLORS.cyan}80, inset 0 0 10px rgba(255,255,255,0.3)`,
+          position: 'absolute',
+          transform: 'translate(0px, 0px)',
+          willChange: 'transform'  // Hint for GPU acceleration
+        }}
+      />
+    </div>
+  )
+}
+
+// ============================================
+// ACTION BUTTON COMPONENT
+// ============================================
+interface ActionButtonProps {
+  size: number
+  onPress: () => void
+  label?: string
+}
+
+function ActionButton({ size, onPress, label = 'ACTION' }: ActionButtonProps) {
+  const [pressed, setPressed] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    setPressed(true)
+    onPress()
+  }, [onPress])
+
+  const handleTouchEnd = useCallback(() => {
+    setPressed(false)
+  }, [])
+
+  return (
+    <button
+      ref={buttonRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: pressed
+          ? `radial-gradient(circle, ${COLORS.magenta} 0%, ${COLORS.purple} 100%)`
+          : `radial-gradient(circle, ${COLORS.purple}80 0%, ${COLORS.magenta}40 100%)`,
+        border: `3px solid ${pressed ? COLORS.magenta : COLORS.purple}`,
+        boxShadow: pressed
+          ? `0 0 30px ${COLORS.magenta}, inset 0 0 20px rgba(255,255,255,0.2)`
+          : `0 0 15px ${COLORS.purple}60`,
+        color: '#fff',
+        fontSize: '14px',
+        fontWeight: 'bold',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        letterSpacing: '2px',
+        cursor: 'pointer',
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        outline: 'none',
+        transform: pressed ? 'scale(0.95)' : 'scale(1)',
+        transition: 'transform 0.05s, background 0.1s, box-shadow 0.1s'
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+// ============================================
+// MAIN MOBILE CONTROLS COMPONENT
+// ============================================
+export function MobileControls({
+  onMove,
+  onAction,
+  visible = true,
+  joystickSize = 140,
+  actionButtonSize = 90
+}: MobileControlsProps) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice())
+  }, [])
+
+  // Don't render on desktop
+  if (!isMobile || !visible) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '200px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '0 30px 30px 30px',
+      pointerEvents: 'none',
+      zIndex: 500
+    }}>
+      {/* Left: Movement joystick */}
+      <div style={{ pointerEvents: 'auto' }}>
+        <VirtualJoystick
+          size={joystickSize}
+          onMove={onMove}
+        />
+      </div>
+
+      {/* Right: Action button */}
+      <div style={{ pointerEvents: 'auto' }}>
+        <ActionButton
+          size={actionButtonSize}
+          onPress={onAction}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// MOBILE CONTROLS HOOK
+// Returns movement and action callbacks for use in game
+// ============================================
+export function useMobileControls() {
+  const movementRef = useRef({ x: 0, y: 0 })
+  const actionTriggeredRef = useRef(false)
+
+  const handleMove = useCallback((x: number, y: number) => {
+    movementRef.current.x = x
+    movementRef.current.y = y
+  }, [])
+
+  const handleAction = useCallback(() => {
+    actionTriggeredRef.current = true
+  }, [])
+
+  // Clear action flag after reading
+  const consumeAction = useCallback(() => {
+    if (actionTriggeredRef.current) {
+      actionTriggeredRef.current = false
+      return true
+    }
+    return false
+  }, [])
+
+  return {
+    movementRef,
+    handleMove,
+    handleAction,
+    consumeAction,
+    MobileControlsComponent: (props: Partial<MobileControlsProps>) => (
+      <MobileControls
+        onMove={handleMove}
+        onAction={handleAction}
+        {...props}
+      />
+    )
+  }
+}

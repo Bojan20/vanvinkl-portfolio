@@ -33,7 +33,36 @@ const COLORS = {
   screen: '#101820'
 }
 
-const SYMBOLS = ['7', '★', '♦', '♠', '♥', '♣', 'A', 'K']
+// THEMED SYMBOLS - each slot has unique icons matching its content!
+const THEMED_SYMBOLS: Record<string, { symbols: string[], colors: string[] }> = {
+  skills: {
+    symbols: ['⚡', '🔧', '💻', '🎯', '⚙️', '🎨', '🔊', '📐'],
+    colors: ['#00ffff', '#ffd700', '#ff00aa', '#00ff88', '#8844ff', '#ff6600', '#00aaff', '#ffaa00']
+  },
+  services: {
+    symbols: ['🎰', '🎮', '🌐', '📱', '🔨', '💡', '🚀', '⭐'],
+    colors: ['#ffd700', '#ff00aa', '#00ffff', '#00ff88', '#8844ff', '#ffaa00', '#ff6600', '#00aaff']
+  },
+  about: {
+    symbols: ['👨‍💻', '🏆', '🌍', '💬', '✨', '🎯', '💼', '🔥'],
+    colors: ['#00ffff', '#ffd700', '#8844ff', '#ff00aa', '#00ff88', '#ffaa00', '#ff6600', '#00aaff']
+  },
+  projects: {
+    symbols: ['🎰', '🃏', '🎮', '📊', '🔧', '💎', '🎲', '🏆'],
+    colors: ['#ff00aa', '#ffd700', '#00ffff', '#8844ff', '#00ff88', '#ffaa00', '#ff6600', '#00aaff']
+  },
+  experience: {
+    symbols: ['🏢', '🎰', '🌐', '🎓', '📜', '⭐', '💼', '🚀'],
+    colors: ['#8844ff', '#ffd700', '#00ffff', '#ff00aa', '#00ff88', '#ffaa00', '#ff6600', '#00aaff']
+  },
+  contact: {
+    symbols: ['📧', '💼', '🐙', '🌐', '📱', '💬', '🤝', '✉️'],
+    colors: ['#00ffff', '#8844ff', '#ffd700', '#ff00aa', '#00ff88', '#ffaa00', '#ff6600', '#00aaff']
+  }
+}
+
+// Fallback for unknown machines
+const DEFAULT_SYMBOLS = ['7', '★', '♦', '♠', '♥', '♣', 'A', 'K']
 
 // GPU-animated neon material - shader does work, minimal JS
 function useNeonMaterial(color: string) {
@@ -153,12 +182,13 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
       matBorder.color.copy(colors.labelIdle).lerp(colors.labelActive, act)
     }
 
-    // Reel spinning (only triggered by SPACE key now)
+    // Reel spinning - FAST animation (1.5s total)
     const spin = spinState.current
 
     if (spin.spinning) {
       spin.spinTime += delta
-      const durations = [1.6, 1.9, 2.2, 2.5, 2.8]
+      // Much faster durations: 0.6s, 0.8s, 1.0s, 1.2s, 1.4s
+      const durations = [0.6, 0.8, 1.0, 1.2, 1.4]
 
       for (let i = 0; i < 5; i++) {
         if (spin.spinTime < durations[i]) {
@@ -168,7 +198,7 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
         }
       }
 
-      if (spin.spinTime > durations[4] + 0.4) {
+      if (spin.spinTime > durations[4] + 0.2) {
         spin.spinning = false
       }
     }
@@ -301,28 +331,32 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
         </mesh>
       ))}
 
-      {/* ===== 5 SPINNING REELS ===== */}
+      {/* ===== 5 SPINNING REELS with THEMED SYMBOLS ===== */}
       <group ref={reelsRef} position={[0, 2.9, 0.73]}>
-        {[0, 1, 2, 3, 4].map(reelIdx => (
-          <group key={`reel-${reelIdx}`} position={[-1.04 + reelIdx * 0.52, 0, 0]}>
-            {SYMBOLS.map((symbol, symIdx) => {
-              const angle = (symIdx / SYMBOLS.length) * Math.PI * 2
-              return (
-                <Text
-                  key={`sym-${symIdx}`}
-                  position={[0, Math.sin(angle) * 0.58, Math.cos(angle) * 0.22]}
-                  rotation={[-angle, 0, 0]}
-                  fontSize={0.3}
-                  color={symbol === '7' ? COLORS.gold : '#ffffff'}
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {symbol}
-                </Text>
-              )
-            })}
-          </group>
-        ))}
+        {[0, 1, 2, 3, 4].map(reelIdx => {
+          const themed = THEMED_SYMBOLS[machineId] || { symbols: DEFAULT_SYMBOLS, colors: Array(8).fill('#ffffff') }
+          return (
+            <group key={`reel-${reelIdx}`} position={[-1.04 + reelIdx * 0.52, 0, 0]}>
+              {themed.symbols.map((symbol, symIdx) => {
+                const angle = (symIdx / themed.symbols.length) * Math.PI * 2
+                const symbolColor = themed.colors[symIdx] || '#ffffff'
+                return (
+                  <Text
+                    key={`sym-${symIdx}`}
+                    position={[0, Math.sin(angle) * 0.58, Math.cos(angle) * 0.22]}
+                    rotation={[-angle, 0, 0]}
+                    fontSize={0.28}
+                    color={symbolColor}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {symbol}
+                  </Text>
+                )
+              })}
+            </group>
+          )
+        })}
       </group>
 
       {/* ===== INFO DISPLAY ===== */}
