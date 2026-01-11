@@ -6,11 +6,13 @@
  */
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useState, useCallback, useEffect, useRef } from 'react'
+import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 import { CasinoScene } from './components/CasinoScene'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
-import { SlotFullScreen } from './components/SlotFullScreen'
 import { MobileControls, isMobileDevice } from './components/MobileControls'
+
+// Lazy load SlotFullScreen for better initial bundle size
+const SlotFullScreen = lazy(() => import('./components/SlotFullScreen').then(m => ({ default: m.SlotFullScreen })))
 import {
   WebGLErrorBoundary,
   ContextLostOverlay,
@@ -229,11 +231,33 @@ export function App() {
 
       {/* Full screen slot experience - includes content after spin */}
       {spinningSlot && (
-        <SlotFullScreen
-          machineId={spinningSlot}
-          onClose={() => setSpinningSlot(null)}
-          onNavigate={setSpinningSlot}
-        />
+        <Suspense fallback={
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}>
+            <div style={{
+              color: '#00ffff',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              textShadow: '0 0 20px #00ffff',
+              animation: 'pulse 1.5s ease-in-out infinite'
+            }}>
+              LOADING...
+            </div>
+          </div>
+        }>
+          <SlotFullScreen
+            machineId={spinningSlot}
+            onClose={() => setSpinningSlot(null)}
+            onNavigate={setSpinningSlot}
+          />
+        </Suspense>
       )}
     </WebGLErrorBoundary>
   )

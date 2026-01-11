@@ -3383,6 +3383,9 @@ const ParticleBurst = memo(function ParticleBurst({ color }: { color: string }) 
 // ============================================
 // MAIN COMPONENT
 // ============================================
+// Detect mobile/touch device
+const isTouchDevice = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
 export function SlotFullScreen({
   machineId,
   onClose
@@ -3402,6 +3405,12 @@ export function SlotFullScreen({
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
   const [showKeyboardHints, setShowKeyboardHints] = useState(false)
+  const [showMobileHints, setShowMobileHints] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Touch/swipe state
+  const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const section = SLOT_CONTENT[machineId]
   const theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
@@ -3461,16 +3470,87 @@ export function SlotFullScreen({
   useEffect(() => {
     if (phase === 'content') {
       setFocusIndex(0)
-      // Show keyboard hints on content entry
-      setShowKeyboardHints(true)
-      const timer = setTimeout(() => setShowKeyboardHints(false), 4000)
-      return () => clearTimeout(timer)
+      // Show appropriate hints based on device type
+      if (isMobile) {
+        setShowMobileHints(true)
+        const timer = setTimeout(() => setShowMobileHints(false), 4000)
+        return () => clearTimeout(timer)
+      } else {
+        setShowKeyboardHints(true)
+        const timer = setTimeout(() => setShowKeyboardHints(false), 4000)
+        return () => clearTimeout(timer)
+      }
     }
-  }, [phase])
+  }, [phase, isMobile])
 
   useEffect(() => {
     markVisited(machineId)
   }, [machineId])
+
+  // Detect mobile on mount
+  useEffect(() => {
+    setIsMobile(isTouchDevice())
+  }, [])
+
+  // Touch/swipe handlers for mobile navigation
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || phase !== 'content' || !section) return
+
+    const touch = e.changedTouches[0]
+    const deltaX = touch.clientX - touchStartRef.current.x
+    const deltaY = touch.clientY - touchStartRef.current.y
+    const deltaTime = Date.now() - touchStartRef.current.time
+
+    // Minimum swipe distance and max time for gesture
+    const minSwipeDistance = 50
+    const maxSwipeTime = 300
+
+    if (deltaTime < maxSwipeTime) {
+      const itemCount = getItemCount(section)
+      const cols = getGridColumns(section)
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+        // Horizontal swipe
+        if (deltaX > 0) {
+          // Swipe right = previous
+          playNavTick()
+          setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
+        } else {
+          // Swipe left = next
+          playNavTick()
+          setFocusIndex(prev => (prev + 1) % itemCount)
+        }
+      } else if (Math.abs(deltaY) > minSwipeDistance) {
+        // Vertical swipe
+        if (deltaY > 0) {
+          // Swipe down = previous row
+          playNavTick()
+          setFocusIndex(prev => {
+            const newIdx = prev - cols
+            return newIdx < 0 ? prev : newIdx
+          })
+        } else {
+          // Swipe up = next row
+          playNavTick()
+          setFocusIndex(prev => {
+            const newIdx = prev + cols
+            return newIdx >= itemCount ? prev : newIdx
+          })
+        }
+      }
+    }
+
+    touchStartRef.current = null
+  }, [phase, section])
 
   // Handle new spin
   const handleSpin = useCallback(() => {
@@ -4525,16 +4605,22 @@ export function SlotFullScreen({
 
       {/* CONTENT PHASE - FULL SCREEN with WOW animations */}
       {phase === 'content' && section && (
-        <div style={{
-          width: '100%',
-          height: '100%',
-          overflow: 'auto',
-          padding: '60px 40px',
-          animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-          position: 'relative'
-        }}>
-          {/* Keyboard Hints Overlay - shows on entry */}
-          {showKeyboardHints && (
+        <div
+          ref={containerRef}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'auto',
+            padding: isMobile ? '40px 20px' : '60px 40px',
+            animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            position: 'relative',
+            touchAction: 'pan-y' // Allow vertical scroll, capture horizontal
+          }}
+        >
+          {/* Keyboard Hints Overlay - shows on entry (Desktop only) */}
+          {showKeyboardHints && !isMobile && (
             <div style={{
               position: 'fixed',
               top: '50%',
@@ -4648,6 +4734,92 @@ export function SlotFullScreen({
                     boxShadow: '0 0 15px rgba(255,68,68,0.3)'
                   }}>ESC</div>
                   <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>BACK</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Hints Overlay - shows on entry (Mobile only) */}
+          {showMobileHints && isMobile && (
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '24px',
+              padding: '32px 40px',
+              background: 'rgba(0,0,0,0.9)',
+              borderRadius: '20px',
+              border: `2px solid ${primaryColor}40`,
+              boxShadow: `0 0 60px ${primaryColor}30, 0 20px 60px rgba(0,0,0,0.5)`,
+              animation: 'keyboardHintsEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), keyboardHintsFade 0.8s ease-out 3.2s forwards',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <div style={{
+                color: primaryColor,
+                fontSize: '16px',
+                fontWeight: 'bold',
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                textShadow: `0 0 20px ${primaryColor}60`
+              }}>
+                TOUCH CONTROLS
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                {/* Swipe gesture */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '60px',
+                    height: '40px',
+                    background: `${primaryColor}20`,
+                    border: `1px solid ${primaryColor}60`,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: primaryColor,
+                    fontSize: '20px'
+                  }}>
+                    <span style={{ animation: 'swipeHint 1.5s ease-in-out infinite' }}>👆</span>
+                  </div>
+                  <span style={{ color: '#aaa', fontSize: '14px' }}>Swipe to navigate</span>
+                </div>
+                {/* Tap gesture */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '60px',
+                    height: '40px',
+                    background: `${primaryColor}20`,
+                    border: `1px solid ${primaryColor}60`,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: primaryColor,
+                    fontSize: '20px'
+                  }}>👆</div>
+                  <span style={{ color: '#aaa', fontSize: '14px' }}>Tap item to select</span>
+                </div>
+                {/* Back button info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '60px',
+                    height: '40px',
+                    background: 'rgba(255,68,68,0.2)',
+                    border: '1px solid rgba(255,68,68,0.6)',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ff6666',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>✕</div>
+                  <span style={{ color: '#aaa', fontSize: '14px' }}>Top-right to close</span>
                 </div>
               </div>
             </div>
@@ -4779,24 +4951,58 @@ export function SlotFullScreen({
               <ContentView section={section} focusIndex={focusIndex} />
             </div>
 
-            {/* ESC hint with glow */}
-            <div style={{
-              textAlign: 'center',
-              marginTop: '60px',
-              color: '#666688',
-              fontSize: '14px',
-              animation: 'contentHintFade 0.5s ease-out 1s both'
-            }}>
-              Press <span style={{
-                color: primaryColor,
-                padding: '6px 16px',
-                background: `${primaryColor}15`,
-                borderRadius: '8px',
-                border: `1px solid ${primaryColor}30`,
-                boxShadow: `0 0 20px ${primaryColor}20`
-              }}>ESC</span> to return
-            </div>
+            {/* ESC hint with glow - Desktop only */}
+            {!isMobile && (
+              <div style={{
+                textAlign: 'center',
+                marginTop: '60px',
+                color: '#666688',
+                fontSize: '14px',
+                animation: 'contentHintFade 0.5s ease-out 1s both'
+              }}>
+                Press <span style={{
+                  color: primaryColor,
+                  padding: '6px 16px',
+                  background: `${primaryColor}15`,
+                  borderRadius: '8px',
+                  border: `1px solid ${primaryColor}30`,
+                  boxShadow: `0 0 20px ${primaryColor}20`
+                }}>ESC</span> to return
+              </div>
+            )}
           </div>
+
+          {/* Mobile Close Button - Fixed position */}
+          {isMobile && (
+            <button
+              onClick={() => {
+                playNavBack()
+                onClose()
+              }}
+              style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                width: '50px',
+                height: '50px',
+                borderRadius: '50%',
+                background: 'rgba(255,68,68,0.9)',
+                border: '2px solid #ff6666',
+                color: '#fff',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                zIndex: 1001,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
+                animation: 'contentHintFade 0.5s ease-out 0.5s both'
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
       )}
 
@@ -5642,6 +5848,13 @@ export function SlotFullScreen({
         @keyframes keyboardHintsFade {
           0% { opacity: 1; }
           100% { opacity: 0; pointer-events: none; }
+        }
+
+        /* Mobile Swipe Hint Animation */
+        @keyframes swipeHint {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          75% { transform: translateX(10px); }
         }
 
         /* Data Stream */
