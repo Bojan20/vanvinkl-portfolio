@@ -21,6 +21,193 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 
+// Slot Loading Skeleton - premium cyberpunk loading animation
+function SlotLoadingSkeleton() {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: 'linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+      overflow: 'hidden'
+    }}>
+      {/* Animated background grid */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+        animation: 'skeletonGridMove 20s linear infinite'
+      }} />
+
+      {/* Glow orbs */}
+      <div style={{
+        position: 'absolute',
+        width: '400px',
+        height: '400px',
+        background: 'radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%)',
+        borderRadius: '50%',
+        animation: 'skeletonOrbPulse 3s ease-in-out infinite',
+        filter: 'blur(40px)'
+      }} />
+      <div style={{
+        position: 'absolute',
+        width: '300px',
+        height: '300px',
+        background: 'radial-gradient(circle, rgba(255, 0, 170, 0.08) 0%, transparent 70%)',
+        borderRadius: '50%',
+        animation: 'skeletonOrbPulse 3s ease-in-out infinite 1.5s',
+        filter: 'blur(30px)',
+        transform: 'translate(100px, 50px)'
+      }} />
+
+      {/* Slot machine frame skeleton */}
+      <div style={{
+        position: 'relative',
+        width: '90%',
+        maxWidth: '800px',
+        padding: '40px',
+        background: 'rgba(20, 20, 30, 0.8)',
+        borderRadius: '24px',
+        border: '2px solid rgba(0, 255, 255, 0.2)',
+        boxShadow: `
+          0 0 60px rgba(0, 255, 255, 0.1),
+          inset 0 0 60px rgba(0, 0, 0, 0.5)
+        `
+      }}>
+        {/* Header skeleton */}
+        <div style={{
+          height: '40px',
+          background: 'linear-gradient(90deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1))',
+          backgroundSize: '200% 100%',
+          animation: 'skeletonShimmer 1.5s ease-in-out infinite',
+          borderRadius: '8px',
+          marginBottom: '30px'
+        }} />
+
+        {/* Reels skeleton */}
+        <div style={{
+          display: 'flex',
+          gap: '20px',
+          justifyContent: 'center',
+          marginBottom: '30px'
+        }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              width: '180px',
+              height: '300px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '12px',
+              border: '1px solid rgba(0, 255, 255, 0.15)',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {/* Scrolling symbols skeleton */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: `
+                  linear-gradient(180deg,
+                    rgba(0, 255, 255, 0.05) 0%,
+                    rgba(255, 0, 170, 0.05) 33%,
+                    rgba(136, 68, 255, 0.05) 66%,
+                    rgba(0, 255, 255, 0.05) 100%
+                  )
+                `,
+                backgroundSize: '100% 400%',
+                animation: `skeletonReelSpin 1s linear infinite`,
+                animationDelay: `${i * 0.15}s`
+              }} />
+              {/* Symbol placeholders */}
+              {[0, 1, 2, 3].map(j => (
+                <div key={j} style={{
+                  width: '60%',
+                  height: '50px',
+                  margin: '20px auto',
+                  background: 'linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+                  backgroundSize: '200% 100%',
+                  animation: 'skeletonShimmer 1.5s ease-in-out infinite',
+                  animationDelay: `${j * 0.1}s`,
+                  borderRadius: '8px'
+                }} />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Loading text */}
+        <div style={{
+          textAlign: 'center'
+        }}>
+          <div style={{
+            color: '#00ffff',
+            fontSize: '28px',
+            fontWeight: 'bold',
+            textShadow: '0 0 30px #00ffff, 0 0 60px #00ffff40',
+            letterSpacing: '8px',
+            animation: 'skeletonTextPulse 1s ease-in-out infinite'
+          }}>
+            LOADING
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '16px'
+          }}>
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} style={{
+                width: '8px',
+                height: '8px',
+                background: '#00ffff',
+                borderRadius: '50%',
+                boxShadow: '0 0 10px #00ffff',
+                animation: 'skeletonDotBounce 1.4s ease-in-out infinite',
+                animationDelay: `${i * 0.1}s`
+              }} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Skeleton animations */}
+      <style>{`
+        @keyframes skeletonGridMove {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(50px, 50px); }
+        }
+        @keyframes skeletonOrbPulse {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        @keyframes skeletonShimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @keyframes skeletonReelSpin {
+          0% { background-position: 0 0; }
+          100% { background-position: 0 400%; }
+        }
+        @keyframes skeletonTextPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes skeletonDotBounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+          40% { transform: translateY(-12px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 // Controls HUD - compact bottom-center display (desktop only)
 function ControlsHUD() {
   return (
@@ -231,27 +418,7 @@ export function App() {
 
       {/* Full screen slot experience - includes content after spin */}
       {spinningSlot && (
-        <Suspense fallback={
-          <div style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000
-          }}>
-            <div style={{
-              color: '#00ffff',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              textShadow: '0 0 20px #00ffff',
-              animation: 'pulse 1.5s ease-in-out infinite'
-            }}>
-              LOADING...
-            </div>
-          </div>
-        }>
+        <Suspense fallback={<SlotLoadingSkeleton />}>
           <SlotFullScreen
             machineId={spinningSlot}
             onClose={() => setSpinningSlot(null)}
