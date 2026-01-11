@@ -125,52 +125,55 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'skills',
     type: 'skills',
     title: 'SKILLS',
-    tagline: 'Full-stack game development expertise',
+    tagline: 'Professional Audio Production & Sound Design Expertise',
     color: '#00ffff',
     categories: [
       {
-        name: 'Programming',
-        icon: '💻',
+        name: 'Game Audio Design',
+        icon: '🎮',
         color: '#00ffff',
         skills: [
-          { name: 'TypeScript', level: 95 },
-          { name: 'C#', level: 90 },
-          { name: 'Rust', level: 75 },
-          { name: 'Python', level: 85 },
-          { name: 'C++', level: 70 }
+          { name: 'Slot Game Audio', level: 98 },
+          { name: 'Interactive Sound Design', level: 95 },
+          { name: 'Adaptive Music Systems', level: 92 },
+          { name: 'UI/UX Sound Design', level: 95 },
+          { name: 'Ambient & Atmosphere', level: 90 }
         ]
       },
       {
-        name: 'Game Engines',
-        icon: '🎮',
+        name: 'Sound Implementation',
+        icon: '⚙️',
         color: '#ff00aa',
         skills: [
-          { name: 'Unity', level: 95 },
-          { name: 'Unreal Engine', level: 80 },
-          { name: 'Godot', level: 85 },
-          { name: 'Custom Engines', level: 75 }
+          { name: 'FMOD Studio', level: 95 },
+          { name: 'Wwise', level: 90 },
+          { name: 'Unity Audio', level: 95 },
+          { name: 'JSON Audio Logic', level: 92 },
+          { name: 'Web Audio API', level: 85 }
         ]
       },
       {
-        name: 'Web 3D',
-        icon: '🌐',
+        name: 'Music Production',
+        icon: '🎹',
         color: '#8844ff',
         skills: [
-          { name: 'Three.js', level: 95 },
-          { name: 'React Three Fiber', level: 95 },
-          { name: 'WebGL/WGSL', level: 85 },
-          { name: 'GSAP', level: 90 }
+          { name: 'Original Composition', level: 95 },
+          { name: 'Orchestral Arrangement', level: 88 },
+          { name: 'Electronic Production', level: 92 },
+          { name: 'Trailer Music', level: 90 },
+          { name: 'Layered Music Systems', level: 95 }
         ]
       },
       {
-        name: 'Audio',
-        icon: '🔊',
+        name: 'Audio Post-Production',
+        icon: '🎚️',
         color: '#ffd700',
         skills: [
-          { name: 'FMOD', level: 85 },
-          { name: 'Wwise', level: 80 },
-          { name: 'Web Audio API', level: 90 },
-          { name: 'Sound Design', level: 75 }
+          { name: 'Mixing & Mastering', level: 95 },
+          { name: 'Foley Recording', level: 85 },
+          { name: 'Sound Effects Creation', level: 95 },
+          { name: 'Audio Restoration', level: 88 },
+          { name: 'Format Optimization', level: 92 }
         ]
       }
     ],
@@ -181,32 +184,56 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'services',
     type: 'services',
     title: 'SERVICES',
-    tagline: 'End-to-end casino game solutions',
+    tagline: 'Complete Audio Solutions for Games & Interactive Media',
     color: '#ff00aa',
     items: [
       {
         icon: '🎰',
-        title: 'Slot Machine Development',
-        description: 'Complete slot game creation from concept to deployment',
-        features: ['Math models & RNG', 'Multi-platform', 'Certification ready']
+        title: 'Slot Game Audio Packages',
+        description: 'End-to-end audio production for slot games including music, SFX, and implementation. Delivered as ready-to-integrate packages with documentation.',
+        features: [
+          'Full soundtrack composition (base game, features, bonus rounds)',
+          'Complete SFX library (spins, wins, UI, ambience)',
+          'Implementation-ready audio with JSON logic',
+          'Multi-format delivery (OGG, MP3, WAV)',
+          'Performance optimization for mobile & web'
+        ]
       },
       {
-        icon: '🃏',
-        title: 'Table Games',
-        description: 'Blackjack, Roulette, Poker and custom variants',
-        features: ['Realistic physics', 'Live dealer integration', 'Multi-player']
+        icon: '🎵',
+        title: 'Original Music Composition',
+        description: 'Custom music tailored to your game\'s theme and mood. From epic orchestral to modern electronic, composed to enhance player experience.',
+        features: [
+          'Theme-based original compositions',
+          'Adaptive/layered music systems',
+          'Loop-friendly arrangements',
+          'Multiple variations for game states',
+          'Unlimited revisions until perfect'
+        ]
       },
       {
-        icon: '🌐',
-        title: '3D Web Experiences',
-        description: 'Interactive WebGL applications and portfolios',
-        features: ['Three.js/R3F', '60fps optimized', 'Mobile-ready']
+        icon: '🔊',
+        title: 'Sound Design & SFX',
+        description: 'High-quality sound effects from scratch or library curation. Every sound crafted to provide satisfying player feedback.',
+        features: [
+          'Custom Foley recording',
+          'Synthesized effects creation',
+          'UI/UX audio design',
+          'Win celebration sounds',
+          'Ambient soundscapes'
+        ]
       },
       {
-        icon: '🔧',
-        title: 'Technical Consulting',
-        description: 'Architecture review and performance optimization',
-        features: ['Code audits', 'Performance tuning', 'Best practices']
+        icon: '🎚️',
+        title: 'Audio Mastering & QA',
+        description: 'Professional mastering and quality assurance to ensure your audio meets industry standards across all platforms.',
+        features: [
+          'Loudness normalization (LUFS standards)',
+          'Cross-platform testing',
+          'Compression & format optimization',
+          'Audio bug testing & reporting',
+          'Final delivery preparation'
+        ]
       }
     ],
     cta: { label: 'Get In Touch', machineId: 'contact' }
@@ -216,14 +243,16 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'about',
     type: 'about',
     title: 'ABOUT',
-    tagline: 'Passionate about creating immersive experiences',
+    tagline: 'Audio Producer | Sound Designer | Composer',
     color: '#8844ff',
-    bio: "Game developer with 10+ years of experience specializing in casino games and interactive web experiences. I combine technical expertise with creative vision to deliver AAA-quality products.",
+    bio: "I'm Bojan Petkovic, founder of VanVinkl Studio - a professional audio production company based in Belgrade, Serbia. With over a decade of experience in the gaming industry, I specialize in creating immersive audio experiences for slot games and interactive entertainment.\n\nMy journey began with classical music education at the Faculty of Music in Belgrade, followed by professional audio engineering training at SAE Institute. This foundation, combined with 4+ years as Lead Sound Designer at IGT (one of the world's largest slot machine manufacturers), has given me deep expertise in what makes game audio truly engaging.\n\nAt VanVinkl Studio, I deliver complete audio solutions - from original music composition and sound design to technical implementation. I understand the unique requirements of iGaming: the need for loop-friendly music, the importance of satisfying win sounds, and the technical constraints of web and mobile platforms.\n\nEvery project receives my full attention, ensuring high-quality audio that enhances player experience and meets the demanding standards of the gaming industry.",
     stats: [
-      { icon: '📅', label: 'Experience', value: '10+ Years' },
-      { icon: '🎮', label: 'Games Shipped', value: '50+' },
-      { icon: '🌍', label: 'Location', value: 'Remote / Serbia' },
-      { icon: '💬', label: 'Languages', value: 'EN / SR' }
+      { icon: '📅', label: 'Industry Experience', value: '10+ Years' },
+      { icon: '🎰', label: 'Slot Games Completed', value: '50+' },
+      { icon: '🏢', label: 'Notable Client', value: 'IGT (4 years)' },
+      { icon: '🎓', label: 'Education', value: 'SAE Institute + BA Music' },
+      { icon: '🌍', label: 'Location', value: 'Belgrade, Serbia' },
+      { icon: '🌐', label: 'Work Style', value: 'Remote / International' }
     ],
     cta: { label: 'My Journey', machineId: 'experience' }
   },
@@ -232,86 +261,93 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'projects',
     type: 'projects',
     title: 'PROJECTS',
-    tagline: 'Selected works from my portfolio',
+    tagline: 'Selected Works & Case Studies',
     color: '#ffd700',
     featured: [
       {
-        title: 'Neon Nights Casino',
-        icon: '🌃',
-        tags: ['Unity', 'WebGL', 'B2B'],
-        description: 'Full casino platform with 12 slot titles and live games',
-        year: '2024'
+        title: 'IGT Slot Portfolio',
+        icon: '🎰',
+        tags: ['Slots', 'FMOD', 'Production'],
+        description: 'Complete audio production for 50+ slot game titles during my tenure as Lead Sound Designer at IGT. Responsibilities included original music composition, SFX creation, adaptive audio systems, and team leadership. Delivered for European and global markets with full certification compliance.',
+        year: '2020-2024'
       },
       {
-        title: 'Crypto Slots',
-        icon: '₿',
-        tags: ['React', 'Three.js', 'Blockchain'],
-        description: 'Provably fair slot machines with crypto integration',
-        year: '2023'
+        title: 'VanVinkl Studio Packages',
+        icon: '📦',
+        tags: ['Turnkey', 'International', 'B2B'],
+        description: 'Full audio packages for international gaming clients. Each package includes original soundtrack, complete SFX library, implementation documentation, and ongoing support. Designed for seamless integration into slot game engines.',
+        year: '2024-Present'
       },
       {
-        title: 'VR Poker Room',
-        icon: '🥽',
-        tags: ['Unreal', 'VR', 'Multiplayer'],
-        description: 'Immersive multiplayer poker in virtual reality',
-        year: '2023'
+        title: 'Trailer Music Compositions',
+        icon: '🎬',
+        tags: ['Cinematic', 'Orchestral', 'Epic'],
+        description: 'Original trailer music for game marketing and promotional content. Epic orchestral arrangements combined with modern production techniques to create impactful, emotionally engaging compositions.',
+        year: 'Ongoing'
       },
       {
-        title: 'Retro Arcade',
-        icon: '👾',
-        tags: ['Godot', 'Mobile', 'Casual'],
-        description: 'Collection of 8-bit style casino mini-games',
-        year: '2022'
+        title: 'Live Event Audio',
+        icon: '🎤',
+        tags: ['Live', 'Corporate', 'Production'],
+        description: 'Audio production and coordination for live corporate events during my work with Music Studio "Strip". Experience includes on-site sound management, artist coordination, and event audio logistics.',
+        year: '2020-2022'
       }
     ],
-    cta: { label: 'View GitHub', external: 'https://github.com/vanvinkl' }
+    cta: { label: 'Listen to Demo Reel', external: 'https://vanvinkl.com/demos' }
   },
 
   experience: {
     id: 'experience',
     type: 'experience',
     title: 'EXPERIENCE',
-    tagline: 'Professional journey in gaming',
+    tagline: 'Professional Journey in Audio Production',
     color: '#00ff88',
     timeline: [
       {
-        period: '2021 - Present',
-        role: 'Lead Game Developer',
-        company: 'iGaming Studio',
+        period: 'May 2024 - Present',
+        role: 'Founder & Audio Producer',
+        company: 'VanVinkl Studio',
         highlights: [
-          'Led team of 8 developers',
-          '25+ slot titles shipped',
-          'Migrated platform to WebGL'
+          'Founded professional audio production studio in Belgrade',
+          'Delivering complete slot game audio packages to international clients',
+          'End-to-end production: composition, sound design, implementation',
+          'Building long-term partnerships with gaming companies worldwide',
+          'Maintaining IGT-level quality standards as an independent studio'
         ]
       },
       {
-        period: '2018 - 2021',
-        role: 'Senior Unity Developer',
-        company: 'Casino Games Inc.',
+        period: 'Sep 2020 - May 2024',
+        role: 'Lead Sound Designer',
+        company: 'IGT (International Game Technology)',
         highlights: [
-          'Built slot framework used in 40+ games',
-          'Implemented RNG certification',
-          'Performance optimization specialist'
+          'Led audio team of 2 sound designers for European slot production',
+          'Completed 50+ slot game titles with full audio packages',
+          'Created adaptive music systems and interactive soundscapes',
+          'Established audio production pipelines and documentation standards',
+          'Delivered for both land-based and online slot platforms',
+          'Mentored junior audio designers in game audio best practices'
         ]
       },
       {
-        period: '2015 - 2018',
-        role: 'Game Developer',
-        company: 'Interactive Studios',
+        period: 'Apr 2020 - Dec 2022',
+        role: 'Music Production Assistant',
+        company: 'Music Studio "Strip"',
         highlights: [
-          'First casino game projects',
-          'Mobile game development',
-          'UI/UX implementation'
+          'Assisted in music production for various projects',
+          'Coordinated live corporate events and concerts',
+          'Managed on-site audio for public gatherings',
+          'Developed project management and client communication skills'
         ]
       },
       {
-        period: '2014 - 2015',
-        role: 'Junior Developer',
-        company: 'Startup Lab',
+        period: '2015 - 2019',
+        role: 'Education & Early Career',
+        company: 'SAE Institute & Faculty of Music Belgrade',
         highlights: [
-          'Web development basics',
-          'First game prototypes',
-          'Learning and growth'
+          'BA in Music Education - Faculty of Music, University of Belgrade',
+          'Audio Engineering Diploma - SAE Institute Belgrade',
+          'Specialized in game audio and interactive sound design',
+          'Classical music foundation with modern production techniques'
         ]
       }
     ],
@@ -322,29 +358,29 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'contact',
     type: 'contact',
     title: 'CONTACT',
-    tagline: "Let's build something amazing together",
+    tagline: "Let's Create Something Amazing Together",
     color: '#ff4444',
     methods: [
       {
         icon: '📧',
         label: 'Email',
-        value: 'hello@vanvinkl.com',
+        value: 'vanvinklstudio@gmail.com',
         action: 'email',
-        url: 'mailto:hello@vanvinkl.com'
+        url: 'mailto:vanvinklstudio@gmail.com'
+      },
+      {
+        icon: '📱',
+        label: 'Phone',
+        value: '+381 69 400 0062',
+        action: 'copy',
+        url: 'tel:+381694000062'
       },
       {
         icon: '💼',
         label: 'LinkedIn',
-        value: '/in/vanvinkl',
+        value: 'Bojan Petkovic',
         action: 'link',
-        url: 'https://linkedin.com/in/vanvinkl'
-      },
-      {
-        icon: '🐙',
-        label: 'GitHub',
-        value: '/vanvinkl',
-        action: 'link',
-        url: 'https://github.com/vanvinkl'
+        url: 'https://linkedin.com/in/bojan-petkovic-audio'
       },
       {
         icon: '🌐',
@@ -354,8 +390,8 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         url: 'https://vanvinkl.com'
       }
     ],
-    availability: 'Available for projects starting February 2025',
-    cta: { label: 'Send Email', external: 'mailto:hello@vanvinkl.com?subject=Project%20Inquiry' }
+    availability: 'Currently accepting new projects. Typical turnaround: 2-4 weeks for full slot audio packages.',
+    cta: { label: 'Send Project Inquiry', external: 'mailto:vanvinklstudio@gmail.com?subject=Project%20Inquiry%20-%20Slot%20Audio' }
   }
 }
 

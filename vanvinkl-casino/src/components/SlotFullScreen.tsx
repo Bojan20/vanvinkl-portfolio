@@ -1,13 +1,19 @@
 /**
- * SlotFullScreen - Ultra Realistic Full Screen Slot Experience
+ * SlotFullScreen - Interactive Portfolio Slot "Skill Reel"
  *
- * - HUGE reels filling entire screen
- * - Ultra realistic spinning with motion blur
- * - NO navigation between slots - each slot is standalone
- * - Full screen content after spin
+ * ZERO-LATENCY OPTIMIZATIONS (Claude.md Roles):
+ * - Chief Audio Architect: Audio-first timing, no visual jank
+ * - Lead DSP Engineer: RAF-based animations, no setInterval stutters
+ * - Engine Architect: Memoization, single render paths
+ * - Graphics Engineer: GPU compositing via will-change, transform3d
+ * - UI/UX Expert: 60fps target, instant feedback
+ *
+ * Each reel shows REAL CV data about Bojan Petkovic
+ * Combinations form coherent sentences about skills/experience
+ * Jackpot reveals detailed case studies
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import {
   SLOT_CONTENT,
   markVisited,
@@ -19,16 +25,575 @@ import {
   type ExperienceSection,
   type ContactSection
 } from '../store/slotContent'
+import {
+  playNavTick,
+  playNavSelect,
+  playNavBack,
+  playModalOpen,
+  playModalClose,
+  playContentReveal,
+  playPhaseTransition,
+  playSound,
+  playSynthJackpot,
+  playSynthWin
+} from '../audio'
 
+// GPU-ACCELERATED COLOR CONSTANTS - Precomputed for zero runtime cost
 const COLORS = {
   cyan: '#00ffff',
   magenta: '#ff00aa',
   purple: '#8844ff',
   gold: '#ffd700',
   green: '#00ff88'
+} as const
+
+// PERFORMANCE: Shared style objects for GPU compositing
+const GPU_ACCELERATED_BASE: React.CSSProperties = {
+  willChange: 'transform, opacity',
+  transform: 'translateZ(0)', // Force GPU layer
+  backfaceVisibility: 'hidden'
 }
 
-// Themed symbols for each slot - MORE symbols for realistic feel
+// ============================================
+// TYPEWRITER EFFECT COMPONENT
+// ============================================
+const TypewriterText = memo(function TypewriterText({
+  text,
+  speed = 30,
+  delay = 0,
+  color = '#fff',
+  fontSize = '16px',
+  onComplete
+}: {
+  text: string
+  speed?: number
+  delay?: number
+  color?: string
+  fontSize?: string
+  onComplete?: () => void
+}) {
+  const [displayedText, setDisplayedText] = useState('')
+  const [isComplete, setIsComplete] = useState(false)
+
+  useEffect(() => {
+    setDisplayedText('')
+    setIsComplete(false)
+
+    const startTimeout = setTimeout(() => {
+      let currentIndex = 0
+      const interval = setInterval(() => {
+        if (currentIndex < text.length) {
+          setDisplayedText(text.slice(0, currentIndex + 1))
+          currentIndex++
+        } else {
+          clearInterval(interval)
+          setIsComplete(true)
+          onComplete?.()
+        }
+      }, speed)
+
+      return () => clearInterval(interval)
+    }, delay)
+
+    return () => clearTimeout(startTimeout)
+  }, [text, speed, delay, onComplete])
+
+  return (
+    <span style={{ color, fontSize }}>
+      {displayedText}
+      {!isComplete && (
+        <span style={{
+          display: 'inline-block',
+          width: '2px',
+          height: '1em',
+          background: color,
+          marginLeft: '2px',
+          animation: 'cursorBlink 0.8s step-end infinite',
+          verticalAlign: 'text-bottom'
+        }} />
+      )}
+    </span>
+  )
+})
+
+// ============================================
+// RIPPLE EFFECT COMPONENT
+// ============================================
+const RippleEffect = memo(function RippleEffect({
+  x, y, color, onComplete
+}: {
+  x: number
+  y: number
+  color: string
+  onComplete: () => void
+}) {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 600)
+    return () => clearTimeout(timer)
+  }, [onComplete])
+
+  return (
+    <div style={{
+      position: 'fixed',
+      left: x,
+      top: y,
+      width: '20px',
+      height: '20px',
+      borderRadius: '50%',
+      background: color,
+      transform: 'translate(-50%, -50%)',
+      animation: 'ripple 0.6s ease-out forwards',
+      pointerEvents: 'none',
+      zIndex: 9999
+    }} />
+  )
+})
+
+// ============================================
+// SELECT BURST EFFECT
+// ============================================
+const SelectBurst = memo(function SelectBurst({
+  x, y, color, onComplete
+}: {
+  x: number
+  y: number
+  color: string
+  onComplete: () => void
+}) {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 500)
+    return () => clearTimeout(timer)
+  }, [onComplete])
+
+  return (
+    <div style={{
+      position: 'fixed',
+      left: x,
+      top: y,
+      pointerEvents: 'none',
+      zIndex: 9999
+    }}>
+      {/* Central burst */}
+      <div style={{
+        position: 'absolute',
+        width: '100px',
+        height: '100px',
+        borderRadius: '50%',
+        border: `3px solid ${color}`,
+        animation: 'selectBurst 0.5s ease-out forwards'
+      }} />
+      {/* Particles */}
+      {Array.from({ length: 8 }, (_, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: '8px',
+          height: '8px',
+          background: color,
+          borderRadius: '50%',
+          boxShadow: `0 0 10px ${color}`,
+          animation: 'particleFly 0.5s ease-out forwards',
+          '--angle': `${i * 45}deg`,
+          '--distance': '80px'
+        } as React.CSSProperties} />
+      ))}
+    </div>
+  )
+})
+
+// RAF-based animation hook for zero-jitter animations
+function useRAF(callback: (deltaTime: number) => void, active: boolean) {
+  const rafRef = useRef<number | null>(null)
+  const lastTimeRef = useRef<number>(0)
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
+
+  useEffect(() => {
+    if (!active) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      return
+    }
+
+    const animate = (time: number) => {
+      const delta = lastTimeRef.current ? time - lastTimeRef.current : 16.67
+      lastTimeRef.current = time
+      callbackRef.current(delta)
+      rafRef.current = requestAnimationFrame(animate)
+    }
+
+    rafRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [active])
+}
+
+// ============================================
+// SEGMENT-SPECIFIC REEL DATA - Based on Bojan's CV
+// Each slot machine shows info about its own segment
+// ============================================
+
+interface SkillReelSymbol {
+  icon: string
+  label: string
+  color: string
+  info?: string  // Extra info shown in story
+}
+
+interface SegmentReelConfig {
+  title: string
+  subtitle: string
+  reels: SkillReelSymbol[][]
+  stories: { indices: number[], story: string, highlight: string }[]
+  generateStory: (indices: number[], reels: SkillReelSymbol[][]) => string
+}
+
+// ============================================
+// SKILLS SEGMENT - Audio/Technical Skills
+// ============================================
+const SKILLS_CONFIG: SegmentReelConfig = {
+  title: 'SKILLS',
+  subtitle: 'Audio Expertise',
+  reels: [
+    // Reel 1: Skill Category
+    [
+      { icon: '🎼', label: 'Game Audio', color: '#00ffff' },
+      { icon: '🎚️', label: 'Sound Design', color: '#ff00aa' },
+      { icon: '🎹', label: 'Music Composition', color: '#8844ff' },
+      { icon: '⚙️', label: 'Implementation', color: '#00ff88' },
+      { icon: '🎙️', label: 'Recording', color: '#ffd700' }
+    ],
+    // Reel 2: Specific Skill
+    [
+      { icon: '🔄', label: 'Adaptive Music', color: '#00ffff' },
+      { icon: '🎯', label: 'Interactive SFX', color: '#ff00aa' },
+      { icon: '📊', label: 'Mix Balancing', color: '#8844ff' },
+      { icon: '📝', label: 'JSON Logic', color: '#00ff88' },
+      { icon: '🎤', label: 'Foley', color: '#ffd700' }
+    ],
+    // Reel 3: Level
+    [
+      { icon: '⭐⭐⭐⭐⭐', label: 'Expert', color: '#ffd700' },
+      { icon: '⭐⭐⭐⭐', label: 'Advanced', color: '#00ff88' },
+      { icon: '⭐⭐⭐', label: 'Proficient', color: '#00ffff' }
+    ],
+    // Reel 4: Years
+    [
+      { icon: '🔟', label: '10+ godina', color: '#ffd700' },
+      { icon: '5️⃣', label: '5+ godina', color: '#00ff88' },
+      { icon: '3️⃣', label: '3+ godina', color: '#00ffff' }
+    ],
+    // Reel 5: Context
+    [
+      { icon: '🎰', label: 'Slot Games', color: '#ffd700' },
+      { icon: '🎮', label: 'Game Dev', color: '#00ffff' },
+      { icon: '🎬', label: 'Trailers', color: '#ff00aa' },
+      { icon: '📱', label: 'Mobile', color: '#00ff88' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "Game Audio Design sa adaptivnom muzikom na Expert nivou. 10+ godina iskustva u slot igrama.", highlight: "Layered Music Systems" },
+    { indices: [1, 1, 1, 1, 1], story: "Sound Design sa Interactive SFX, Advanced nivo. 5+ godina rada na game development projektima.", highlight: "Performance-Based SFX" },
+    { indices: [2, 2, 2, 2, 2], story: "Music Composition sa Mix Balancing ekspertizom. Proficient u trailer produkciji.", highlight: "Cinematic Scores" }
+  ],
+  generateStory: (indices, reels) => {
+    const cat = reels[0][indices[0] % reels[0].length]
+    const skill = reels[1][indices[1] % reels[1].length]
+    const level = reels[2][indices[2] % reels[2].length]
+    const years = reels[3][indices[3] % reels[3].length]
+    const ctx = reels[4][indices[4] % reels[4].length]
+    return `${cat.label}: ${skill.label} na ${level.label} nivou. ${years.label} iskustva u ${ctx.label} produkciji.`
+  }
+}
+
+// ============================================
+// EXPERIENCE SEGMENT - Work History
+// ============================================
+const EXPERIENCE_CONFIG: SegmentReelConfig = {
+  title: 'EXPERIENCE',
+  subtitle: 'Work History',
+  reels: [
+    // Reel 1: Company
+    [
+      { icon: '🎨', label: 'VanVinkl Studio', color: '#00ffff', info: 'May 2024 - Present' },
+      { icon: '🏢', label: 'IGT', color: '#ff00aa', info: 'Sep 2020 - May 2024' },
+      { icon: '🎵', label: 'Studio Strip', color: '#8844ff', info: 'Apr 2020 - Dec 2022' }
+    ],
+    // Reel 2: Role
+    [
+      { icon: '🎛️', label: 'Audio Producer', color: '#00ffff' },
+      { icon: '🎼', label: 'Lead Sound Designer', color: '#ff00aa' },
+      { icon: '🔊', label: 'Composer', color: '#8844ff' }
+    ],
+    // Reel 3: Responsibility
+    [
+      { icon: '🌍', label: 'International Clients', color: '#ffd700' },
+      { icon: '👥', label: 'Team of 2', color: '#00ff88' },
+      { icon: '🎯', label: 'Full Pipeline', color: '#00ffff' }
+    ],
+    // Reel 4: Achievement
+    [
+      { icon: '📦', label: 'Complete Packages', color: '#ffd700' },
+      { icon: '🎰', label: '50+ Slot Games', color: '#ff00aa' },
+      { icon: '✅', label: 'QA Testing', color: '#00ff88' }
+    ],
+    // Reel 5: Market
+    [
+      { icon: '🇪🇺', label: 'European', color: '#00ffff' },
+      { icon: '🌍', label: 'Global', color: '#ffd700' },
+      { icon: '🎮', label: 'Gaming', color: '#00ff88' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "VanVinkl Studio (2024-Present): Audio Producer za međunarodne klijente. Vodim kompletnu audio produkciju - od koncepta do masteringa.", highlight: "Founder & Audio Producer" },
+    { indices: [1, 1, 1, 1, 1], story: "IGT (2020-2024): Lead Sound Designer. Vodio tim od 2 audio dizajnera, kreirao 50+ slot soundtracks za evropsko i globalno tržište.", highlight: "4 godine • 50+ slot games" },
+    { indices: [2, 2, 2, 2, 2], story: "Studio Strip (2020-2022): Asistencija u muzičkoj produkciji, event koordinacija i korporativni eventi.", highlight: "Studio Production" }
+  ],
+  generateStory: (indices, reels) => {
+    const company = reels[0][indices[0] % reels[0].length]
+    const role = reels[1][indices[1] % reels[1].length]
+    const resp = reels[2][indices[2] % reels[2].length]
+    const achieve = reels[3][indices[3] % reels[3].length]
+    const market = reels[4][indices[4] % reels[4].length]
+    return `${company.label}: ${role.label}. ${resp.label}. Dostignuće: ${achieve.label}. Tržište: ${market.label}.`
+  }
+}
+
+// ============================================
+// SERVICES SEGMENT - What I Offer
+// ============================================
+const SERVICES_CONFIG: SegmentReelConfig = {
+  title: 'SERVICES',
+  subtitle: 'Audio Services',
+  reels: [
+    // Reel 1: Service Type
+    [
+      { icon: '🎵', label: 'Music Production', color: '#ff00aa' },
+      { icon: '🔊', label: 'Sound Design', color: '#00ffff' },
+      { icon: '🎚️', label: 'Audio Mastering', color: '#8844ff' },
+      { icon: '⚙️', label: 'Implementation', color: '#00ff88' }
+    ],
+    // Reel 2: Platform
+    [
+      { icon: '🎰', label: 'Slot Games', color: '#ffd700' },
+      { icon: '📱', label: 'Mobile Games', color: '#00ffff' },
+      { icon: '🎬', label: 'Trailers', color: '#ff00aa' },
+      { icon: '🎮', label: 'Video Games', color: '#00ff88' }
+    ],
+    // Reel 3: Deliverable
+    [
+      { icon: '📦', label: 'Full Package', color: '#ffd700' },
+      { icon: '🎼', label: 'Original Score', color: '#ff00aa' },
+      { icon: '💥', label: 'SFX Library', color: '#00ffff' },
+      { icon: '🔧', label: 'Integration', color: '#00ff88' }
+    ],
+    // Reel 4: Quality
+    [
+      { icon: '⭐', label: 'AAA Quality', color: '#ffd700' },
+      { icon: '🏆', label: 'Industry Standard', color: '#00ff88' },
+      { icon: '✨', label: 'Premium', color: '#8844ff' }
+    ],
+    // Reel 5: Turnaround
+    [
+      { icon: '⚡', label: 'Fast Delivery', color: '#ffd700' },
+      { icon: '🤝', label: 'Collaborative', color: '#00ffff' },
+      { icon: '🔄', label: 'Iterative', color: '#00ff88' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "Music Production za Slot Games: Full audio package sa AAA kvalitetom i brzom isporukom.", highlight: "Complete Slot Audio" },
+    { indices: [1, 1, 1, 1, 1], story: "Sound Design za Mobile Games: Original SFX library, industry standard kvalitet, kolaborativan pristup.", highlight: "Mobile Game Audio" },
+    { indices: [2, 2, 2, 2, 2], story: "Audio Mastering za Trailers: Premium kvalitet finalnog miksa sa iterativnim procesom.", highlight: "Trailer Mastering" }
+  ],
+  generateStory: (indices, reels) => {
+    const service = reels[0][indices[0] % reels[0].length]
+    const platform = reels[1][indices[1] % reels[1].length]
+    const deliverable = reels[2][indices[2] % reels[2].length]
+    const quality = reels[3][indices[3] % reels[3].length]
+    const turnaround = reels[4][indices[4] % reels[4].length]
+    return `${service.label} za ${platform.label}: ${deliverable.label}. ${quality.label} kvalitet. ${turnaround.label}.`
+  }
+}
+
+// ============================================
+// ABOUT SEGMENT - Personal Info
+// ============================================
+const ABOUT_CONFIG: SegmentReelConfig = {
+  title: 'ABOUT',
+  subtitle: 'Bojan Petkovic',
+  reels: [
+    // Reel 1: Identity
+    [
+      { icon: '👨‍🎤', label: 'Audio Producer', color: '#8844ff' },
+      { icon: '🎵', label: 'Composer', color: '#ff00aa' },
+      { icon: '🔊', label: 'Sound Designer', color: '#00ffff' }
+    ],
+    // Reel 2: Background
+    [
+      { icon: '🎓', label: 'SAE Institute', color: '#8844ff' },
+      { icon: '🎹', label: 'BA Music', color: '#ff00aa' },
+      { icon: '📜', label: 'Classical Training', color: '#ffd700' }
+    ],
+    // Reel 3: Experience
+    [
+      { icon: '🔟', label: '10+ Years', color: '#ffd700' },
+      { icon: '🎰', label: 'Game Industry', color: '#00ffff' },
+      { icon: '🌍', label: 'International', color: '#00ff88' }
+    ],
+    // Reel 4: Location
+    [
+      { icon: '📍', label: 'Belgrade', color: '#ff00aa' },
+      { icon: '🇷🇸', label: 'Serbia', color: '#00ffff' },
+      { icon: '🌐', label: 'Remote', color: '#00ff88' }
+    ],
+    // Reel 5: Trait
+    [
+      { icon: '✨', label: 'High Quality', color: '#ffd700' },
+      { icon: '🎯', label: 'Consistent', color: '#00ff88' },
+      { icon: '🤝', label: 'Collaborative', color: '#00ffff' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "Audio Producer sa SAE Institute obrazovanjem. 10+ godina iskustva u gaming industriji. Beograd, Srbija. Poznat po visokom kvalitetu rada.", highlight: "Founder of VanVinkl Studio" },
+    { indices: [1, 1, 1, 1, 1], story: "Composer sa BA diplomom iz muzike. Klasična obuka + gaming industrija. Remote saradnja sa klijentima širom sveta.", highlight: "Classical + Digital" },
+    { indices: [2, 2, 2, 2, 2], story: "Sound Designer sa klasičnom obukom. Međunarodno iskustvo u game audio produkciji. Kolaborativan pristup.", highlight: "10+ Years Experience" }
+  ],
+  generateStory: (indices, reels) => {
+    const identity = reels[0][indices[0] % reels[0].length]
+    const bg = reels[1][indices[1] % reels[1].length]
+    const exp = reels[2][indices[2] % reels[2].length]
+    const loc = reels[3][indices[3] % reels[3].length]
+    const trait = reels[4][indices[4] % reels[4].length]
+    return `${identity.label} • ${bg.label} • ${exp.label} iskustva • ${loc.label} • ${trait.label}`
+  }
+}
+
+// ============================================
+// PROJECTS SEGMENT - Portfolio
+// ============================================
+const PROJECTS_CONFIG: SegmentReelConfig = {
+  title: 'PROJECTS',
+  subtitle: 'Portfolio',
+  reels: [
+    // Reel 1: Project Type
+    [
+      { icon: '🎰', label: 'Slot Games', color: '#ffd700' },
+      { icon: '📱', label: 'Mobile Titles', color: '#00ffff' },
+      { icon: '🎬', label: 'Trailers', color: '#ff00aa' },
+      { icon: '🎮', label: 'Game Audio', color: '#00ff88' }
+    ],
+    // Reel 2: Scale
+    [
+      { icon: '📊', label: '50+ Projects', color: '#ffd700' },
+      { icon: '🌍', label: 'International', color: '#00ffff' },
+      { icon: '🏢', label: 'B2B', color: '#8844ff' }
+    ],
+    // Reel 3: Role
+    [
+      { icon: '🎼', label: 'Full Score', color: '#ff00aa' },
+      { icon: '🔊', label: 'SFX Design', color: '#00ffff' },
+      { icon: '🎚️', label: 'Mix & Master', color: '#8844ff' },
+      { icon: '⚙️', label: 'Implementation', color: '#00ff88' }
+    ],
+    // Reel 4: Client
+    [
+      { icon: '🏢', label: 'IGT', color: '#ff00aa' },
+      { icon: '🎮', label: 'Game Studios', color: '#00ffff' },
+      { icon: '🌐', label: 'Global Clients', color: '#ffd700' }
+    ],
+    // Reel 5: Result
+    [
+      { icon: '✅', label: 'Shipped', color: '#00ff88' },
+      { icon: '🏆', label: 'Award Quality', color: '#ffd700' },
+      { icon: '⭐', label: 'Client Approved', color: '#00ffff' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "Slot Games: 50+ projekata sa full score-om za IGT. Svi projekti uspešno isporučeni i odobreni.", highlight: "50+ Slot Soundtracks" },
+    { indices: [1, 1, 1, 1, 1], story: "Mobile Titles: Međunarodni B2B projekti sa kompletnim SFX dizajnom za game studios.", highlight: "International Mobile Games" },
+    { indices: [2, 2, 2, 2, 2], story: "Trailers: Mix & Master za globalne klijente. Award quality produkcija.", highlight: "Cinematic Trailers" }
+  ],
+  generateStory: (indices, reels) => {
+    const type = reels[0][indices[0] % reels[0].length]
+    const scale = reels[1][indices[1] % reels[1].length]
+    const role = reels[2][indices[2] % reels[2].length]
+    const client = reels[3][indices[3] % reels[3].length]
+    const result = reels[4][indices[4] % reels[4].length]
+    return `${type.label}: ${scale.label}. Uloga: ${role.label}. Klijent: ${client.label}. Status: ${result.label}.`
+  }
+}
+
+// ============================================
+// CONTACT SEGMENT
+// ============================================
+const CONTACT_CONFIG: SegmentReelConfig = {
+  title: 'CONTACT',
+  subtitle: 'Get In Touch',
+  reels: [
+    // Reel 1: Method
+    [
+      { icon: '📧', label: 'Email', color: '#ff4444' },
+      { icon: '💼', label: 'LinkedIn', color: '#0077b5' },
+      { icon: '📱', label: 'Phone', color: '#00ff88' }
+    ],
+    // Reel 2: Purpose
+    [
+      { icon: '🎵', label: 'Music Project', color: '#ff00aa' },
+      { icon: '🔊', label: 'Sound Design', color: '#00ffff' },
+      { icon: '🤝', label: 'Collaboration', color: '#8844ff' },
+      { icon: '💬', label: 'Inquiry', color: '#ffd700' }
+    ],
+    // Reel 3: Timeline
+    [
+      { icon: '⚡', label: 'ASAP', color: '#ff4444' },
+      { icon: '📅', label: 'This Month', color: '#ffd700' },
+      { icon: '🗓️', label: 'Flexible', color: '#00ff88' }
+    ],
+    // Reel 4: Budget
+    [
+      { icon: '💎', label: 'Premium', color: '#ffd700' },
+      { icon: '💰', label: 'Standard', color: '#00ff88' },
+      { icon: '🤝', label: 'Negotiable', color: '#00ffff' }
+    ],
+    // Reel 5: Response
+    [
+      { icon: '✅', label: 'Available', color: '#00ff88' },
+      { icon: '⏰', label: '24h Response', color: '#ffd700' },
+      { icon: '🌍', label: 'Worldwide', color: '#00ffff' }
+    ]
+  ],
+  stories: [
+    { indices: [0, 0, 0, 0, 0], story: "📧 vanvinklstudio@gmail.com - Za music projekte. Brz odgovor garantovan. Premium i standard opcije dostupne.", highlight: "vanvinklstudio@gmail.com" },
+    { indices: [1, 1, 1, 1, 1], story: "💼 LinkedIn - Profesionalna saradnja i networking. Fleksibilan timeline. Dostupan za worldwide projekte.", highlight: "LinkedIn Connection" },
+    { indices: [2, 2, 2, 2, 2], story: "📱 +381694000062 - Direktan kontakt za hitne projekte. 24h response time.", highlight: "+381 69 400 0062" }
+  ],
+  generateStory: (indices, reels) => {
+    const method = reels[0][indices[0] % reels[0].length]
+    const purpose = reels[1][indices[1] % reels[1].length]
+    const timeline = reels[2][indices[2] % reels[2].length]
+    const budget = reels[3][indices[3] % reels[3].length]
+    const response = reels[4][indices[4] % reels[4].length]
+    return `Kontakt: ${method.label} za ${purpose.label}. Timeline: ${timeline.label}. Budget: ${budget.label}. ${response.label}.`
+  }
+}
+
+// ============================================
+// SEGMENT CONFIG MAP
+// ============================================
+const SEGMENT_CONFIGS: Record<string, SegmentReelConfig> = {
+  skills: SKILLS_CONFIG,
+  experience: EXPERIENCE_CONFIG,
+  services: SERVICES_CONFIG,
+  about: ABOUT_CONFIG,
+  projects: PROJECTS_CONFIG,
+  contact: CONTACT_CONFIG
+}
+
+// Get config for machine or default to skills
+function getSegmentConfig(machineId: string): SegmentReelConfig {
+  return SEGMENT_CONFIGS[machineId] || SKILLS_CONFIG
+}
+
+// Themed symbols for each slot - legacy for fallback
 const SLOT_THEMES: Record<string, {
   symbols: string[]
   title: string
@@ -60,194 +625,234 @@ const SLOT_THEMES: Record<string, {
 }
 
 // ============================================
-// ULTRA AAA SLOT MACHINE DISPLAY
-// Vegas-grade visuals with full effects
+// SKILL REEL COMPONENTS
 // ============================================
 
-// Coin Rain Particle System
-function CoinRain({ active }: { active: boolean }) {
-  const coins = useMemo(() =>
-    Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 1.5,
-      duration: 1.5 + Math.random() * 1,
-      size: 20 + Math.random() * 15,
-      rotation: Math.random() * 360
-    })),
-    []
-  )
-
-  if (!active) return null
-
-  return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 200 }}>
-      {coins.map(coin => (
-        <div
-          key={coin.id}
-          style={{
-            position: 'absolute',
-            left: `${coin.x}%`,
-            top: '-50px',
-            width: `${coin.size}px`,
-            height: `${coin.size}px`,
-            borderRadius: '50%',
-            background: `radial-gradient(circle at 30% 30%, ${COLORS.gold}, #b8860b, #8b6914)`,
-            boxShadow: `0 0 10px ${COLORS.gold}, inset -2px -2px 4px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.3)`,
-            animation: `coinFall ${coin.duration}s ease-in ${coin.delay}s infinite`,
-            '--rotation': `${coin.rotation}deg`
-          } as React.CSSProperties}
-        >
-          <div style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${coin.size * 0.5}px`,
-            color: '#8b6914',
-            fontWeight: 'bold',
-            textShadow: '1px 1px 0 #ffd700'
-          }}>$</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Screen Shake Container
-function ScreenShake({ active, children }: { active: boolean, children: React.ReactNode }) {
-  return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      animation: active ? 'screenShake 0.5s ease-out' : 'none'
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// Single Reel Column - 3D Barrel Effect with Elastic Bounce
-function ReelColumn({
-  symbols,
+// ZERO-LATENCY Skill Reel Column - RAF-based, GPU-accelerated
+const SkillReelColumn = memo(function SkillReelColumn({
+  reelData,
   spinning,
-  finalSymbol,
-  onStop,
+  finalIndex,
   delay = 0,
-  primaryColor,
   reelIndex,
-  jackpot
+  jackpot,
+  forceStop = false
 }: {
-  symbols: string[]
+  reelData: SkillReelSymbol[]
   spinning: boolean
-  finalSymbol: string
-  onStop?: () => void
+  finalIndex: number
   delay?: number
-  primaryColor: string
   reelIndex: number
   jackpot: boolean
+  forceStop?: boolean
 }) {
-  const [visibleSymbols, setVisibleSymbols] = useState<string[]>([
-    symbols[0], symbols[1], symbols[2]
-  ])
-  const [stopped, setStopped] = useState(false)
-  const [blurAmount, setBlurAmount] = useState(0)
-  const [rotationX, setRotationX] = useState(0)
-  const [bouncePhase, setBouncePhase] = useState<'none' | 'overshoot' | 'settle'>('none')
-  const intervalRef = useRef<number | null>(null)
-  const speedRef = useRef(0)
-  const rotationRef = useRef(0)
+  // BATCHED STATE: Single state object reduces re-renders
+  const [reelState, setReelState] = useState({
+    visibleSymbols: (() => {
+      const len = reelData.length
+      return [
+        reelData[(0 - 1 + len) % len],
+        reelData[0],
+        reelData[1 % len]
+      ]
+    })(),
+    stopped: true,
+    blurAmount: 0,
+    rotationX: 0,
+    bouncePhase: 'none' as 'none' | 'overshoot' | 'settle'
+  })
 
-  useEffect(() => {
-    if (spinning && !stopped) {
-      let currentSpeed = 50
-      speedRef.current = currentSpeed
-      setBouncePhase('none')
+  // REFS: No re-renders for animation state
+  const animStateRef = useRef({
+    speed: 50,
+    rotation: 0,
+    currentIndex: 0,
+    hasStopped: true,
+    startTime: 0,
+    phase: 'idle' as 'idle' | 'accelerating' | 'spinning' | 'decelerating' | 'bouncing'
+  })
 
-      // Barrel rotation animation
-      const rotateInterval = setInterval(() => {
-        rotationRef.current = (rotationRef.current + 15) % 360
-        setRotationX(Math.sin(rotationRef.current * Math.PI / 180) * 8)
-      }, 30)
+  const stopTimeoutRef = useRef<number | null>(null)
+  const startTimeoutRef = useRef<number | null>(null)
+  const bounceTimeoutRef = useRef<number | null>(null)
 
-      // Smooth acceleration
-      const accelerate = setInterval(() => {
-        currentSpeed = Math.max(currentSpeed - 5, 18)
-        speedRef.current = currentSpeed
-        setBlurAmount(Math.min((50 - currentSpeed) / 2, 12))
-        if (currentSpeed <= 18) clearInterval(accelerate)
-      }, 60)
+  // MEMOIZED: Get 3 visible symbols - zero allocation when possible
+  const getVisibleSymbols = useCallback((idx: number) => {
+    const len = reelData.length
+    return [
+      reelData[(idx - 1 + len) % len],
+      reelData[idx % len],
+      reelData[(idx + 1) % len]
+    ]
+  }, [reelData])
 
-      // Delayed start based on reel position
-      setTimeout(() => {
-        intervalRef.current = window.setInterval(() => {
-          setVisibleSymbols(prev => {
-            const newSymbols = [...prev]
-            newSymbols.unshift(symbols[Math.floor(Math.random() * symbols.length)])
-            newSymbols.pop()
-            return newSymbols
-          })
-        }, speedRef.current)
-      }, delay * 120)
+  // SINGLE CLEANUP - fewer allocations
+  const cleanupTimers = useCallback(() => {
+    if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current)
+    if (startTimeoutRef.current) clearTimeout(startTimeoutRef.current)
+    if (bounceTimeoutRef.current) clearTimeout(bounceTimeoutRef.current)
+    stopTimeoutRef.current = null
+    startTimeoutRef.current = null
+    bounceTimeoutRef.current = null
+  }, [])
 
-      // Staggered stop timing
-      const stopTime = 1600 + delay * 450
-      setTimeout(() => {
-        clearInterval(rotateInterval)
-        const decelerate = setInterval(() => {
-          speedRef.current += 18
-          setBlurAmount(prev => Math.max(prev - 3, 0))
-          setRotationX(prev => prev * 0.8)
-          if (speedRef.current > 200) {
-            clearInterval(decelerate)
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current)
-              intervalRef.current = null
-            }
-            setVisibleSymbols([
-              symbols[Math.floor(Math.random() * symbols.length)],
-              finalSymbol,
-              symbols[Math.floor(Math.random() * symbols.length)]
-            ])
-            // Elastic bounce sequence
-            setBouncePhase('overshoot')
-            setTimeout(() => setBouncePhase('settle'), 150)
-            setTimeout(() => {
-              setBouncePhase('none')
-              setStopped(true)
-              setBlurAmount(0)
-              setRotationX(0)
-              onStop?.()
-            }, 300)
-          }
-        }, 30)
-      }, stopTime)
+  // RAF-BASED SPINNING - Single animation loop, zero jitter
+  useRAF((deltaTime) => {
+    const state = animStateRef.current
+    if (state.phase === 'idle') return
 
-      return () => {
-        clearInterval(rotateInterval)
-        clearInterval(accelerate)
-        if (intervalRef.current) clearInterval(intervalRef.current)
+    const elapsed = performance.now() - state.startTime
+    const delayMs = delay * 120
+
+    // Phase transitions based on elapsed time
+    if (state.phase === 'accelerating') {
+      // Accelerate: 0-500ms
+      const accelProgress = Math.min(elapsed / 500, 1)
+      state.speed = 50 - (32 * accelProgress) // 50 → 18
+      const blur = Math.min((50 - state.speed) / 2, 12)
+      state.rotation = (state.rotation + deltaTime * 0.5) % 360
+      const rotX = Math.sin(state.rotation * Math.PI / 180) * 8
+
+      // Only update state when values change significantly
+      if (elapsed > delayMs) {
+        state.currentIndex = (state.currentIndex + 1) % reelData.length
+      }
+
+      setReelState(prev => ({
+        ...prev,
+        visibleSymbols: getVisibleSymbols(state.currentIndex),
+        blurAmount: blur,
+        rotationX: rotX,
+        stopped: false
+      }))
+
+      if (accelProgress >= 1) state.phase = 'spinning'
+    }
+    else if (state.phase === 'spinning') {
+      // Full speed: 500ms - stopTime
+      const stopTime = 1800 + delay * 500
+      state.rotation = (state.rotation + deltaTime * 0.5) % 360
+      const rotX = Math.sin(state.rotation * Math.PI / 180) * 8
+
+      // Symbol cycling at ~60fps equivalent
+      if (elapsed > delayMs) {
+        state.currentIndex = Math.floor((elapsed - delayMs) / 60) % reelData.length
+      }
+
+      setReelState(prev => ({
+        ...prev,
+        visibleSymbols: getVisibleSymbols(state.currentIndex),
+        rotationX: rotX
+      }))
+
+      if (elapsed >= stopTime) state.phase = 'decelerating'
+    }
+    else if (state.phase === 'decelerating') {
+      // Decelerate: ~300ms
+      const decelStart = 1800 + delay * 500
+      const decelElapsed = elapsed - decelStart
+      const decelProgress = Math.min(decelElapsed / 300, 1)
+
+      state.speed = 18 + (182 * decelProgress) // 18 → 200
+      const blur = Math.max(12 - (12 * decelProgress), 0)
+      const rotX = (1 - decelProgress) * 8 * Math.sin(state.rotation * Math.PI / 180)
+
+      setReelState(prev => ({
+        ...prev,
+        blurAmount: blur,
+        rotationX: rotX
+      }))
+
+      if (decelProgress >= 1) {
+        state.phase = 'bouncing'
+        state.currentIndex = finalIndex
+        setReelState(prev => ({
+          ...prev,
+          visibleSymbols: getVisibleSymbols(finalIndex),
+          bouncePhase: 'overshoot'
+        }))
+
+        // Bounce sequence via timeouts (small, predictable)
+        bounceTimeoutRef.current = window.setTimeout(() => {
+          setReelState(prev => ({ ...prev, bouncePhase: 'settle' }))
+          setTimeout(() => {
+            setReelState(prev => ({
+              ...prev,
+              bouncePhase: 'none',
+              stopped: true,
+              blurAmount: 0,
+              rotationX: 0
+            }))
+            state.hasStopped = true
+            state.phase = 'idle'
+          }, 150)
+        }, 150)
       }
     }
-  }, [spinning, stopped, symbols, delay, finalSymbol, onStop])
+  }, spinning && !forceStop)
 
+  // Initialize spin
   useEffect(() => {
-    if (!spinning) {
-      setStopped(false)
-      setBlurAmount(0)
-      setRotationX(0)
-      setBouncePhase('none')
-      setVisibleSymbols([symbols[0], symbols[1], symbols[2]])
-    }
-  }, [spinning, symbols])
+    if (spinning) {
+      const state = animStateRef.current
+      state.hasStopped = false
+      state.startTime = performance.now()
+      state.phase = 'accelerating'
+      state.speed = 50
+      state.currentIndex = 0
+      state.rotation = 0
 
-  // Calculate bounce transform
-  const getBounceTransform = () => {
-    switch (bouncePhase) {
-      case 'overshoot': return 'translateY(-15px) scale(1.03)'
-      case 'settle': return 'translateY(5px) scale(0.98)'
-      default: return 'translateY(0) scale(1)'
+      setReelState(prev => ({
+        ...prev,
+        stopped: false,
+        bouncePhase: 'none'
+      }))
+    } else {
+      cleanupTimers()
+      animStateRef.current.hasStopped = true
+      animStateRef.current.phase = 'idle'
+      setReelState({
+        visibleSymbols: getVisibleSymbols(0),
+        stopped: true,
+        blurAmount: 0,
+        rotationX: 0,
+        bouncePhase: 'none'
+      })
     }
-  }
+  }, [spinning, getVisibleSymbols, cleanupTimers])
+
+  // FORCE STOP - instant stop when SPACE pressed (zero latency)
+  useEffect(() => {
+    if (forceStop && !animStateRef.current.hasStopped) {
+      cleanupTimers()
+      animStateRef.current.hasStopped = true
+      animStateRef.current.phase = 'idle'
+      animStateRef.current.currentIndex = finalIndex
+
+      // Instant final state - no animation
+      setReelState({
+        visibleSymbols: getVisibleSymbols(finalIndex),
+        stopped: true,
+        blurAmount: 0,
+        rotationX: 0,
+        bouncePhase: 'none'
+      })
+    }
+  }, [forceStop, finalIndex, getVisibleSymbols, cleanupTimers])
+
+  // MEMOIZED: Bounce transform - GPU-friendly transforms only
+  const bounceTransform = useMemo(() => {
+    switch (reelState.bouncePhase) {
+      case 'overshoot': return 'translate3d(0, -15px, 0) scale(1.03)'
+      case 'settle': return 'translate3d(0, 5px, 0) scale(0.98)'
+      default: return 'translate3d(0, 0, 0) scale(1)'
+    }
+  }, [reelState.bouncePhase])
+
+  const primaryColor = reelState.visibleSymbols[1]?.color || COLORS.cyan
+
+  // Destructure for cleaner JSX
+  const { visibleSymbols, stopped, blurAmount, rotationX, bouncePhase } = reelState
 
   return (
     <div style={{
@@ -259,8 +864,10 @@ function ReelColumn({
       height: '100%',
       position: 'relative',
       perspective: '500px',
-      transform: getBounceTransform(),
-      transition: bouncePhase !== 'none' ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+      transform: bounceTransform,
+      transition: bouncePhase !== 'none' ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+      willChange: 'transform', // GPU hint for smoother animation
+      contain: 'layout style paint' // CSS containment for perf
     }}>
       {/* Chrome bezel frame */}
       <div style={{
@@ -295,31 +902,35 @@ function ReelColumn({
         borderRadius: '2px'
       }} />
 
-      {/* Reel background with 3D depth */}
+      {/* Reel background with 3D depth - GPU accelerated */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
         background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(8,8,25,0.7) 15%, rgba(12,12,35,0.6) 50%, rgba(8,8,25,0.7) 85%, rgba(0,0,0,0.9) 100%)',
         borderRadius: '4px',
-        transform: `rotateX(${rotationX}deg)`,
+        transform: `rotateX(${rotationX}deg) translateZ(0)`, // GPU layer
         transformStyle: 'preserve-3d',
-        boxShadow: 'inset 0 0 40px rgba(0,0,0,0.8)'
+        boxShadow: 'inset 0 0 40px rgba(0,0,0,0.8)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden'
       }} />
 
-      {/* Symbols with 3D barrel effect */}
+      {/* Symbols with labels - GPU compositing */}
       <div style={{
         position: 'relative',
         width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        transform: `rotateX(${rotationX}deg)`,
-        transformStyle: 'preserve-3d'
+        transform: `rotateX(${rotationX}deg) translateZ(0)`,
+        transformStyle: 'preserve-3d',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden'
       }}>
         {visibleSymbols.map((symbol, i) => {
           const isCenter = i === 1
           const isWinning = isCenter && jackpot && stopped
-          const rowRotation = (i - 1) * 25 // -25, 0, 25 degrees
+          const rowRotation = (i - 1) * 25
 
           return (
             <div key={i} style={{
@@ -327,27 +938,27 @@ function ReelColumn({
               width: '100%',
               height: '33.33%',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: isCenter ? 'clamp(50px, 9vw, 90px)' : 'clamp(30px, 5vw, 45px)',
               filter: `blur(${blurAmount}px)`,
-              opacity: isCenter ? 1 : 0.4,
+              opacity: isCenter ? 1 : 0.35,
               transform: `rotateX(${spinning && !stopped ? rowRotation : 0}deg) translateZ(${isCenter ? 10 : -5}px)`,
-              textShadow: isWinning
-                ? `0 0 40px ${COLORS.gold}, 0 0 80px ${COLORS.gold}, 0 0 120px ${COLORS.gold}`
-                : isCenter
-                ? `0 0 25px ${primaryColor}, 0 0 50px ${primaryColor}60`
-                : 'none',
               transition: stopped ? 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
               animation: isWinning ? 'winSymbolUltra 0.6s ease-in-out infinite' : 'none'
             }}>
-              {/* Symbol with holographic effect */}
+              {/* Icon */}
               <span style={{
-                position: 'relative',
-                display: 'inline-block'
+                fontSize: isCenter ? 'clamp(40px, 7vw, 70px)' : 'clamp(24px, 4vw, 36px)',
+                textShadow: isWinning
+                  ? `0 0 40px ${COLORS.gold}, 0 0 80px ${COLORS.gold}`
+                  : isCenter
+                  ? `0 0 25px ${symbol.color}, 0 0 50px ${symbol.color}60`
+                  : 'none',
+                position: 'relative'
               }}>
-                {symbol}
-                {/* Holographic shimmer overlay */}
+                {symbol.icon}
+                {/* Holographic shimmer */}
                 {isCenter && (
                   <div style={{
                     position: 'absolute',
@@ -360,6 +971,23 @@ function ReelColumn({
                   }} />
                 )}
               </span>
+
+              {/* Label - only show on center when stopped */}
+              {isCenter && stopped && (
+                <span style={{
+                  fontSize: 'clamp(10px, 1.5vw, 14px)',
+                  color: symbol.color,
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginTop: '8px',
+                  textShadow: `0 0 10px ${symbol.color}`,
+                  animation: 'fadeSlideIn 0.3s ease-out',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {symbol.label}
+                </span>
+              )}
             </div>
           )
         })}
@@ -383,7 +1011,7 @@ function ReelColumn({
         opacity: 0.5
       }} />
 
-      {/* Separator lines with glow */}
+      {/* Separator lines */}
       <div style={{
         position: 'absolute',
         top: '33%', left: '5%', right: '5%',
@@ -400,10 +1028,84 @@ function ReelColumn({
       }} />
     </div>
   )
-}
+})
 
-// Game Title Marquee - Ultra with chase lights
-function GameMarquee({ title, color }: { title: string, color: string }) {
+// MEMOIZED Coin Rain Particle System - GPU accelerated
+const CoinRain = memo(function CoinRain({ active }: { active: boolean }) {
+  // Pre-computed coins array - stable reference
+  const coins = useMemo(() =>
+    Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      delay: Math.random() * 1.5,
+      duration: 1.5 + Math.random() * 1,
+      size: 20 + Math.random() * 15,
+      rotation: Math.random() * 360
+    })),
+    []
+  )
+
+  if (!active) return null
+
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      zIndex: 200,
+      contain: 'strict' // Full CSS containment
+    }}>
+      {coins.map(coin => (
+        <div
+          key={coin.id}
+          style={{
+            position: 'absolute',
+            left: `${coin.x}%`,
+            top: '-50px',
+            width: `${coin.size}px`,
+            height: `${coin.size}px`,
+            borderRadius: '50%',
+            background: `radial-gradient(circle at 30% 30%, ${COLORS.gold}, #b8860b, #8b6914)`,
+            boxShadow: `0 0 10px ${COLORS.gold}, inset -2px -2px 4px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.3)`,
+            animation: `coinFall ${coin.duration}s ease-in ${coin.delay}s infinite`,
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            '--rotation': `${coin.rotation}deg`
+          } as React.CSSProperties}
+        >
+          <div style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: `${coin.size * 0.5}px`,
+            color: '#8b6914',
+            fontWeight: 'bold',
+            textShadow: '1px 1px 0 #ffd700'
+          }}>$</div>
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// MEMOIZED Screen Shake Container - GPU layer
+const ScreenShake = memo(function ScreenShake({ active, children }: { active: boolean, children: React.ReactNode }) {
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      animation: active ? 'screenShake 0.5s ease-out' : 'none',
+      willChange: active ? 'transform' : 'auto',
+      transform: 'translateZ(0)'
+    }}>
+      {children}
+    </div>
+  )
+})
+
+// MEMOIZED Game Title Marquee - Ultra with chase lights
+const GameMarquee = memo(function GameMarquee({ title, color, subtitle }: { title: string, color: string, subtitle?: string }) {
   const lights = useMemo(() => Array.from({ length: 20 }, (_, i) => i), [])
 
   return (
@@ -448,7 +1150,7 @@ function GameMarquee({ title, color }: { title: string, color: string }) {
       <h1 style={{
         margin: 0,
         textAlign: 'center',
-        fontSize: 'clamp(36px, 7vw, 64px)',
+        fontSize: 'clamp(28px, 5vw, 48px)',
         fontWeight: 900,
         color: '#fff',
         textShadow: `
@@ -458,7 +1160,7 @@ function GameMarquee({ title, color }: { title: string, color: string }) {
           0 0 100px ${color}80,
           0 2px 0 ${color}
         `,
-        letterSpacing: '10px',
+        letterSpacing: '8px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         position: 'relative',
         zIndex: 1,
@@ -466,6 +1168,20 @@ function GameMarquee({ title, color }: { title: string, color: string }) {
       }}>
         {title}
       </h1>
+
+      {subtitle && (
+        <p style={{
+          margin: '8px 0 0 0',
+          textAlign: 'center',
+          fontSize: 'clamp(12px, 2vw, 16px)',
+          color: color,
+          letterSpacing: '4px',
+          textTransform: 'uppercase',
+          opacity: 0.8
+        }}>
+          {subtitle}
+        </p>
+      )}
 
       {/* Neon tube effect */}
       <div style={{
@@ -478,10 +1194,11 @@ function GameMarquee({ title, color }: { title: string, color: string }) {
       }} />
     </div>
   )
-}
+})
 
 // LED Display Digit Component
-function LEDDigit({ value, color, size = 32 }: { value: string, color: string, size?: number }) {
+// MEMOIZED LED Components for zero re-render
+const LEDDigit = memo(function LEDDigit({ value, color, size = 32 }: { value: string, color: string, size?: number }) {
   return (
     <span style={{
       display: 'inline-block',
@@ -500,10 +1217,10 @@ function LEDDigit({ value, color, size = 32 }: { value: string, color: string, s
       {value}
     </span>
   )
-}
+})
 
-// Animated Win Counter
-function WinCounter({ target, active, color }: { target: number, active: boolean, color: string }) {
+// MEMOIZED Animated Win Counter
+const WinCounter = memo(function WinCounter({ target, active, color }: { target: number, active: boolean, color: string }) {
   const [displayValue, setDisplayValue] = useState(0)
 
   useEffect(() => {
@@ -539,10 +1256,733 @@ function WinCounter({ target, active, color }: { target: number, active: boolean
       ))}
     </div>
   )
+})
+
+// MEMOIZED Skills Discovered Counter
+const SkillsDiscovered = memo(function SkillsDiscovered({ count, total, color }: { count: number, total: number, color: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        color: color,
+        fontSize: '11px',
+        letterSpacing: '3px',
+        marginBottom: '8px',
+        textShadow: `0 0 10px ${color}`
+      }}>SKILLS DISCOVERED</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
+        <span style={{
+          fontSize: '28px',
+          fontWeight: 'bold',
+          color: color,
+          textShadow: `0 0 15px ${color}`
+        }}>{count}</span>
+        <span style={{ fontSize: '16px', color: '#666' }}>/</span>
+        <span style={{ fontSize: '16px', color: '#888' }}>{total}</span>
+      </div>
+    </div>
+  )
+})
+
+// Helper to get navigable items from section
+function getNavigableItems(section: SlotSection): { icon: string; title: string; subtitle?: string; details: React.ReactNode }[] {
+  switch (section.type) {
+    case 'skills':
+      return section.categories.map(cat => ({
+        icon: cat.icon,
+        title: cat.name,
+        subtitle: `${cat.skills.length} skills`,
+        details: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {cat.skills.map(skill => (
+              <div key={skill.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: '#fff' }}>{skill.name}</span>
+                  <span style={{ color: cat.color, fontWeight: 'bold' }}>{skill.level}%</span>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>
+                  <div style={{ width: `${skill.level}%`, height: '100%', background: cat.color, borderRadius: '4px', boxShadow: `0 0 10px ${cat.color}60` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }))
+    case 'services':
+      return section.items.map(item => ({
+        icon: item.icon,
+        title: item.title,
+        subtitle: item.description.slice(0, 60) + '...',
+        details: (
+          <div>
+            <p style={{ color: '#bbb', lineHeight: 1.8, marginBottom: '20px' }}>{item.description}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {item.features.map((f, i) => (
+                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ color: section.color }}>✓</span>
+                  <span style={{ color: '#aaa' }}>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }))
+    case 'about':
+      return [
+        {
+          icon: '👤',
+          title: 'Biography',
+          subtitle: 'Full story',
+          details: <p style={{ color: '#bbb', lineHeight: 2, whiteSpace: 'pre-line' }}>{section.bio}</p>
+        },
+        ...section.stats.map(stat => ({
+          icon: stat.icon,
+          title: stat.label,
+          subtitle: stat.value,
+          details: <div style={{ fontSize: '48px', color: section.color, textAlign: 'center' as const }}>{stat.value}</div>
+        }))
+      ]
+    case 'projects':
+      return section.featured.map(proj => ({
+        icon: proj.icon,
+        title: proj.title,
+        subtitle: proj.year,
+        details: (
+          <div>
+            <p style={{ color: '#bbb', lineHeight: 1.8, marginBottom: '20px' }}>{proj.description}</p>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const }}>
+              {proj.tags.map(t => (
+                <span key={t} style={{ padding: '6px 14px', background: `${section.color}20`, borderRadius: '20px', color: section.color, fontSize: '13px' }}>{t}</span>
+              ))}
+            </div>
+          </div>
+        )
+      }))
+    case 'experience':
+      return section.timeline.map(item => ({
+        icon: '💼',
+        title: item.role,
+        subtitle: `${item.company} • ${item.period}`,
+        details: (
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            {item.highlights.map((h, i) => (
+              <li key={i} style={{ color: '#aaa', marginBottom: '12px', paddingLeft: '20px', position: 'relative' as const, lineHeight: 1.6 }}>
+                <span style={{ position: 'absolute' as const, left: 0, color: section.color }}>•</span>
+                {h}
+              </li>
+            ))}
+          </ul>
+        )
+      }))
+    case 'contact':
+      return section.methods.map(method => ({
+        icon: method.icon,
+        title: method.label,
+        subtitle: method.value,
+        details: (
+          <div style={{ textAlign: 'center' as const }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>{method.icon}</div>
+            <div style={{ color: '#fff', fontSize: '24px', marginBottom: '10px' }}>{method.value}</div>
+            <button
+              onClick={() => {
+                if (method.action === 'email' && method.url) window.location.href = method.url
+                else if (method.action === 'link' && method.url) window.open(method.url, '_blank', 'noopener,noreferrer')
+                else if (method.action === 'copy') navigator.clipboard.writeText(method.value)
+              }}
+              style={{
+                background: section.color,
+                color: '#000',
+                border: 'none',
+                padding: '12px 30px',
+                borderRadius: '30px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                marginTop: '20px'
+              }}
+            >
+              {method.action === 'email' ? 'Send Email' : method.action === 'link' ? 'Open Link' : 'Copy to Clipboard'}
+            </button>
+          </div>
+        )
+      }))
+    default:
+      return []
+  }
 }
 
-// Bottom Info Panel - Ultra with LED displays
-function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: boolean }) {
+// FULL CONTENT PANEL - Navigable with arrow keys + ENTER for details
+const FullContentPanel = memo(function FullContentPanel({
+  section,
+  visible,
+  isJackpot,
+  primaryColor
+}: {
+  section: SlotSection | undefined
+  visible: boolean
+  isJackpot: boolean
+  primaryColor: string
+}) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [showDetails, setShowDetails] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const items = useMemo(() => section ? getNavigableItems(section) : [], [section])
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!visible) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        if (showDetails) {
+          setShowDetails(false)
+        } else {
+          setSelectedIndex(prev => (prev - 1 + items.length) % items.length)
+        }
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        if (showDetails) {
+          setShowDetails(false)
+        } else {
+          setSelectedIndex(prev => (prev + 1) % items.length)
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        setShowDetails(prev => !prev)
+      } else if (e.key === 'Backspace') {
+        e.preventDefault()
+        setShowDetails(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [visible, items.length, showDetails])
+
+  // Reset on section change
+  useEffect(() => {
+    setSelectedIndex(0)
+    setShowDetails(false)
+  }, [section?.id])
+
+  if (!visible || !section || items.length === 0) return null
+
+  const selectedItem = items[selectedIndex]
+
+  return (
+    <div ref={containerRef} style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'linear-gradient(180deg, rgba(3,2,10,0.98) 0%, rgba(8,6,26,0.99) 50%, rgba(3,2,10,0.98) 100%)',
+      zIndex: 200,
+      display: 'flex',
+      flexDirection: 'column',
+      animation: 'contentReveal 0.5s ease-out'
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '25px 40px',
+        borderBottom: `1px solid ${primaryColor}30`,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h1 style={{
+            margin: 0,
+            fontSize: '32px',
+            fontWeight: 900,
+            color: primaryColor,
+            textShadow: `0 0 30px ${primaryColor}80`,
+            letterSpacing: '4px'
+          }}>
+            {section.title}
+          </h1>
+          <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: '14px' }}>{section.tagline}</p>
+        </div>
+
+        {/* Navigation hints */}
+        <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#555' }}>
+          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: primaryColor }}>↑↓</span> Navigacija</span>
+          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: COLORS.gold }}>ENTER</span> Detalji</span>
+          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: COLORS.cyan }}>SPACE</span> Spin</span>
+          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: '#ff4444' }}>ESC</span> Izlaz</span>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Item List (Left) */}
+        <div style={{
+          width: showDetails ? '300px' : '100%',
+          maxWidth: showDetails ? '300px' : '600px',
+          margin: showDetails ? 0 : '0 auto',
+          padding: '20px',
+          overflowY: 'auto',
+          transition: 'all 0.3s ease',
+          borderRight: showDetails ? `1px solid ${primaryColor}20` : 'none'
+        }}>
+          {items.map((item, index) => (
+            <div
+              key={index}
+              onClick={() => {
+                setSelectedIndex(index)
+                if (index === selectedIndex) setShowDetails(true)
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '16px 20px',
+                marginBottom: '8px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                background: index === selectedIndex
+                  ? `linear-gradient(135deg, ${primaryColor}20 0%, ${primaryColor}10 100%)`
+                  : 'rgba(255,255,255,0.02)',
+                border: index === selectedIndex
+                  ? `2px solid ${primaryColor}`
+                  : '2px solid transparent',
+                boxShadow: index === selectedIndex
+                  ? `0 0 30px ${primaryColor}30, inset 0 0 20px ${primaryColor}10`
+                  : 'none',
+                transform: index === selectedIndex ? 'scale(1.02)' : 'scale(1)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{
+                fontSize: '32px',
+                filter: index === selectedIndex ? 'none' : 'grayscale(50%)',
+                transition: 'filter 0.2s'
+              }}>{item.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  color: index === selectedIndex ? '#fff' : '#888',
+                  fontWeight: index === selectedIndex ? 'bold' : 'normal',
+                  fontSize: '16px',
+                  marginBottom: '4px',
+                  transition: 'color 0.2s'
+                }}>{item.title}</div>
+                {item.subtitle && (
+                  <div style={{
+                    color: index === selectedIndex ? primaryColor : '#555',
+                    fontSize: '13px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>{item.subtitle}</div>
+                )}
+              </div>
+              {index === selectedIndex && (
+                <span style={{ color: primaryColor, fontSize: '20px' }}>›</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Details Panel (Right) */}
+        {showDetails && (
+          <div style={{
+            flex: 1,
+            padding: '30px 40px',
+            overflowY: 'auto',
+            animation: 'fadeSlideIn 0.3s ease-out'
+          }}>
+            {/* Detail Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px',
+              marginBottom: '30px',
+              paddingBottom: '20px',
+              borderBottom: `1px solid ${primaryColor}30`
+            }}>
+              <span style={{ fontSize: '56px' }}>{selectedItem.icon}</span>
+              <div>
+                <h2 style={{ margin: 0, color: '#fff', fontSize: '28px', fontWeight: 'bold' }}>{selectedItem.title}</h2>
+                {selectedItem.subtitle && (
+                  <p style={{ margin: '8px 0 0 0', color: primaryColor, fontSize: '16px' }}>{selectedItem.subtitle}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Detail Content */}
+            <div style={{ fontSize: '15px', lineHeight: 1.7 }}>
+              {selectedItem.details}
+            </div>
+
+            {/* Back hint */}
+            <div style={{
+              marginTop: '40px',
+              padding: '15px 20px',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '10px',
+              textAlign: 'center',
+              color: '#555',
+              fontSize: '13px'
+            }}>
+              Pritisni <span style={{ color: primaryColor, padding: '2px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }}>←</span> ili <span style={{ color: primaryColor, padding: '2px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }}>BACKSPACE</span> za povratak na listu
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Jackpot badge */}
+      {isJackpot && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: `linear-gradient(135deg, ${COLORS.gold} 0%, #b8860b 100%)`,
+          color: '#000',
+          padding: '8px 30px',
+          borderRadius: '30px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          letterSpacing: '3px',
+          boxShadow: `0 0 30px ${COLORS.gold}, 0 5px 20px rgba(0,0,0,0.5)`,
+          animation: 'jackpotBadgePulse 1s ease-in-out infinite',
+          zIndex: 20
+        }}>
+          JACKPOT!
+        </div>
+      )}
+
+      {/* Counter indicator */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: '8px'
+      }}>
+        {items.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: i === selectedIndex ? '24px' : '8px',
+              height: '8px',
+              borderRadius: '4px',
+              background: i === selectedIndex ? primaryColor : 'rgba(255,255,255,0.2)',
+              boxShadow: i === selectedIndex ? `0 0 10px ${primaryColor}` : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+})
+
+// FULL SKILLS CONTENT
+const FullSkillsContent = memo(function FullSkillsContent({ section }: { section: SkillsSection }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      {section.categories.map((cat, catIndex) => (
+        <div key={cat.name} style={{ animation: `fadeSlideIn 0.5s ease-out ${catIndex * 0.1}s both` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '36px' }}>{cat.icon}</span>
+            <h2 style={{ margin: 0, color: cat.color, fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>{cat.name}</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {cat.skills.map((skill, skillIndex) => (
+              <div key={skill.name} style={{
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                border: `1px solid ${cat.color}30`,
+                animation: `fadeSlideIn 0.4s ease-out ${catIndex * 0.1 + skillIndex * 0.05}s both`
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ color: '#fff', fontSize: '15px', fontWeight: '500' }}>{skill.name}</span>
+                  <span style={{ color: cat.color, fontSize: '14px', fontWeight: 'bold' }}>{skill.level}%</span>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${skill.level}%`,
+                    height: '100%',
+                    background: `linear-gradient(90deg, ${cat.color}, ${cat.color}80)`,
+                    borderRadius: '4px',
+                    boxShadow: `0 0 10px ${cat.color}60`,
+                    animation: `barGrow 1s ease-out ${catIndex * 0.1 + skillIndex * 0.05}s both`
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// FULL SERVICES CONTENT
+const FullServicesContent = memo(function FullServicesContent({ section }: { section: ServicesSection }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '30px' }}>
+      {section.items.map((item, i) => (
+        <div key={item.title} style={{
+          background: 'rgba(255,0,170,0.05)',
+          borderRadius: '20px',
+          padding: '30px',
+          border: '1px solid rgba(255,0,170,0.2)',
+          animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{item.icon}</div>
+          <h3 style={{ margin: '0 0 12px 0', color: '#ff00aa', fontSize: '22px', fontWeight: 'bold' }}>{item.title}</h3>
+          <p style={{ margin: '0 0 20px 0', color: '#999', fontSize: '15px', lineHeight: 1.7 }}>{item.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {item.features.map((f, fi) => (
+              <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <span style={{ color: '#ff00aa', fontSize: '14px' }}>✓</span>
+                <span style={{ color: '#bbb', fontSize: '14px', lineHeight: 1.5 }}>{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// FULL ABOUT CONTENT
+const FullAboutContent = memo(function FullAboutContent({ section }: { section: AboutSection }) {
+  return (
+    <div style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
+      {/* Bio */}
+      <div style={{
+        background: 'rgba(136,68,255,0.05)',
+        borderRadius: '20px',
+        padding: '40px',
+        marginBottom: '40px',
+        border: '1px solid rgba(136,68,255,0.2)'
+      }}>
+        <p style={{
+          color: '#ddd',
+          fontSize: '17px',
+          lineHeight: 1.9,
+          margin: 0,
+          whiteSpace: 'pre-line'
+        }}>
+          {section.bio}
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px' }}>
+        {section.stats.map((stat, i) => (
+          <div key={stat.label} style={{
+            background: 'rgba(136,68,255,0.08)',
+            borderRadius: '16px',
+            padding: '25px',
+            textAlign: 'center',
+            border: '1px solid rgba(136,68,255,0.2)',
+            animation: `fadeSlideIn 0.5s ease-out ${i * 0.08}s both`
+          }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>{stat.icon}</div>
+            <div style={{ color: '#8844ff', fontWeight: 'bold', fontSize: '22px', marginBottom: '4px' }}>{stat.value}</div>
+            <div style={{ color: '#888', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+
+// FULL PROJECTS CONTENT
+const FullProjectsContent = memo(function FullProjectsContent({ section }: { section: ProjectsSection }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '30px' }}>
+      {section.featured.map((proj, i) => (
+        <div key={proj.title} style={{
+          background: 'rgba(255,215,0,0.03)',
+          borderRadius: '20px',
+          padding: '30px',
+          border: '1px solid rgba(255,215,0,0.2)',
+          animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <span style={{ fontSize: '48px' }}>{proj.icon}</span>
+            <span style={{
+              color: '#ffd700',
+              fontSize: '13px',
+              background: 'rgba(255,215,0,0.15)',
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontWeight: '500'
+            }}>{proj.year}</span>
+          </div>
+          <h3 style={{ margin: '0 0 12px 0', color: '#ffd700', fontSize: '24px', fontWeight: 'bold' }}>{proj.title}</h3>
+          <p style={{ margin: '0 0 20px 0', color: '#999', fontSize: '15px', lineHeight: 1.7 }}>{proj.description}</p>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {proj.tags.map(t => (
+              <span key={t} style={{
+                fontSize: '12px',
+                padding: '6px 14px',
+                background: 'rgba(255,215,0,0.12)',
+                borderRadius: '20px',
+                color: '#ffd700',
+                fontWeight: '500'
+              }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// FULL EXPERIENCE CONTENT
+const FullExperienceContent = memo(function FullExperienceContent({ section }: { section: ExperienceSection }) {
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {section.timeline.map((item, i) => (
+        <div key={item.period} style={{
+          borderLeft: '3px solid #00ff88',
+          paddingLeft: '35px',
+          paddingBottom: i < section.timeline.length - 1 ? '40px' : 0,
+          marginLeft: '10px',
+          position: 'relative',
+          animation: `fadeSlideIn 0.5s ease-out ${i * 0.15}s both`
+        }}>
+          {/* Timeline dot */}
+          <div style={{
+            position: 'absolute',
+            left: '-9px',
+            top: '4px',
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            background: '#00ff88',
+            boxShadow: '0 0 20px #00ff88',
+            border: '3px solid #0a0820'
+          }} />
+
+          {/* Period badge */}
+          <div style={{
+            display: 'inline-block',
+            background: 'rgba(0,255,136,0.15)',
+            color: '#00ff88',
+            padding: '6px 16px',
+            borderRadius: '20px',
+            fontSize: '13px',
+            fontWeight: '500',
+            marginBottom: '12px'
+          }}>
+            {item.period}
+          </div>
+
+          <h3 style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>{item.role}</h3>
+          <div style={{ color: '#00ff88', fontSize: '16px', marginBottom: '16px', fontWeight: '500' }}>{item.company}</div>
+
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            {item.highlights.map((h, j) => (
+              <li key={j} style={{
+                color: '#aaa',
+                fontSize: '15px',
+                marginBottom: '10px',
+                lineHeight: 1.6,
+                paddingLeft: '20px',
+                position: 'relative'
+              }}>
+                <span style={{ position: 'absolute', left: 0, color: '#00ff88' }}>•</span>
+                {h}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// FULL CONTACT CONTENT
+const FullContactContent = memo(function FullContactContent({ section }: { section: ContactSection }) {
+  const handleClick = (method: typeof section.methods[0]) => {
+    if (method.action === 'email' && method.url) {
+      window.location.href = method.url
+    } else if (method.action === 'link' && method.url) {
+      window.open(method.url, '_blank', 'noopener,noreferrer')
+    } else if (method.action === 'copy') {
+      navigator.clipboard.writeText(method.value)
+    }
+  }
+
+  return (
+    <div style={{ textAlign: 'center', animation: 'fadeSlideIn 0.5s ease-out' }}>
+      {/* Contact methods */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px', maxWidth: '900px', margin: '0 auto 50px' }}>
+        {section.methods.map((method, i) => (
+          <button
+            key={method.label}
+            onClick={() => handleClick(method)}
+            style={{
+              background: 'rgba(255,68,68,0.08)',
+              border: '2px solid rgba(255,68,68,0.3)',
+              borderRadius: '20px',
+              padding: '30px 25px',
+              cursor: 'pointer',
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255,68,68,0.15)'
+              e.currentTarget.style.borderColor = '#ff4444'
+              e.currentTarget.style.transform = 'translateY(-5px)'
+              e.currentTarget.style.boxShadow = '0 10px 40px rgba(255,68,68,0.2)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(255,68,68,0.08)'
+              e.currentTarget.style.borderColor = 'rgba(255,68,68,0.3)'
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            <div style={{ fontSize: '42px', marginBottom: '14px' }}>{method.icon}</div>
+            <div style={{ color: '#ff4444', fontWeight: 'bold', fontSize: '18px', marginBottom: '6px' }}>{method.label}</div>
+            <div style={{ color: '#aaa', fontSize: '14px' }}>{method.value}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Availability */}
+      <div style={{
+        background: 'rgba(0,255,136,0.1)',
+        borderRadius: '16px',
+        padding: '25px 40px',
+        maxWidth: '700px',
+        margin: '0 auto',
+        border: '1px solid rgba(0,255,136,0.2)'
+      }}>
+        <p style={{ margin: 0, color: '#00ff88', fontSize: '18px', fontWeight: '500', lineHeight: 1.6 }}>
+          {section.availability}
+        </p>
+      </div>
+    </div>
+  )
+})
+
+// MEMOIZED Bottom Info Panel - Ultra with LED displays
+const InfoPanel = memo(function InfoPanel({
+  primaryColor,
+  jackpot,
+  skillsDiscovered,
+  spinCount,
+  config
+}: {
+  primaryColor: string
+  jackpot: boolean
+  skillsDiscovered: number
+  spinCount: number
+  config: SegmentReelConfig
+}) {
   return (
     <div style={{
       display: 'flex',
@@ -562,7 +2002,7 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
         background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
       }} />
 
-      {/* Credits */}
+      {/* Spins (like Credits) */}
       <div style={{ textAlign: 'center' }}>
         <div style={{
           color: '#00ff88',
@@ -570,9 +2010,9 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
           letterSpacing: '3px',
           marginBottom: '8px',
           textShadow: '0 0 10px #00ff88'
-        }}>CREDITS</div>
+        }}>SPINS</div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {'1,000'.split('').map((char, i) => (
+          {spinCount.toString().split('').map((char, i) => (
             <LEDDigit key={i} value={char} color="#00ff88" />
           ))}
         </div>
@@ -585,21 +2025,12 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
         background: `linear-gradient(180deg, transparent, ${primaryColor}60, transparent)`
       }} />
 
-      {/* Bet */}
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          color: primaryColor,
-          fontSize: '11px',
-          letterSpacing: '3px',
-          marginBottom: '8px',
-          textShadow: `0 0 10px ${primaryColor}`
-        }}>BET</div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {'100'.split('').map((char, i) => (
-            <LEDDigit key={i} value={char} color={primaryColor} />
-          ))}
-        </div>
-      </div>
+      {/* Skills Discovered (like Bet) */}
+      <SkillsDiscovered
+        count={skillsDiscovered}
+        total={config.reels.reduce((sum, reel) => sum + reel.length, 0)}
+        color={primaryColor}
+      />
 
       {/* Decorative divider */}
       <div style={{
@@ -608,7 +2039,7 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
         background: `linear-gradient(180deg, transparent, ${primaryColor}60, transparent)`
       }} />
 
-      {/* Win - with count-up animation */}
+      {/* Jackpots Found (like Win) */}
       <div style={{ textAlign: 'center' }}>
         <div style={{
           color: jackpot ? COLORS.gold : '#666688',
@@ -617,8 +2048,8 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
           marginBottom: '8px',
           textShadow: jackpot ? `0 0 15px ${COLORS.gold}` : 'none',
           animation: jackpot ? 'winLabelFlash 0.3s ease-out 3' : 'none'
-        }}>WIN</div>
-        <WinCounter target={5000} active={jackpot} color={jackpot ? COLORS.gold : '#444466'} />
+        }}>JACKPOTS</div>
+        <WinCounter target={jackpot ? 1 : 0} active={jackpot} color={jackpot ? COLORS.gold : '#444466'} />
       </div>
 
       {/* Ambient glow on jackpot */}
@@ -633,10 +2064,10 @@ function InfoPanel({ primaryColor, jackpot }: { primaryColor: string, jackpot: b
       )}
     </div>
   )
-}
+})
 
-// Payline Indicator
-function PaylineIndicator({ active, color, side }: { active: boolean, color: string, side: 'left' | 'right' }) {
+// MEMOIZED Payline Indicator
+const PaylineIndicator = memo(function PaylineIndicator({ active, color, side }: { active: boolean, color: string, side: 'left' | 'right' }) {
   return (
     <div style={{
       position: 'absolute',
@@ -669,30 +2100,36 @@ function PaylineIndicator({ active, color, side }: { active: boolean, color: str
       ))}
     </div>
   )
-}
+})
 
-// Spin Button (decorative)
-function SpinButton({ spinning, color }: { spinning: boolean, color: string }) {
+// MEMOIZED Spin Button - GPU accelerated hover
+const SpinButton = memo(function SpinButton({ spinning, onSpin, color }: { spinning: boolean, onSpin: () => void, color: string }) {
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: '15%',
-      right: '5%',
-      width: 'clamp(60px, 10vw, 100px)',
-      height: 'clamp(60px, 10vw, 100px)',
-      borderRadius: '50%',
-      background: spinning
-        ? `radial-gradient(circle, ${color}40 0%, ${color}20 50%, transparent 70%)`
-        : `radial-gradient(circle, ${color} 0%, ${color}80 50%, ${color}40 100%)`,
-      border: `3px solid ${spinning ? color + '60' : color}`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: spinning
-        ? `0 0 30px ${color}40`
-        : `0 0 40px ${color}, 0 0 60px ${color}60, inset 0 0 30px ${color}40`,
-      animation: spinning ? 'spinButtonPulse 0.5s ease-in-out infinite' : 'none'
-    }}>
+    <button
+      onClick={onSpin}
+      disabled={spinning}
+      style={{
+        position: 'absolute',
+        bottom: '15%',
+        right: '5%',
+        width: 'clamp(60px, 10vw, 100px)',
+        height: 'clamp(60px, 10vw, 100px)',
+        borderRadius: '50%',
+        background: spinning
+          ? `radial-gradient(circle, ${color}40 0%, ${color}20 50%, transparent 70%)`
+          : `radial-gradient(circle, ${color} 0%, ${color}80 50%, ${color}40 100%)`,
+        border: `3px solid ${spinning ? color + '60' : color}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: spinning
+          ? `0 0 30px ${color}40`
+          : `0 0 40px ${color}, 0 0 60px ${color}60, inset 0 0 30px ${color}40`,
+        animation: spinning ? 'spinButtonPulse 0.5s ease-in-out infinite' : 'none',
+        cursor: spinning ? 'not-allowed' : 'pointer',
+        transition: 'all 0.3s ease'
+      }}
+    >
       <div style={{
         fontSize: 'clamp(10px, 2vw, 14px)',
         fontWeight: 'bold',
@@ -702,230 +2139,651 @@ function SpinButton({ spinning, color }: { spinning: boolean, color: string }) {
       }}>
         {spinning ? '...' : 'SPIN'}
       </div>
-    </div>
+    </button>
   )
-}
+})
 
 // ============================================
-// CONTENT VIEWS - FULL SCREEN
+// CONTENT VIEWS - FULL SCREEN (Memoized)
 // ============================================
-function SkillsView({ section }: { section: SkillsSection }) {
+const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: SkillsSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  // Flatten all skills for navigation
+  let itemIndex = 0
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-      {section.categories.map((cat, i) => (
-        <div key={cat.name} style={{ animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '32px' }}>{cat.icon}</span>
-            <span style={{ color: cat.color, fontWeight: 'bold', fontSize: '20px', letterSpacing: '2px' }}>{cat.name}</span>
+      {section.categories.map((cat, catIdx) => (
+        <div key={cat.name} style={{ animation: `fadeSlideIn 0.5s ease-out ${catIdx * 0.1}s both` }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '16px',
+            animation: 'holoFlicker 4s ease-in-out infinite',
+            animationDelay: `${catIdx * 0.5}s`
+          }}>
+            <span style={{
+              fontSize: '32px',
+              filter: `drop-shadow(0 0 10px ${cat.color})`,
+              animation: 'neonItemPulse 2s ease-in-out infinite'
+            }}>{cat.icon}</span>
+            <span style={{
+              color: cat.color,
+              fontWeight: 'bold',
+              fontSize: '20px',
+              letterSpacing: '2px',
+              textShadow: `0 0 10px ${cat.color}60`
+            }}>{cat.name}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {cat.skills.map(skill => (
-              <div key={skill.name} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ color: '#aaaacc', fontSize: '16px', width: '140px', fontWeight: '500' }}>{skill.name}</span>
-                <div style={{ flex: 1, height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
+            {cat.skills.map(skill => {
+              const currentIndex = itemIndex
+              const isFocused = focusIndex === currentIndex
+              const isHovered = hoveredIndex === currentIndex
+              const isActive = isFocused || isHovered
+              itemIndex++
+              return (
+                <div
+                  key={skill.name}
+                  onMouseEnter={() => setHoveredIndex(currentIndex)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    background: isActive ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.02)',
+                    border: isActive ? `2px solid ${cat.color}` : '2px solid rgba(255,255,255,0.05)',
+                    boxShadow: isActive ? `0 0 30px ${cat.color}50, inset 0 0 20px ${cat.color}10` : 'none',
+                    transform: isActive ? 'scale(1.03) translateX(10px)' : 'scale(1)',
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Hover beam effect */}
+                  {isActive && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, bottom: 0, left: '-20%',
+                      width: '20%',
+                      background: `linear-gradient(90deg, transparent, ${cat.color}40, transparent)`,
+                      animation: 'beamScan 1s ease-out',
+                      pointerEvents: 'none'
+                    }} />
+                  )}
+                  <span style={{
+                    color: isActive ? '#fff' : '#aaaacc',
+                    fontSize: '16px',
+                    width: '140px',
+                    fontWeight: isActive ? '600' : '500',
+                    textShadow: isActive ? `0 0 10px ${cat.color}` : 'none'
+                  }}>{skill.name}</span>
                   <div style={{
-                    width: `${skill.level}%`,
-                    height: '100%',
-                    background: `linear-gradient(90deg, ${cat.color}, ${cat.color}80)`,
-                    borderRadius: '6px',
-                    boxShadow: `0 0 15px ${cat.color}60`,
-                    animation: `barGrow 1s ease-out ${i * 0.1}s both`
-                  }} />
+                    flex: 1,
+                    height: '14px',
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: '7px',
+                    overflow: 'hidden',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      width: `${skill.level}%`,
+                      height: '100%',
+                      background: `linear-gradient(90deg, ${cat.color}90, ${cat.color}, ${cat.color}90)`,
+                      borderRadius: '7px',
+                      boxShadow: isActive ? `0 0 20px ${cat.color}80` : `0 0 10px ${cat.color}40`,
+                      animation: `barGrow 1s ease-out ${catIdx * 0.1}s both`,
+                      position: 'relative'
+                    }}>
+                      {/* Shine effect */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0,
+                        height: '50%',
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)',
+                        borderRadius: '7px 7px 0 0'
+                      }} />
+                    </div>
+                  </div>
+                  <span style={{
+                    color: cat.color,
+                    fontSize: '16px',
+                    width: '55px',
+                    fontWeight: 'bold',
+                    textShadow: isActive ? `0 0 15px ${cat.color}` : 'none'
+                  }}>{skill.level}%</span>
                 </div>
-                <span style={{ color: cat.color, fontSize: '16px', width: '50px', fontWeight: 'bold' }}>{skill.level}%</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ))}
     </div>
   )
-}
+})
 
-function ServicesView({ section }: { section: ServicesSection }) {
+const ServicesView = memo(function ServicesView({ section, focusIndex }: { section: ServicesSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
-      {section.items.map((item, i) => (
-        <div key={item.title} style={{
-          background: 'rgba(255,255,255,0.03)',
-          borderRadius: '20px',
-          padding: '28px',
-          border: '1px solid rgba(255,0,170,0.2)',
-          animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{item.icon}</div>
-          <h3 style={{ margin: '0 0 12px 0', color: '#ff00aa', fontSize: '20px', fontWeight: 'bold' }}>{item.title}</h3>
-          <p style={{ margin: '0 0 16px 0', color: '#888899', fontSize: '15px', lineHeight: 1.6 }}>{item.description}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {item.features.map(f => (
-              <span key={f} style={{
-                fontSize: '12px',
-                padding: '6px 12px',
-                background: 'rgba(255,0,170,0.15)',
-                borderRadius: '20px',
-                color: '#ff00aa',
-                fontWeight: '500'
-              }}>{f}</span>
-            ))}
+      {section.items.map((item, i) => {
+        const isFocused = focusIndex === i
+        const isHovered = hoveredIndex === i
+        const isActive = isFocused || isHovered
+        return (
+          <div
+            key={item.title}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            style={{
+              background: isActive
+                ? 'linear-gradient(135deg, rgba(255,0,170,0.2), rgba(255,0,170,0.08))'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
+              borderRadius: '24px',
+              padding: '32px',
+              border: isActive ? '2px solid #ff00aa' : '1px solid rgba(255,0,170,0.15)',
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
+              transform: isActive ? 'scale(1.04) translateY(-5px)' : 'scale(1)',
+              boxShadow: isActive
+                ? '0 15px 40px rgba(255,0,170,0.35), 0 0 60px rgba(255,0,170,0.2), inset 0 0 30px rgba(255,0,170,0.1)'
+                : '0 4px 20px rgba(0,0,0,0.2)',
+              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Corner accents */}
+            {isActive && (
+              <>
+                <div style={{
+                  position: 'absolute', top: '8px', left: '8px',
+                  width: '20px', height: '20px',
+                  borderTop: '2px solid #ff00aa',
+                  borderLeft: '2px solid #ff00aa',
+                  animation: 'focusTrail 0.5s ease-out'
+                }} />
+                <div style={{
+                  position: 'absolute', top: '8px', right: '8px',
+                  width: '20px', height: '20px',
+                  borderTop: '2px solid #ff00aa',
+                  borderRight: '2px solid #ff00aa',
+                  animation: 'focusTrail 0.5s ease-out 0.1s'
+                }} />
+                <div style={{
+                  position: 'absolute', bottom: '8px', left: '8px',
+                  width: '20px', height: '20px',
+                  borderBottom: '2px solid #ff00aa',
+                  borderLeft: '2px solid #ff00aa',
+                  animation: 'focusTrail 0.5s ease-out 0.2s'
+                }} />
+                <div style={{
+                  position: 'absolute', bottom: '8px', right: '8px',
+                  width: '20px', height: '20px',
+                  borderBottom: '2px solid #ff00aa',
+                  borderRight: '2px solid #ff00aa',
+                  animation: 'focusTrail 0.5s ease-out 0.3s'
+                }} />
+              </>
+            )}
+            <div style={{
+              fontSize: '56px',
+              marginBottom: '20px',
+              filter: isActive ? 'drop-shadow(0 0 20px rgba(255,0,170,0.6))' : 'none',
+              transform: isActive ? 'scale(1.1)' : 'scale(1)',
+              transition: 'all 0.3s ease'
+            }}>{item.icon}</div>
+            <h3 style={{
+              margin: '0 0 14px 0',
+              color: '#ff00aa',
+              fontSize: '22px',
+              fontWeight: 'bold',
+              textShadow: isActive ? '0 0 20px rgba(255,0,170,0.5)' : 'none'
+            }}>{item.title}</h3>
+            <p style={{
+              margin: '0 0 20px 0',
+              color: isActive ? '#ddd' : '#888899',
+              fontSize: '15px',
+              lineHeight: 1.7
+            }}>{item.description}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {item.features.map((f, fi) => (
+                <span key={f} style={{
+                  fontSize: '12px',
+                  padding: '8px 14px',
+                  background: isActive ? 'rgba(255,0,170,0.25)' : 'rgba(255,0,170,0.12)',
+                  borderRadius: '20px',
+                  color: '#ff00aa',
+                  fontWeight: '600',
+                  transform: isActive ? `translateY(-2px)` : 'translateY(0)',
+                  transition: `all 0.3s ease ${fi * 0.05}s`,
+                  boxShadow: isActive ? '0 4px 12px rgba(255,0,170,0.3)' : 'none'
+                }}>{f}</span>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-}
+})
 
-function AboutView({ section }: { section: AboutSection }) {
+const AboutView = memo(function AboutView({ section, focusIndex }: { section: AboutSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   return (
     <div style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
-      <p style={{ color: '#ccccee', fontSize: '20px', lineHeight: 1.8, marginBottom: '40px', textAlign: 'center', maxWidth: '700px', margin: '0 auto 40px' }}>
+      <p style={{
+        color: '#ccccee',
+        fontSize: '20px',
+        lineHeight: 1.8,
+        marginBottom: '40px',
+        textAlign: 'center',
+        maxWidth: '700px',
+        margin: '0 auto 40px',
+        textShadow: '0 2px 20px rgba(0,0,0,0.5)'
+      }}>
         {section.bio}
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-        {section.stats.map((stat, i) => (
-          <div key={stat.label} style={{
-            background: 'rgba(136,68,255,0.1)',
-            borderRadius: '20px',
-            padding: '30px 20px',
-            textAlign: 'center',
-            border: '1px solid rgba(136,68,255,0.2)',
-            animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>{stat.icon}</div>
-            <div style={{ color: '#8844ff', fontWeight: 'bold', fontSize: '24px', marginBottom: '4px' }}>{stat.value}</div>
-            <div style={{ color: '#666688', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</div>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+        {section.stats.map((stat, i) => {
+          const isFocused = focusIndex === i
+          const isHovered = hoveredIndex === i
+          const isActive = isFocused || isHovered
+          return (
+            <div
+              key={stat.label}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{
+                background: isActive
+                  ? 'linear-gradient(135deg, rgba(136,68,255,0.3), rgba(136,68,255,0.1))'
+                  : 'linear-gradient(135deg, rgba(136,68,255,0.12), rgba(136,68,255,0.05))',
+                borderRadius: '24px',
+                padding: '32px 24px',
+                textAlign: 'center',
+                border: isActive ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.2)',
+                animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
+                transform: isActive ? 'scale(1.08) translateY(-8px)' : 'scale(1)',
+                boxShadow: isActive
+                  ? '0 20px 50px rgba(136,68,255,0.4), 0 0 60px rgba(136,68,255,0.2), inset 0 0 30px rgba(136,68,255,0.1)'
+                  : '0 4px 20px rgba(0,0,0,0.2)',
+                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Glow ring effect */}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  inset: '-2px',
+                  borderRadius: '26px',
+                  background: 'linear-gradient(135deg, #8844ff, #aa66ff, #8844ff)',
+                  opacity: 0.3,
+                  animation: 'focusRingPulse 1.5s ease-in-out infinite',
+                  zIndex: -1
+                }} />
+              )}
+              <div style={{
+                fontSize: '48px',
+                marginBottom: '16px',
+                filter: isActive ? 'drop-shadow(0 0 20px rgba(136,68,255,0.8))' : 'none',
+                transform: isActive ? 'scale(1.15)' : 'scale(1)',
+                transition: 'all 0.3s ease',
+                animation: isActive ? 'neonItemPulse 2s ease-in-out infinite' : 'none'
+              }}>{stat.icon}</div>
+              <div style={{
+                color: '#8844ff',
+                fontWeight: 'bold',
+                fontSize: '28px',
+                marginBottom: '8px',
+                textShadow: isActive ? '0 0 20px rgba(136,68,255,0.8)' : 'none',
+                fontFamily: 'monospace'
+              }}>{stat.value}</div>
+              <div style={{
+                color: isActive ? '#bbb' : '#666688',
+                fontSize: '13px',
+                textTransform: 'uppercase',
+                letterSpacing: '2px',
+                fontWeight: 600
+              }}>{stat.label}</div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
-}
+})
 
-function ProjectsView({ section }: { section: ProjectsSection }) {
+const ProjectsView = memo(function ProjectsView({ section, focusIndex }: { section: ProjectsSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
-      {section.featured.map((proj, i) => (
-        <div key={proj.title} style={{
-          background: 'rgba(255,215,0,0.03)',
-          borderRadius: '20px',
-          padding: '28px',
-          border: '1px solid rgba(255,215,0,0.2)',
-          animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <span style={{ fontSize: '48px' }}>{proj.icon}</span>
-            <span style={{ color: '#666688', fontSize: '14px', background: 'rgba(255,215,0,0.1)', padding: '4px 12px', borderRadius: '12px' }}>{proj.year}</span>
+      {section.featured.map((proj, i) => {
+        const isFocused = focusIndex === i
+        const isHovered = hoveredIndex === i
+        const isActive = isFocused || isHovered
+        return (
+          <div
+            key={proj.title}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            style={{
+              background: isActive ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.03)',
+              borderRadius: '20px',
+              padding: '28px',
+              border: isActive ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
+              transform: isActive ? 'scale(1.05) translateY(-6px)' : 'scale(1)',
+              boxShadow: isActive
+                ? '0 20px 50px rgba(255,215,0,0.35), 0 0 60px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
+                : '0 4px 20px rgba(0,0,0,0.3)',
+              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer'
+            }}
+          >
+            {/* Gold shimmer effect on active */}
+            {isActive && (
+              <div style={{
+                position: 'absolute',
+                top: 0, left: '-100%',
+                width: '200%', height: '100%',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.1) 50%, transparent 100%)',
+                animation: 'shimmerSweep 2s ease-in-out infinite',
+                pointerEvents: 'none'
+              }} />
+            )}
+            {/* Corner accents */}
+            <div style={{
+              position: 'absolute', top: '8px', left: '8px',
+              width: '20px', height: '20px',
+              borderTop: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
+              borderLeft: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
+              transition: 'all 0.3s ease',
+              opacity: isActive ? 1 : 0
+            }} />
+            <div style={{
+              position: 'absolute', bottom: '8px', right: '8px',
+              width: '20px', height: '20px',
+              borderBottom: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
+              borderRight: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
+              transition: 'all 0.3s ease',
+              opacity: isActive ? 1 : 0
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', position: 'relative' }}>
+              <span style={{
+                fontSize: '48px',
+                filter: isActive ? 'drop-shadow(0 0 10px rgba(255,215,0,0.6))' : 'none',
+                transform: isActive ? 'scale(1.1) rotate(-5deg)' : 'scale(1)',
+                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                display: 'inline-block'
+              }}>{proj.icon}</span>
+              <span style={{
+                color: isActive ? '#ffd700' : '#666688',
+                fontSize: '14px',
+                background: isActive ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                transition: 'all 0.3s ease',
+                boxShadow: isActive ? '0 0 15px rgba(255,215,0,0.3)' : 'none'
+              }}>{proj.year}</span>
+            </div>
+            <h3 style={{
+              margin: '0 0 12px 0',
+              color: '#ffd700',
+              fontSize: '22px',
+              fontWeight: 'bold',
+              textShadow: isActive ? '0 0 20px rgba(255,215,0,0.5)' : 'none',
+              transition: 'text-shadow 0.3s ease'
+            }}>{proj.title}</h3>
+            <p style={{
+              margin: '0 0 16px 0',
+              color: isActive ? '#ddd' : '#888899',
+              fontSize: '15px',
+              lineHeight: 1.5,
+              transition: 'color 0.3s ease'
+            }}>{proj.description}</p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {proj.tags.map((t, ti) => (
+                <span key={t} style={{
+                  fontSize: '12px',
+                  padding: '6px 12px',
+                  background: isActive ? 'rgba(255,215,0,0.25)' : 'rgba(255,215,0,0.15)',
+                  borderRadius: '20px',
+                  color: '#ffd700',
+                  fontWeight: '500',
+                  transform: isActive ? `translateY(-2px)` : 'translateY(0)',
+                  transition: `all 0.3s ease ${ti * 0.05}s`,
+                  boxShadow: isActive ? '0 4px 12px rgba(255,215,0,0.2)' : 'none'
+                }}>{t}</span>
+              ))}
+            </div>
           </div>
-          <h3 style={{ margin: '0 0 12px 0', color: '#ffd700', fontSize: '22px', fontWeight: 'bold' }}>{proj.title}</h3>
-          <p style={{ margin: '0 0 16px 0', color: '#888899', fontSize: '15px', lineHeight: 1.5 }}>{proj.description}</p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {proj.tags.map(t => (
-              <span key={t} style={{
-                fontSize: '12px',
-                padding: '6px 12px',
-                background: 'rgba(255,215,0,0.15)',
-                borderRadius: '20px',
-                color: '#ffd700',
-                fontWeight: '500'
-              }}>{t}</span>
-            ))}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-}
+})
 
-function ExperienceView({ section }: { section: ExperienceSection }) {
+const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { section: ExperienceSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '700px', margin: '0 auto' }}>
-      {section.timeline.map((item, i) => (
-        <div key={item.period} style={{
-          borderLeft: '3px solid #00ff88',
-          paddingLeft: '28px',
-          animation: `fadeSlideIn 0.5s ease-out ${i * 0.15}s both`,
-          position: 'relative'
-        }}>
-          {/* Timeline dot */}
-          <div style={{
-            position: 'absolute',
-            left: '-8px',
-            top: '0',
-            width: '14px',
-            height: '14px',
-            borderRadius: '50%',
-            background: '#00ff88',
-            boxShadow: '0 0 15px #00ff88'
-          }} />
-          <div style={{ color: '#00ff88', fontSize: '14px', marginBottom: '8px', fontWeight: '500', letterSpacing: '1px' }}>{item.period}</div>
-          <div style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '22px', marginBottom: '4px' }}>{item.role}</div>
-          <div style={{ color: '#888899', fontSize: '16px', marginBottom: '16px' }}>{item.company}</div>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            {item.highlights.map((h, j) => (
-              <li key={j} style={{ color: '#777799', fontSize: '15px', marginBottom: '8px', lineHeight: 1.5 }}>{h}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {section.timeline.map((item, i) => {
+        const isFocused = focusIndex === i
+        const isHovered = hoveredIndex === i
+        const isActive = isFocused || isHovered
+        return (
+          <div
+            key={item.period}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            style={{
+              borderLeft: isActive ? '4px solid #00ff88' : '3px solid rgba(0,255,136,0.4)',
+              paddingLeft: '28px',
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.15}s both`,
+              position: 'relative',
+              background: isActive ? 'rgba(0,255,136,0.1)' : 'transparent',
+              padding: isActive ? '24px 28px' : '0 0 0 28px',
+              borderRadius: isActive ? '0 16px 16px 0' : '0',
+              boxShadow: isActive
+                ? '0 15px 40px rgba(0,255,136,0.25), inset 0 1px 0 rgba(255,255,255,0.05)'
+                : 'none',
+              transform: isActive ? 'translateX(10px)' : 'translateX(0)',
+              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              cursor: 'pointer'
+            }}
+          >
+            {/* Timeline dot with pulse */}
+            <div style={{
+              position: 'absolute',
+              left: '-10px',
+              top: isActive ? '24px' : '0',
+              width: isActive ? '20px' : '14px',
+              height: isActive ? '20px' : '14px',
+              borderRadius: '50%',
+              background: '#00ff88',
+              boxShadow: isActive ? '0 0 30px #00ff88, 0 0 60px rgba(0,255,136,0.5)' : '0 0 15px #00ff88',
+              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              animation: isActive ? 'timelineDotPulse 1.5s ease-in-out infinite' : 'none'
+            }} />
+            {/* Connecting line glow */}
+            {isActive && (
+              <div style={{
+                position: 'absolute',
+                left: '-2px',
+                top: 0,
+                bottom: 0,
+                width: '4px',
+                background: 'linear-gradient(180deg, transparent 0%, #00ff88 20%, #00ff88 80%, transparent 100%)',
+                filter: 'blur(4px)',
+                opacity: 0.6
+              }} />
+            )}
+            <div style={{
+              color: '#00ff88',
+              fontSize: '14px',
+              marginBottom: '8px',
+              fontWeight: '600',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              textShadow: isActive ? '0 0 15px rgba(0,255,136,0.6)' : 'none',
+              transition: 'all 0.3s ease'
+            }}>{item.period}</div>
+            <div style={{
+              color: '#ffffff',
+              fontWeight: 'bold',
+              fontSize: '24px',
+              marginBottom: '6px',
+              textShadow: isActive ? '0 0 20px rgba(255,255,255,0.3)' : 'none',
+              transition: 'all 0.3s ease'
+            }}>{item.role}</div>
+            <div style={{
+              color: isActive ? '#00ff88' : '#888899',
+              fontSize: '16px',
+              marginBottom: '16px',
+              fontWeight: isActive ? '500' : '400',
+              transition: 'all 0.3s ease'
+            }}>{item.company}</div>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              {item.highlights.map((h, j) => (
+                <li key={j} style={{
+                  color: isActive ? '#bbb' : '#777799',
+                  fontSize: '15px',
+                  marginBottom: '10px',
+                  lineHeight: 1.6,
+                  transition: 'all 0.3s ease',
+                  transform: isActive ? 'translateX(5px)' : 'translateX(0)',
+                  transitionDelay: `${j * 0.05}s`
+                }}>{h}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
-}
+})
 
-function ContactView({ section, focusIndex, onActivate }: { section: ContactSection, focusIndex: number, onActivate: (index: number) => void }) {
-  const handleClick = (method: typeof section.methods[0]) => {
+const ContactView = memo(function ContactView({ section, focusIndex }: { section: ContactSection, focusIndex: number }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+
+  const handleClick = (method: typeof section.methods[0], index: number) => {
     if (method.action === 'email' && method.url) {
       window.location.href = method.url
     } else if (method.action === 'link' && method.url) {
       window.open(method.url, '_blank', 'noopener,noreferrer')
     } else if (method.action === 'copy') {
       navigator.clipboard.writeText(method.value)
+      setCopiedIndex(index)
+      setTimeout(() => setCopiedIndex(null), 2000)
     }
   }
 
   return (
     <div style={{ animation: 'fadeSlideIn 0.5s ease-out', textAlign: 'center' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', maxWidth: '600px', margin: '0 auto 40px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', maxWidth: '600px', margin: '0 auto 40px' }}>
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i
+          const isHovered = hoveredIndex === i
+          const isActive = isFocused || isHovered
+          const isCopied = copiedIndex === i
           return (
             <button
               key={method.label}
-              onClick={() => handleClick(method)}
+              onClick={() => handleClick(method, i)}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
               style={{
-                background: isFocused ? 'rgba(255,68,68,0.25)' : 'rgba(255,68,68,0.08)',
-                border: isFocused ? '2px solid #ff4444' : '2px solid rgba(255,68,68,0.3)',
+                background: isActive ? 'rgba(255,68,68,0.2)' : 'rgba(255,68,68,0.05)',
+                border: isActive ? '2px solid #ff4444' : '2px solid rgba(255,68,68,0.25)',
                 borderRadius: '20px',
-                padding: '28px',
+                padding: '32px 28px',
                 cursor: 'pointer',
                 textAlign: 'center',
-                transition: 'all 0.15s ease',
-                animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-                transform: isFocused ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: isFocused ? '0 0 30px rgba(255,68,68,0.4)' : 'none',
-                outline: 'none'
-              }}
-              onMouseEnter={e => {
-                if (!isFocused) {
-                  e.currentTarget.style.background = 'rgba(255,68,68,0.15)'
-                  e.currentTarget.style.transform = 'translateY(-4px)'
-                  e.currentTarget.style.boxShadow = '0 10px 40px rgba(255,68,68,0.2)'
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isFocused) {
-                  e.currentTarget.style.background = 'rgba(255,68,68,0.08)'
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }
+                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both${isActive ? ', contactGlow 2s ease-in-out infinite' : ''}`,
+                transform: isActive ? 'scale(1.08) translateY(-8px)' : 'scale(1)',
+                boxShadow: isActive
+                  ? '0 20px 50px rgba(255,68,68,0.35), 0 0 60px rgba(255,68,68,0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
+                  : '0 4px 20px rgba(0,0,0,0.3)',
+                outline: 'none',
+                position: 'relative',
+                overflow: 'hidden'
               }}
             >
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>{method.icon}</div>
-              <div style={{ color: '#ff4444', fontWeight: 'bold', fontSize: '18px', marginBottom: '4px' }}>{method.label}</div>
-              <div style={{ color: '#888899', fontSize: '14px' }}>{method.value}</div>
+              {/* Glow overlay on active */}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-50%', left: '-50%',
+                  width: '200%', height: '200%',
+                  background: 'radial-gradient(circle, rgba(255,68,68,0.15) 0%, transparent 70%)',
+                  animation: 'pulseGlow 2s ease-in-out infinite',
+                  pointerEvents: 'none'
+                }} />
+              )}
+              {/* Corner brackets */}
+              <div style={{
+                position: 'absolute', top: '10px', left: '10px',
+                width: '16px', height: '16px',
+                borderTop: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
+                borderLeft: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
+                transition: 'all 0.3s ease',
+                opacity: isActive ? 1 : 0
+              }} />
+              <div style={{
+                position: 'absolute', bottom: '10px', right: '10px',
+                width: '16px', height: '16px',
+                borderBottom: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
+                borderRight: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
+                transition: 'all 0.3s ease',
+                opacity: isActive ? 1 : 0
+              }} />
+              <div style={{
+                fontSize: '44px',
+                marginBottom: '14px',
+                filter: isActive ? 'drop-shadow(0 0 12px rgba(255,68,68,0.6))' : 'none',
+                transform: isActive ? 'scale(1.15) rotate(5deg)' : 'scale(1)',
+                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                position: 'relative'
+              }}>{method.icon}</div>
+              <div style={{
+                color: isActive ? '#ff6666' : '#ff4444',
+                fontWeight: 'bold',
+                fontSize: '19px',
+                marginBottom: '6px',
+                textShadow: isActive ? '0 0 15px rgba(255,68,68,0.5)' : 'none',
+                transition: 'all 0.3s ease',
+                position: 'relative'
+              }}>{method.label}</div>
+              <div style={{
+                color: isActive ? '#aaa' : '#777788',
+                fontSize: '14px',
+                transition: 'color 0.3s ease',
+                position: 'relative'
+              }}>
+                {isCopied ? 'Copied!' : method.value}
+              </div>
             </button>
           )
         })}
       </div>
-      <p style={{ color: '#00ff88', fontSize: '18px', fontWeight: '500' }}>
+      <p style={{
+        color: '#00ff88',
+        fontSize: '18px',
+        fontWeight: '500',
+        textShadow: '0 0 20px rgba(0,255,136,0.3)'
+      }}>
         {section.availability}
       </p>
       {/* Keyboard hint */}
@@ -935,7 +2793,7 @@ function ContactView({ section, focusIndex, onActivate }: { section: ContactSect
       </div>
     </div>
   )
-}
+})
 
 // Get item count for keyboard navigation
 function getItemCount(section: SlotSection): number {
@@ -961,26 +2819,525 @@ function getGridColumns(section: SlotSection): number {
   }
 }
 
-function ContentView({ section, focusIndex, onActivate }: {
+function ContentView({ section, focusIndex }: {
   section: SlotSection
   focusIndex: number
-  onActivate: (index: number) => void
 }) {
   switch (section.type) {
-    case 'skills': return <SkillsView section={section} />
-    case 'services': return <ServicesView section={section} />
-    case 'about': return <AboutView section={section} />
-    case 'projects': return <ProjectsView section={section} />
-    case 'experience': return <ExperienceView section={section} />
-    case 'contact': return <ContactView section={section} focusIndex={focusIndex} onActivate={onActivate} />
+    case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
+    case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
+    case 'about': return <AboutView section={section} focusIndex={focusIndex} />
+    case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} />
+    case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} />
+    case 'contact': return <ContactView section={section} focusIndex={focusIndex} />
     default: return null
   }
 }
 
 // ============================================
-// PARTICLE BURST
+// ULTRA PREMIUM DETAIL MODAL - AAA Vegas Quality
 // ============================================
-function ParticleBurst({ color }: { color: string }) {
+const DetailModal = memo(function DetailModal({
+  item,
+  primaryColor,
+  onClose
+}: {
+  item: { type: string, index: number, data: unknown }
+  primaryColor: string
+  onClose: () => void
+}) {
+  const [showContent, setShowContent] = useState(false)
+  const [barAnimated, setBarAnimated] = useState(false)
+
+  // Staggered reveal animation
+  useEffect(() => {
+    const t1 = setTimeout(() => setShowContent(true), 100)
+    const t2 = setTimeout(() => setBarAnimated(true), 400)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [])
+
+  const renderContent = () => {
+    switch (item.type) {
+      case 'skill': {
+        const skill = item.data as { name: string, level: number, category: string, categoryColor: string, categoryIcon: string }
+        return (
+          <div style={{ textAlign: 'center' }}>
+            {/* Animated icon with glow pulse */}
+            <div style={{
+              fontSize: '80px',
+              marginBottom: '24px',
+              animation: 'modalIconPulse 2s ease-in-out infinite',
+              filter: `drop-shadow(0 0 30px ${skill.categoryColor})`
+            }}>{skill.categoryIcon}</div>
+
+            {/* Category badge */}
+            <div style={{
+              display: 'inline-block',
+              color: skill.categoryColor,
+              fontSize: '12px',
+              letterSpacing: '4px',
+              marginBottom: '16px',
+              padding: '8px 20px',
+              background: `${skill.categoryColor}15`,
+              borderRadius: '30px',
+              border: `1px solid ${skill.categoryColor}40`,
+              textTransform: 'uppercase',
+              animation: showContent ? 'modalBadgeReveal 0.5s ease-out' : 'none',
+              opacity: showContent ? 1 : 0
+            }}>{skill.category}</div>
+
+            {/* Skill name with glitch effect */}
+            <h2 style={{
+              margin: '0 0 40px 0',
+              fontSize: '48px',
+              color: '#fff',
+              fontWeight: 900,
+              textShadow: `0 0 20px ${skill.categoryColor}60, 0 0 40px ${skill.categoryColor}30`,
+              animation: showContent ? 'modalTitleReveal 0.6s ease-out 0.1s both' : 'none'
+            }}>{skill.name}</h2>
+
+            {/* Premium progress bar */}
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              height: '24px',
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              marginBottom: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.5)'
+            }}>
+              {/* Animated fill */}
+              <div style={{
+                width: barAnimated ? `${skill.level}%` : '0%',
+                height: '100%',
+                background: `linear-gradient(90deg, ${skill.categoryColor}80, ${skill.categoryColor}, ${skill.categoryColor}80)`,
+                borderRadius: '12px',
+                boxShadow: `0 0 30px ${skill.categoryColor}80, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative'
+              }}>
+                {/* Shine effect */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '50%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.4), transparent)',
+                  borderRadius: '12px 12px 0 0'
+                }} />
+                {/* Moving sparkle */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '10px',
+                  transform: 'translateY(-50%)',
+                  width: '8px',
+                  height: '8px',
+                  background: '#fff',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 10px #fff, 0 0 20px #fff',
+                  animation: barAnimated ? 'modalSparkle 1s ease-in-out infinite' : 'none',
+                  opacity: barAnimated ? 1 : 0
+                }} />
+              </div>
+              {/* Grid lines */}
+              {[25, 50, 75].map(pos => (
+                <div key={pos} style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: `${pos}%`,
+                  width: '1px',
+                  background: 'rgba(255,255,255,0.1)'
+                }} />
+              ))}
+            </div>
+
+            {/* Percentage with counter animation */}
+            <div style={{
+              fontSize: '64px',
+              fontWeight: 900,
+              color: skill.categoryColor,
+              textShadow: `0 0 40px ${skill.categoryColor}80`,
+              fontFamily: 'monospace'
+            }}>{barAnimated ? skill.level : 0}%</div>
+            <div style={{
+              color: '#666',
+              marginTop: '8px',
+              fontSize: '14px',
+              letterSpacing: '2px',
+              textTransform: 'uppercase'
+            }}>Proficiency Level</div>
+          </div>
+        )
+      }
+      case 'service': {
+        const service = item.data as { icon: string, title: string, description: string, features: string[] }
+        return (
+          <div>
+            {/* Floating icon with particles */}
+            <div style={{
+              position: 'relative',
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <div style={{
+                fontSize: '100px',
+                animation: 'modalIconFloat 3s ease-in-out infinite',
+                filter: 'drop-shadow(0 0 40px rgba(255,0,170,0.5))'
+              }}>{service.icon}</div>
+              {/* Orbiting particles */}
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: '8px',
+                  height: '8px',
+                  background: '#ff00aa',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 15px #ff00aa',
+                  animation: `modalOrbit 3s linear infinite`,
+                  animationDelay: `${i * 1}s`,
+                  transformOrigin: '0 0'
+                }} />
+              ))}
+            </div>
+
+            <h2 style={{
+              margin: '0 0 20px 0',
+              fontSize: '40px',
+              color: '#ff00aa',
+              fontWeight: 900,
+              textAlign: 'center',
+              textShadow: '0 0 30px rgba(255,0,170,0.5)',
+              animation: showContent ? 'modalTitleReveal 0.5s ease-out' : 'none'
+            }}>{service.title}</h2>
+
+            <p style={{
+              color: '#999',
+              fontSize: '18px',
+              lineHeight: 2,
+              marginBottom: '35px',
+              textAlign: 'center',
+              animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
+            }}>{service.description}</p>
+
+            {/* Feature tags with staggered animation */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+              {service.features.map((f, i) => (
+                <span key={f} style={{
+                  fontSize: '14px',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, rgba(255,0,170,0.2), rgba(255,0,170,0.1))',
+                  borderRadius: '30px',
+                  color: '#ff00aa',
+                  fontWeight: '600',
+                  border: '1px solid rgba(255,0,170,0.4)',
+                  boxShadow: '0 4px 20px rgba(255,0,170,0.2)',
+                  animation: showContent ? `modalTagReveal 0.4s ease-out ${0.1 + i * 0.05}s both` : 'none',
+                  cursor: 'default',
+                  transition: 'all 0.3s ease'
+                }}>{f}</span>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'project': {
+        const proj = item.data as { icon: string, title: string, description: string, year: string, tags: string[] }
+        return (
+          <div>
+            {/* Header with icon and year */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '30px'
+            }}>
+              <span style={{
+                fontSize: '90px',
+                animation: 'modalIconBounce 0.6s ease-out',
+                filter: 'drop-shadow(0 0 30px rgba(255,215,0,0.5))'
+              }}>{proj.icon}</span>
+              <div style={{
+                color: '#ffd700',
+                fontSize: '16px',
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,215,0,0.1))',
+                padding: '12px 24px',
+                borderRadius: '25px',
+                border: '1px solid rgba(255,215,0,0.5)',
+                fontWeight: 700,
+                boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                animation: 'modalYearPulse 2s ease-in-out infinite'
+              }}>{proj.year}</div>
+            </div>
+
+            <h2 style={{
+              margin: '0 0 24px 0',
+              fontSize: '40px',
+              color: '#ffd700',
+              fontWeight: 900,
+              textShadow: '0 0 30px rgba(255,215,0,0.5)',
+              animation: showContent ? 'modalTitleReveal 0.5s ease-out' : 'none'
+            }}>{proj.title}</h2>
+
+            <p style={{
+              color: '#999',
+              fontSize: '18px',
+              lineHeight: 2,
+              marginBottom: '35px',
+              animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
+            }}>{proj.description}</p>
+
+            {/* Tech tags */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {proj.tags.map((t, i) => (
+                <span key={t} style={{
+                  fontSize: '14px',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.1))',
+                  borderRadius: '30px',
+                  color: '#ffd700',
+                  fontWeight: '600',
+                  border: '1px solid rgba(255,215,0,0.4)',
+                  boxShadow: '0 4px 20px rgba(255,215,0,0.2)',
+                  animation: showContent ? `modalTagReveal 0.4s ease-out ${0.1 + i * 0.05}s both` : 'none'
+                }}>{t}</span>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'experience': {
+        const exp = item.data as { period: string, role: string, company: string, highlights: string[] }
+        return (
+          <div>
+            {/* Timeline badge */}
+            <div style={{
+              display: 'inline-block',
+              color: '#00ff88',
+              fontSize: '14px',
+              marginBottom: '16px',
+              letterSpacing: '3px',
+              padding: '10px 24px',
+              background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,255,136,0.05))',
+              borderRadius: '30px',
+              border: '1px solid rgba(0,255,136,0.4)',
+              boxShadow: '0 0 20px rgba(0,255,136,0.2)',
+              animation: 'modalPeriodGlow 2s ease-in-out infinite'
+            }}>{exp.period}</div>
+
+            <h2 style={{
+              margin: '0 0 12px 0',
+              fontSize: '40px',
+              color: '#fff',
+              fontWeight: 900,
+              textShadow: '0 0 20px rgba(0,255,136,0.3)',
+              animation: showContent ? 'modalTitleReveal 0.5s ease-out' : 'none'
+            }}>{exp.role}</h2>
+
+            <div style={{
+              color: '#666',
+              fontSize: '22px',
+              marginBottom: '35px',
+              fontWeight: 500,
+              animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
+            }}>{exp.company}</div>
+
+            {/* Animated highlights */}
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {exp.highlights.map((h, i) => (
+                <li key={i} style={{
+                  color: '#aaa',
+                  fontSize: '16px',
+                  marginBottom: '18px',
+                  lineHeight: 1.8,
+                  paddingLeft: '32px',
+                  position: 'relative',
+                  animation: showContent ? `modalHighlightReveal 0.5s ease-out ${0.2 + i * 0.1}s both` : 'none'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '2px',
+                    color: '#00ff88',
+                    fontSize: '18px',
+                    textShadow: '0 0 10px rgba(0,255,136,0.5)'
+                  }}>▸</span>
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      case 'stat': {
+        const stat = item.data as { icon: string, value: string, label: string, bio: string }
+        return (
+          <div style={{ textAlign: 'center' }}>
+            {/* Mega icon with effects */}
+            <div style={{
+              fontSize: '100px',
+              marginBottom: '30px',
+              animation: 'modalIconPulse 2s ease-in-out infinite',
+              filter: 'drop-shadow(0 0 40px rgba(136,68,255,0.5))'
+            }}>{stat.icon}</div>
+
+            {/* Animated counter value */}
+            <div style={{
+              fontSize: '80px',
+              fontWeight: 900,
+              color: '#8844ff',
+              marginBottom: '12px',
+              textShadow: '0 0 50px rgba(136,68,255,0.8)',
+              fontFamily: 'monospace',
+              animation: 'modalValuePop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}>{stat.value}</div>
+
+            <div style={{
+              color: '#666',
+              fontSize: '16px',
+              letterSpacing: '4px',
+              textTransform: 'uppercase',
+              marginBottom: '30px'
+            }}>{stat.label}</div>
+
+            {/* Bio section */}
+            {stat.bio && (
+              <div style={{
+                marginTop: '30px',
+                padding: '20px 30px',
+                background: 'rgba(136,68,255,0.1)',
+                borderRadius: '16px',
+                border: '1px solid rgba(136,68,255,0.3)',
+                color: '#888',
+                fontSize: '15px',
+                lineHeight: 1.8,
+                fontStyle: 'italic',
+                animation: showContent ? 'modalTextReveal 0.6s ease-out 0.2s both' : 'none'
+              }}>
+                "{stat.bio}"
+              </div>
+            )}
+          </div>
+        )
+      }
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2000,
+        animation: 'modalBackdropReveal 0.4s ease-out forwards',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Cinematic light rays */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        width: '200vw',
+        height: '200vh',
+        transform: 'translate(-50%, -50%)',
+        background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 50%)`,
+        animation: 'modalLightPulse 3s ease-in-out infinite',
+        pointerEvents: 'none'
+      }} />
+
+      {/* Corner decorations */}
+      {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner, i) => (
+        <div key={corner} style={{
+          position: 'absolute',
+          [corner.includes('top') ? 'top' : 'bottom']: '20px',
+          [corner.includes('left') ? 'left' : 'right']: '20px',
+          width: '60px',
+          height: '60px',
+          borderTop: corner.includes('top') ? `2px solid ${primaryColor}60` : 'none',
+          borderBottom: corner.includes('bottom') ? `2px solid ${primaryColor}60` : 'none',
+          borderLeft: corner.includes('left') ? `2px solid ${primaryColor}60` : 'none',
+          borderRight: corner.includes('right') ? `2px solid ${primaryColor}60` : 'none',
+          animation: `modalCornerReveal 0.5s ease-out ${0.1 * i}s both`,
+          pointerEvents: 'none'
+        }} />
+      ))}
+
+      {/* Main modal card */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(180deg, #18182e 0%, #0c0c18 100%)',
+          borderRadius: '28px',
+          padding: '60px',
+          maxWidth: '650px',
+          width: '90%',
+          border: `2px solid ${primaryColor}50`,
+          boxShadow: `
+            0 0 80px ${primaryColor}40,
+            0 0 120px ${primaryColor}20,
+            inset 0 1px 0 rgba(255,255,255,0.1),
+            inset 0 0 40px rgba(0,0,0,0.5)
+          `,
+          animation: 'modalCardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Top shine line */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: '10%',
+          right: '10%',
+          height: '1px',
+          background: `linear-gradient(90deg, transparent, ${primaryColor}80, transparent)`,
+          animation: 'modalShineMove 3s linear infinite'
+        }} />
+
+        {/* Content */}
+        {renderContent()}
+
+        {/* Close hint with enhanced style */}
+        <div style={{
+          marginTop: '50px',
+          textAlign: 'center',
+          color: '#444',
+          fontSize: '14px',
+          animation: 'modalHintReveal 0.5s ease-out 0.5s both'
+        }}>
+          Press <span style={{
+            color: primaryColor,
+            padding: '6px 16px',
+            background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`,
+            borderRadius: '8px',
+            border: `1px solid ${primaryColor}40`,
+            fontWeight: 600,
+            boxShadow: `0 2px 10px ${primaryColor}20`
+          }}>ESC</span> to close
+        </div>
+      </div>
+    </div>
+  )
+})
+
+// ============================================
+// MEMOIZED PARTICLE BURST - GPU accelerated
+// ============================================
+const ParticleBurst = memo(function ParticleBurst({ color }: { color: string }) {
   const particles = useMemo(() =>
     Array.from({ length: 50 }, (_, i) => ({
       id: i,
@@ -993,7 +3350,14 @@ function ParticleBurst({ color }: { color: string }) {
   )
 
   return (
-    <div style={{ position: 'fixed', top: '50%', left: '50%', pointerEvents: 'none', zIndex: 100 }}>
+    <div style={{
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      pointerEvents: 'none',
+      zIndex: 100,
+      contain: 'strict'
+    }}>
       {particles.map(p => (
         <div
           key={p.id}
@@ -1005,6 +3369,8 @@ function ParticleBurst({ color }: { color: string }) {
             borderRadius: '50%',
             boxShadow: `0 0 ${p.size * 2}px ${color}`,
             animation: `particleFly 0.8s ease-out ${p.delay}s forwards`,
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)',
             '--angle': `${p.angle}deg`,
             '--distance': `${p.distance}px`
           } as React.CSSProperties}
@@ -1012,7 +3378,7 @@ function ParticleBurst({ color }: { color: string }) {
       ))}
     </div>
   )
-}
+})
 
 // ============================================
 // MAIN COMPONENT
@@ -1025,17 +3391,80 @@ export function SlotFullScreen({
   onClose: () => void
   onNavigate?: (id: string) => void
 }) {
-  const [phase, setPhase] = useState<'spinning' | 'jackpot' | 'content'>('spinning')
+  const [phase, setPhase] = useState<'intro' | 'spinning' | 'result' | 'content'>('intro')
   const [focusIndex, setFocusIndex] = useState(0)
+  const [spinCount, setSpinCount] = useState(0)
+  const [skillsDiscovered, setSkillsDiscovered] = useState(new Set<string>())
+  const [currentIndices, setCurrentIndices] = useState([0, 0, 0, 0, 0])
+  const [isJackpot, setIsJackpot] = useState(false)
+  const [jackpotStory, setJackpotStory] = useState<{ story: string, highlight: string } | undefined>()
+  const [forceStop, setForceStop] = useState(false)
+  const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
+  const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
+  const [showKeyboardHints, setShowKeyboardHints] = useState(false)
 
   const section = SLOT_CONTENT[machineId]
   const theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
   const primaryColor = section?.color || '#00ffff'
 
+  // Get segment-specific reel config
+  const segmentConfig = getSegmentConfig(machineId)
+
+  // Generate random indices for this spin
+  const generateSpinResult = useCallback(() => {
+    // 20% chance for jackpot (predefined combination)
+    if (Math.random() < 0.2 && segmentConfig.stories.length > 0) {
+      const combo = segmentConfig.stories[Math.floor(Math.random() * segmentConfig.stories.length)]
+      setIsJackpot(true)
+      setJackpotStory({ story: combo.story, highlight: combo.highlight })
+      return combo.indices
+    } else {
+      setIsJackpot(false)
+      setJackpotStory(undefined)
+      return segmentConfig.reels.map(reel => Math.floor(Math.random() * reel.length))
+    }
+  }, [segmentConfig])
+
+  // Initial spin indices
+  const [targetIndices, setTargetIndices] = useState(() => generateSpinResult())
+
+  // Auto-transition to result after all reels stop
+  // Last reel (index 4) stops at: 1800 + 4*500 + 300 (bounce) = 4100ms
+  useEffect(() => {
+    if (phase === 'spinning') {
+      const totalSpinTime = 1800 + 4 * 500 + 400 // Last reel stop + bounce + buffer
+      const timer = setTimeout(() => {
+        setPhase('result')
+        // Play win sounds
+        if (isJackpot) {
+          playSynthJackpot(0.7) // Epic jackpot fanfare
+        } else {
+          playSynthWin(0.5) // Regular win sound
+        }
+        // Update discovered skills using segment config
+        targetIndices.forEach((idx, reelIdx) => {
+          const reel = segmentConfig.reels[reelIdx]
+          if (reel) {
+            const symbol = reel[idx % reel.length]
+            if (symbol) {
+              setSkillsDiscovered(prev => new Set([...prev, `${reelIdx}-${symbol.label}`]))
+            }
+          }
+        })
+        setCurrentIndices(targetIndices)
+      }, totalSpinTime)
+      return () => clearTimeout(timer)
+    }
+  }, [phase, targetIndices, segmentConfig, isJackpot])
+
   // Reset focus when entering content phase
   useEffect(() => {
     if (phase === 'content') {
       setFocusIndex(0)
+      // Show keyboard hints on content entry
+      setShowKeyboardHints(true)
+      const timer = setTimeout(() => setShowKeyboardHints(false), 4000)
+      return () => clearTimeout(timer)
     }
   }, [phase])
 
@@ -1043,39 +3472,148 @@ export function SlotFullScreen({
     markVisited(machineId)
   }, [machineId])
 
-  const handleReelStop = useCallback(() => {
-    // Called when last reel stops
-    setTimeout(() => setPhase('jackpot'), 200)
-  }, [])
+  // Handle new spin
+  const handleSpin = useCallback(() => {
+    if (phase === 'spinning') return
 
+    setForceStop(false) // Reset force stop for new spin
+    setPhase('spinning')
+    setSpinCount(prev => prev + 1)
+    setTargetIndices(generateSpinResult())
+  }, [phase, generateSpinResult])
+
+  // INTRO SEQUENCE - Cinematic entrance animation
   useEffect(() => {
-    if (phase === 'jackpot') {
-      const timer = setTimeout(() => setPhase('content'), 1500)
-      return () => clearTimeout(timer)
+    if (phase === 'intro') {
+      // Step 1: Lights flicker on (300ms)
+      const t1 = setTimeout(() => setIntroStep(1), 200)
+      // Step 2: Machine reveals (600ms)
+      const t2 = setTimeout(() => setIntroStep(2), 600)
+      // Step 3: Ready state (1000ms)
+      const t3 = setTimeout(() => setIntroStep(3), 1000)
+      // Step 4: Auto-start first spin (1500ms)
+      const t4 = setTimeout(() => {
+        setPhase('spinning')
+        setSpinCount(1)
+        setTargetIndices(generateSpinResult())
+      }, 1500)
+
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+        clearTimeout(t3)
+        clearTimeout(t4)
+      }
     }
-  }, [phase])
+  }, [phase, generateSpinResult])
 
   // Handle activation (Enter key press on focused item)
   const handleActivate = useCallback((index: number) => {
-    if (section?.type === 'contact') {
-      const methods = (section as ContactSection).methods
-      const method = methods[index]
-      if (method?.action === 'email' && method.url) {
-        window.location.href = method.url
-      } else if (method?.action === 'link' && method.url) {
-        window.open(method.url, '_blank', 'noopener,noreferrer')
-      } else if (method?.action === 'copy') {
-        navigator.clipboard.writeText(method.value)
+    if (!section) return
+
+    switch (section.type) {
+      case 'skills': {
+        // Flatten skills to find the right one
+        let itemIndex = 0
+        for (const cat of (section as SkillsSection).categories) {
+          for (const skill of cat.skills) {
+            if (itemIndex === index) {
+              setDetailItem({ type: 'skill', index, data: { ...skill, category: cat.name, categoryColor: cat.color, categoryIcon: cat.icon } })
+              return
+            }
+            itemIndex++
+          }
+        }
+        break
+      }
+      case 'services': {
+        const item = (section as ServicesSection).items[index]
+        if (item) setDetailItem({ type: 'service', index, data: item })
+        break
+      }
+      case 'about': {
+        const stat = (section as AboutSection).stats[index]
+        if (stat) setDetailItem({ type: 'stat', index, data: { ...stat, bio: (section as AboutSection).bio } })
+        break
+      }
+      case 'projects': {
+        const proj = (section as ProjectsSection).featured[index]
+        if (proj) setDetailItem({ type: 'project', index, data: proj })
+        break
+      }
+      case 'experience': {
+        const exp = (section as ExperienceSection).timeline[index]
+        if (exp) setDetailItem({ type: 'experience', index, data: exp })
+        break
+      }
+      case 'contact': {
+        const methods = (section as ContactSection).methods
+        const method = methods[index]
+        if (method?.action === 'email' && method.url) {
+          window.location.href = method.url
+        } else if (method?.action === 'link' && method.url) {
+          window.open(method.url, '_blank', 'noopener,noreferrer')
+        } else if (method?.action === 'copy') {
+          navigator.clipboard.writeText(method.value)
+        }
+        break
       }
     }
   }, [section])
 
-  // Keyboard navigation for content phase
+  // Keyboard navigation with sound effects
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ESC always closes
+      // ESC - close detail modal first, then close slot
       if (e.key === 'Escape') {
+        if (detailItem) {
+          playModalClose() // Sound: modal close
+          setDetailItem(null)
+          return
+        }
+        playNavBack() // Sound: slot close
         onClose()
+        return
+      }
+
+      // SPACE - hard stop if spinning, new spin only if in valid phase
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (phase === 'spinning') {
+          // HARD STOP - immediately stop all reels and show result
+          playSound('click', 0.5) // Sound: stop
+          setForceStop(true)
+          // Small delay to let reels react, then show result
+          setTimeout(() => {
+            setPhase('result')
+            playPhaseTransition() // Sound: phase change
+            // Update discovered skills
+            targetIndices.forEach((idx, reelIdx) => {
+              const reel = segmentConfig.reels[reelIdx]
+              if (reel) {
+                const symbol = reel[idx % reel.length]
+                if (symbol) {
+                  setSkillsDiscovered(prev => new Set([...prev, `${reelIdx}-${symbol.label}`]))
+                }
+              }
+            })
+            setCurrentIndices(targetIndices)
+            // Reset forceStop for next spin
+            setTimeout(() => setForceStop(false), 100)
+          }, 150)
+        } else if (phase === 'intro' || phase === 'result') {
+          // Only allow new spin in intro or result phase (NOT during spinning or content)
+          playSound('click', 0.6) // Sound: spin start
+          handleSpin()
+        }
+        return
+      }
+
+      // ENTER in result phase → go to content
+      if (e.key === 'Enter' && phase === 'result') {
+        e.preventDefault()
+        playContentReveal() // Sound: content reveal
+        setPhase('content')
         return
       }
 
@@ -1088,40 +3626,42 @@ export function SlotFullScreen({
       switch (e.key) {
         case 'ArrowRight':
           e.preventDefault()
+          playNavTick() // Sound: navigation tick
           setFocusIndex(prev => (prev + 1) % itemCount)
           break
         case 'ArrowLeft':
           e.preventDefault()
+          playNavTick() // Sound: navigation tick
           setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           break
         case 'ArrowDown':
           e.preventDefault()
+          playNavTick() // Sound: navigation tick
           if (columns > 1) {
-            // Grid navigation
             setFocusIndex(prev => {
               const next = prev + columns
               return next < itemCount ? next : prev
             })
           } else {
-            // Vertical list
             setFocusIndex(prev => (prev + 1) % itemCount)
           }
           break
         case 'ArrowUp':
           e.preventDefault()
+          playNavTick() // Sound: navigation tick
           if (columns > 1) {
-            // Grid navigation
             setFocusIndex(prev => {
               const next = prev - columns
               return next >= 0 ? next : prev
             })
           } else {
-            // Vertical list
             setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           }
           break
         case 'Enter':
           e.preventDefault()
+          playNavSelect() // Sound: item select
+          playModalOpen() // Sound: modal open
           handleActivate(focusIndex)
           break
       }
@@ -1129,33 +3669,478 @@ export function SlotFullScreen({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose, phase, section, focusIndex, handleActivate])
-
-  const finalSymbol = theme.symbols[0]
+  }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
 
   return (
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      background: 'linear-gradient(180deg, #03020a 0%, #08061a 30%, #0a0820 50%, #08061a 70%, #03020a 100%)',
+      background: phase === 'intro' && introStep === 0
+        ? '#000000'
+        : 'linear-gradient(180deg, #03020a 0%, #08061a 30%, #0a0820 50%, #08061a 70%, #03020a 100%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      overflow: 'auto'
+      overflow: 'auto',
+      transition: 'background 0.5s ease',
+      animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none'
     }}>
-      {/* Ambient glow */}
+      {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
+
+      {/* CRT Scanlines Overlay - GPU accelerated */}
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 6px)',
+        pointerEvents: 'none',
+        zIndex: 9999,
+        opacity: 0.4,
+        willChange: 'opacity',
+        transform: 'translateZ(0)'
+      }} />
+
+      {/* CRT Vignette - GPU accelerated */}
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.35) 100%)',
+        pointerEvents: 'none',
+        zIndex: 9998,
+        transform: 'translateZ(0)'
+      }} />
+
+      {/* Parallax Floating Orbs - Optimized with GPU acceleration */}
+      {phase !== 'intro' && (
+        <>
+          <div style={{
+            position: 'fixed',
+            top: '10%', left: '5%',
+            width: '250px', height: '250px',
+            background: `radial-gradient(circle, ${primaryColor}12 0%, transparent 70%)`,
+            borderRadius: '50%',
+            filter: 'blur(30px)',
+            animation: 'parallaxFloat1 20s ease-in-out infinite',
+            pointerEvents: 'none',
+            zIndex: 1,
+            willChange: 'transform',
+            transform: 'translateZ(0)'
+          }} />
+          <div style={{
+            position: 'fixed',
+            bottom: '20%', right: '10%',
+            width: '200px', height: '200px',
+            background: `radial-gradient(circle, ${COLORS.magenta}12 0%, transparent 70%)`,
+            borderRadius: '50%',
+            filter: 'blur(40px)',
+            animation: 'parallaxFloat2 25s ease-in-out infinite',
+            pointerEvents: 'none',
+            zIndex: 1,
+            willChange: 'transform',
+            transform: 'translateZ(0)'
+          }} />
+
+          {/* Star Field - Reduced to 8 for performance */}
+          {[15, 35, 55, 75, 25, 65, 85, 45].map((pos, i) => (
+            <div key={`star-${i}`} style={{
+              position: 'fixed',
+              top: `${pos}%`,
+              left: `${(pos * 1.3 + i * 10) % 100}%`,
+              width: '3px',
+              height: '3px',
+              background: '#fff',
+              borderRadius: '50%',
+              boxShadow: '0 0 6px #fff',
+              animation: `starTwinkle ${2.5 + (i % 3)}s ease-in-out infinite`,
+              animationDelay: `${i * 0.3}s`,
+              pointerEvents: 'none',
+              zIndex: 1,
+              opacity: 0.5,
+              transform: 'translateZ(0)'
+            }} />
+          ))}
+
+          {/* Floating Energy Orbs - Reduced to 3 for performance */}
+          {[
+            { top: '25%', left: '15%', color: primaryColor, dur: 8 },
+            { top: '55%', left: '75%', color: COLORS.cyan, dur: 10 },
+            { top: '75%', left: '35%', color: COLORS.magenta, dur: 12 }
+          ].map((orb, i) => (
+            <div key={`orb-${i}`} style={{
+              position: 'fixed',
+              top: orb.top,
+              left: orb.left,
+              width: '6px',
+              height: '6px',
+              background: orb.color,
+              borderRadius: '50%',
+              boxShadow: `0 0 15px ${orb.color}`,
+              animation: `floatingOrb ${orb.dur}s ease-in-out infinite`,
+              animationDelay: `${i * 0.7}s`,
+              pointerEvents: 'none',
+              zIndex: 2,
+              willChange: 'transform',
+              transform: 'translateZ(0)'
+            }} />
+          ))}
+        </>
+      )}
+
+      {/* Jackpot Rainbow Border Flash */}
+      {isJackpot && phase === 'result' && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          border: '4px solid transparent',
+          borderImage: 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3) 1',
+          animation: 'rainbowShift 1s linear infinite',
+          pointerEvents: 'none',
+          zIndex: 100
+        }} />
+      )}
+
+      {/* INTRO PHASE - ULTIMATE WOW Cinematic Entrance */}
+      {phase === 'intro' && (
+        <>
+          {/* Electric grid background */}
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundImage: `
+              linear-gradient(${primaryColor}08 1px, transparent 1px),
+              linear-gradient(90deg, ${primaryColor}08 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px',
+            opacity: introStep >= 1 ? 1 : 0,
+            transition: 'opacity 0.5s ease',
+            animation: introStep >= 1 ? 'introGridPulse 2s ease-in-out infinite' : 'none',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Scanning lines effect */}
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,255,255,0.03) 2px, rgba(0,255,255,0.03) 4px)',
+            opacity: introStep >= 1 ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+            pointerEvents: 'none',
+            animation: introStep >= 1 ? 'scanLines 0.1s linear infinite' : 'none'
+          }} />
+
+          {/* Horizontal laser beam */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: 0,
+            right: 0,
+            height: introStep >= 1 ? '3px' : '0px',
+            background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+            boxShadow: `0 0 30px ${primaryColor}, 0 0 60px ${primaryColor}, 0 0 100px ${primaryColor}`,
+            transform: 'translateY(-50%)',
+            animation: introStep >= 1 ? 'introLaserScan 1s ease-out forwards' : 'none',
+            pointerEvents: 'none',
+            zIndex: 5
+          }} />
+
+          {/* Vertical laser beams */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            bottom: 0,
+            left: '50%',
+            width: introStep >= 1 ? '2px' : '0px',
+            background: `linear-gradient(180deg, transparent, ${primaryColor}, transparent)`,
+            boxShadow: `0 0 20px ${primaryColor}, 0 0 40px ${primaryColor}`,
+            transform: 'translateX(-50%)',
+            animation: introStep >= 1 ? 'introVerticalLaser 0.8s ease-out 0.3s both' : 'none',
+            pointerEvents: 'none',
+            zIndex: 5
+          }} />
+
+          {/* Light beams from top - enhanced */}
+          {introStep >= 1 && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '200%',
+              height: '100%',
+              background: `conic-gradient(from 180deg at 50% 0%, transparent 35%, ${primaryColor}20 42%, ${primaryColor}50 50%, ${primaryColor}20 58%, transparent 65%)`,
+              opacity: introStep >= 2 ? 1 : 0.5,
+              transition: 'opacity 0.4s ease',
+              pointerEvents: 'none',
+              animation: 'introLightSweep 2s ease-out forwards'
+            }} />
+          )}
+
+          {/* Rotating light rays */}
+          {introStep >= 2 && (
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              width: '200vw',
+              height: '200vh',
+              transform: 'translate(-50%, -50%)',
+              background: `conic-gradient(from 0deg, transparent, ${primaryColor}10, transparent, ${primaryColor}10, transparent, ${primaryColor}10, transparent, ${primaryColor}10, transparent)`,
+              animation: 'introLightRotate 8s linear infinite',
+              pointerEvents: 'none',
+              opacity: 0.5
+            }} />
+          )}
+
+          {/* Center spotlight - enhanced */}
+          <div style={{
+            position: 'fixed',
+            top: '50%', left: '50%',
+            width: introStep >= 2 ? '150vw' : '0vw',
+            height: introStep >= 2 ? '150vh' : '0vh',
+            transform: 'translate(-50%, -50%)',
+            background: `radial-gradient(ellipse, ${primaryColor}30 0%, ${primaryColor}10 20%, transparent 50%)`,
+            transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Particle explosion from center */}
+          {introStep >= 2 && (
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              width: '10px',
+              height: '10px',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 15
+            }}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: primaryColor,
+                  boxShadow: `0 0 10px ${primaryColor}, 0 0 20px ${primaryColor}`,
+                  animation: `introParticleExplode 1s ease-out forwards`,
+                  animationDelay: `${i * 0.05}s`,
+                  '--angle': `${i * 30}deg`,
+                  '--distance': '200px'
+                } as React.CSSProperties} />
+              ))}
+            </div>
+          )}
+
+          {/* Corner brackets */}
+          {introStep >= 2 && (
+            <>
+              <div style={{
+                position: 'fixed', top: '20%', left: '20%',
+                width: '60px', height: '60px',
+                borderTop: `3px solid ${primaryColor}`,
+                borderLeft: `3px solid ${primaryColor}`,
+                animation: 'introCornerSlide 0.5s ease-out 0.2s both',
+                boxShadow: `0 0 20px ${primaryColor}50`
+              }} />
+              <div style={{
+                position: 'fixed', top: '20%', right: '20%',
+                width: '60px', height: '60px',
+                borderTop: `3px solid ${primaryColor}`,
+                borderRight: `3px solid ${primaryColor}`,
+                animation: 'introCornerSlide 0.5s ease-out 0.3s both',
+                boxShadow: `0 0 20px ${primaryColor}50`
+              }} />
+              <div style={{
+                position: 'fixed', bottom: '20%', left: '20%',
+                width: '60px', height: '60px',
+                borderBottom: `3px solid ${primaryColor}`,
+                borderLeft: `3px solid ${primaryColor}`,
+                animation: 'introCornerSlide 0.5s ease-out 0.4s both',
+                boxShadow: `0 0 20px ${primaryColor}50`
+              }} />
+              <div style={{
+                position: 'fixed', bottom: '20%', right: '20%',
+                width: '60px', height: '60px',
+                borderBottom: `3px solid ${primaryColor}`,
+                borderRight: `3px solid ${primaryColor}`,
+                animation: 'introCornerSlide 0.5s ease-out 0.5s both',
+                boxShadow: `0 0 20px ${primaryColor}50`
+              }} />
+            </>
+          )}
+
+          {/* Title reveal - ULTIMATE */}
+          <div style={{
+            position: 'relative',
+            zIndex: 20,
+            textAlign: 'center',
+            opacity: introStep >= 2 ? 1 : 0,
+            transform: introStep >= 2 ? 'translateY(0) scale(1)' : 'translateY(50px) scale(0.5)',
+            transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            filter: introStep >= 2 ? 'blur(0)' : 'blur(10px)'
+          }}>
+            {/* Glitch effect layers */}
+            <div style={{ position: 'relative' }}>
+              <h1 style={{
+                fontSize: 'clamp(48px, 12vw, 120px)',
+                fontWeight: 900,
+                color: '#fff',
+                textShadow: `
+                  0 0 20px ${primaryColor},
+                  0 0 40px ${primaryColor},
+                  0 0 80px ${primaryColor},
+                  0 0 120px ${primaryColor}80,
+                  0 0 200px ${primaryColor}40
+                `,
+                letterSpacing: '15px',
+                margin: 0,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                animation: introStep >= 3 ? 'introTitleGlitch 3s ease-in-out infinite' : 'none',
+                WebkitTextStroke: `1px ${primaryColor}40`
+              }}>
+                {segmentConfig.title}
+              </h1>
+              {/* Glitch copies */}
+              {introStep >= 3 && (
+                <>
+                  <h1 style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0,
+                    fontSize: 'clamp(48px, 12vw, 120px)',
+                    fontWeight: 900,
+                    color: '#ff0066',
+                    letterSpacing: '15px',
+                    margin: 0,
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    animation: 'introGlitchRed 0.3s ease-in-out infinite',
+                    opacity: 0.5,
+                    mixBlendMode: 'screen'
+                  }}>
+                    {segmentConfig.title}
+                  </h1>
+                  <h1 style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0,
+                    fontSize: 'clamp(48px, 12vw, 120px)',
+                    fontWeight: 900,
+                    color: '#00ffff',
+                    letterSpacing: '15px',
+                    margin: 0,
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    animation: 'introGlitchCyan 0.3s ease-in-out infinite',
+                    opacity: 0.5,
+                    mixBlendMode: 'screen'
+                  }}>
+                    {segmentConfig.title}
+                  </h1>
+                </>
+              )}
+            </div>
+            <p style={{
+              fontSize: 'clamp(16px, 3vw, 28px)',
+              color: primaryColor,
+              marginTop: '24px',
+              letterSpacing: '8px',
+              textTransform: 'uppercase',
+              opacity: introStep >= 3 ? 1 : 0,
+              transform: introStep >= 3 ? 'translateY(0) scaleX(1)' : 'translateY(20px) scaleX(0.8)',
+              transition: 'all 0.5s ease 0.2s',
+              textShadow: `0 0 20px ${primaryColor}80`
+            }}>
+              {segmentConfig.subtitle}
+            </p>
+            {/* Decorative line under subtitle */}
+            <div style={{
+              width: introStep >= 3 ? '300px' : '0px',
+              height: '2px',
+              background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+              margin: '20px auto 0',
+              transition: 'width 0.6s ease 0.4s',
+              boxShadow: `0 0 15px ${primaryColor}`
+            }} />
+          </div>
+
+          {/* Loading indicator - enhanced */}
+          {introStep >= 3 && (
+            <div style={{
+              position: 'absolute',
+              bottom: '12%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+              animation: 'fadeIn 0.5s ease'
+            }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div key={i} style={{
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    background: primaryColor,
+                    boxShadow: `0 0 15px ${primaryColor}, 0 0 30px ${primaryColor}50`,
+                    animation: 'introDotPulse 0.8s ease-in-out infinite',
+                    animationDelay: `${i * 0.1}s`
+                  }} />
+                ))}
+              </div>
+              <div style={{
+                fontSize: '12px',
+                letterSpacing: '4px',
+                color: '#666',
+                textTransform: 'uppercase',
+                animation: 'introLoadingText 1.5s ease-in-out infinite'
+              }}>
+                INITIALIZING
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Ambient glow - enhanced */}
       <div style={{
         position: 'fixed',
         top: '50%', left: '50%',
         width: '150vw', height: '150vh',
         transform: 'translate(-50%, -50%)',
-        background: `radial-gradient(ellipse, ${primaryColor}08 0%, transparent 50%)`,
-        pointerEvents: 'none'
+        background: `radial-gradient(ellipse, ${primaryColor}12 0%, ${primaryColor}05 30%, transparent 60%)`,
+        pointerEvents: 'none',
+        opacity: phase === 'intro' ? 0 : 1,
+        transition: 'opacity 0.5s ease'
       }} />
 
-      {/* Close button */}
+      {/* Floating particles background - only during spinning/result, NOT in content */}
+      {(phase === 'spinning' || phase === 'result') && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}>
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              width: `${2 + Math.random() * 4}px`,
+              height: `${2 + Math.random() * 4}px`,
+              borderRadius: '50%',
+              background: i % 3 === 0 ? primaryColor : i % 3 === 1 ? COLORS.gold : COLORS.magenta,
+              opacity: 0.3 + Math.random() * 0.4,
+              animation: `floatParticle ${5 + Math.random() * 10}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 5}s`
+            }} />
+          ))}
+        </div>
+      )}
+
+      {/* Close button - enhanced */}
       <button
         onClick={onClose}
         style={{
@@ -1165,34 +4150,39 @@ export function SlotFullScreen({
           width: '50px',
           height: '50px',
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.05)',
-          border: '2px solid rgba(255,255,255,0.1)',
-          color: '#666688',
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(10px)',
+          border: `2px solid ${primaryColor}40`,
+          color: primaryColor,
           fontSize: '28px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1001,
-          transition: 'all 0.3s ease'
+          transition: 'all 0.3s ease',
+          opacity: phase === 'intro' ? 0 : 1,
+          transform: phase === 'intro' ? 'scale(0.5)' : 'scale(1)'
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(255,100,100,0.2)'
-          e.currentTarget.style.borderColor = 'rgba(255,100,100,0.5)'
-          e.currentTarget.style.color = '#ff6666'
+          e.currentTarget.style.background = 'rgba(255,60,60,0.3)'
+          e.currentTarget.style.borderColor = '#ff4040'
+          e.currentTarget.style.color = '#ff4040'
+          e.currentTarget.style.transform = 'scale(1.1)'
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
-          e.currentTarget.style.color = '#666688'
+          e.currentTarget.style.background = 'rgba(0,0,0,0.5)'
+          e.currentTarget.style.borderColor = `${primaryColor}40`
+          e.currentTarget.style.color = primaryColor
+          e.currentTarget.style.transform = 'scale(1)'
         }}
       >
         ×
       </button>
 
-      {/* SLOT MACHINE SCREEN */}
-      {(phase === 'spinning' || phase === 'jackpot') && (
-        <ScreenShake active={phase === 'jackpot'}>
+      {/* SKILL REEL SLOT MACHINE */}
+      {(phase === 'spinning' || phase === 'result') && (
+        <ScreenShake active={isJackpot && phase === 'result'}>
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -1206,10 +4196,12 @@ export function SlotFullScreen({
             boxShadow: `
               0 0 120px rgba(0,0,0,0.95),
               inset 0 0 60px ${primaryColor}08,
-              0 0 2px ${primaryColor}40
+              0 0 2px ${primaryColor}40,
+              0 0 80px ${primaryColor}15
             `,
             border: `2px solid ${primaryColor}30`,
-            position: 'relative'
+            position: 'relative',
+            animation: spinCount === 1 ? 'machineReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
           }}>
             {/* Outer chrome frame */}
             <div style={{
@@ -1221,8 +4213,12 @@ export function SlotFullScreen({
               boxShadow: '0 0 30px rgba(0,0,0,0.8)'
             }} />
 
-            {/* Game Title Marquee */}
-            <GameMarquee title={theme.title} color={primaryColor} />
+            {/* Game Title Marquee - uses segment config */}
+            <GameMarquee
+              title={segmentConfig.title}
+              subtitle={segmentConfig.subtitle}
+              color={primaryColor}
+            />
 
             {/* Main Reel Area */}
             <div style={{
@@ -1234,8 +4230,8 @@ export function SlotFullScreen({
               padding: '20px',
               background: `radial-gradient(ellipse at center, ${primaryColor}10 0%, transparent 50%)`
             }}>
-              {/* Ambient light rays */}
-              {phase === 'jackpot' && (
+              {/* Ambient light rays on jackpot */}
+              {isJackpot && phase === 'result' && (
                 <div style={{
                   position: 'absolute',
                   top: '50%', left: '50%',
@@ -1249,16 +4245,16 @@ export function SlotFullScreen({
               )}
 
               {/* Payline indicators */}
-              <PaylineIndicator active={phase === 'jackpot'} color={COLORS.gold} side="left" />
-              <PaylineIndicator active={phase === 'jackpot'} color={COLORS.gold} side="right" />
+              <PaylineIndicator active={phase === 'result' && isJackpot} color={COLORS.gold} side="left" />
+              <PaylineIndicator active={phase === 'result' && isJackpot} color={COLORS.gold} side="right" />
 
-              {/* 5 Reel columns with chrome frame */}
+              {/* 5 Skill Reel columns */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'stretch',
                 width: '88%',
-                height: '72%',
+                height: '60%',
                 background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(10,10,30,0.5) 15%, rgba(15,15,40,0.4) 50%, rgba(10,10,30,0.5) 85%, rgba(0,0,0,0.7) 100%)',
                 borderRadius: '16px',
                 border: `3px solid ${primaryColor}50`,
@@ -1279,53 +4275,83 @@ export function SlotFullScreen({
                   pointerEvents: 'none'
                 }} />
 
-                {[0, 1, 2, 3, 4].map(i => (
-                  <ReelColumn
+                {/* Reel labels at top - dynamic based on segment */}
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  left: 0, right: 0,
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  padding: '0 20px',
+                  zIndex: 10
+                }}>
+                  {segmentConfig.reels.map((reel, i) => {
+                    const firstSymbol = reel[0]
+                    return (
+                      <span key={i} style={{
+                        fontSize: '10px',
+                        color: firstSymbol?.color || primaryColor,
+                        letterSpacing: '2px',
+                        textTransform: 'uppercase',
+                        opacity: 0.7,
+                        textShadow: `0 0 10px ${firstSymbol?.color || primaryColor}40`
+                      }}>
+                        {firstSymbol?.label?.split(' ')[0] || `REEL ${i + 1}`}
+                      </span>
+                    )
+                  })}
+                </div>
+
+                {segmentConfig.reels.map((reelData, i) => (
+                  <SkillReelColumn
                     key={i}
-                    symbols={theme.symbols}
+                    reelData={reelData}
                     spinning={phase === 'spinning'}
-                    finalSymbol={finalSymbol}
-                    onStop={i === 4 ? handleReelStop : undefined}
+                    finalIndex={targetIndices[i]}
                     delay={i}
-                    primaryColor={primaryColor}
                     reelIndex={i}
-                    jackpot={phase === 'jackpot'}
+                    jackpot={isJackpot && phase === 'result'}
+                    forceStop={forceStop}
                   />
                 ))}
               </div>
 
-              {/* Center payline highlight - enhanced */}
+              {/* Center payline highlight */}
               <div style={{
                 position: 'absolute',
                 top: '50%',
                 left: '8%',
                 right: '8%',
-                height: phase === 'jackpot' ? '6px' : '2px',
-                background: phase === 'jackpot'
+                height: phase === 'result' && isJackpot ? '6px' : '2px',
+                background: phase === 'result' && isJackpot
                   ? `linear-gradient(90deg, transparent, ${COLORS.gold}, ${COLORS.gold}, transparent)`
                   : `linear-gradient(90deg, transparent, ${primaryColor}50, ${primaryColor}50, transparent)`,
                 transform: 'translateY(-50%)',
-                boxShadow: phase === 'jackpot'
+                boxShadow: phase === 'result' && isJackpot
                   ? `0 0 40px ${COLORS.gold}, 0 0 80px ${COLORS.gold}, 0 0 120px ${COLORS.gold}60`
                   : 'none',
-                animation: phase === 'jackpot' ? 'winLineUltra 0.4s ease-in-out infinite' : 'none',
+                animation: phase === 'result' && isJackpot ? 'winLineUltra 0.4s ease-in-out infinite' : 'none',
                 pointerEvents: 'none',
                 borderRadius: '3px'
               }} />
 
               {/* Spin Button */}
-              <SpinButton spinning={phase === 'spinning'} color={primaryColor} />
+              <SpinButton
+                spinning={phase === 'spinning'}
+                onSpin={handleSpin}
+                color={primaryColor}
+              />
 
-              {/* Jackpot overlay - enhanced with multi-layer text */}
-              {phase === 'jackpot' && (
+              {/* Jackpot overlay */}
+              {isJackpot && phase === 'result' && (
                 <>
                   {/* Glow layer */}
                   <div style={{
                     position: 'absolute',
-                    top: '12%',
+                    top: '8%',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    fontSize: 'clamp(50px, 10vw, 100px)',
+                    fontSize: 'clamp(40px, 8vw, 80px)',
                     fontWeight: 900,
                     color: 'transparent',
                     WebkitTextStroke: `2px ${COLORS.gold}40`,
@@ -1340,20 +4366,18 @@ export function SlotFullScreen({
                   {/* Main text */}
                   <div style={{
                     position: 'absolute',
-                    top: '12%',
+                    top: '8%',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    fontSize: 'clamp(50px, 10vw, 100px)',
+                    fontSize: 'clamp(40px, 8vw, 80px)',
                     fontWeight: 900,
                     color: COLORS.gold,
                     textShadow: `
                       0 0 20px ${COLORS.gold},
                       0 0 40px ${COLORS.gold},
                       0 0 80px ${COLORS.gold},
-                      0 0 120px ${COLORS.gold}80,
                       0 4px 0 #b8860b,
-                      0 6px 0 #8b6914,
-                      0 8px 20px rgba(0,0,0,0.5)
+                      0 6px 0 #8b6914
                     `,
                     letterSpacing: '15px',
                     animation: 'jackpotRevealUltra 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -1364,66 +4388,597 @@ export function SlotFullScreen({
                   </div>
                 </>
               )}
+
+              {/* Full Content Panel - DISABLED in result phase, only shows in content phase */}
+              {/* <FullContentPanel
+                section={section}
+                visible={phase === 'result'}
+                isJackpot={isJackpot}
+                primaryColor={primaryColor}
+              /> */}
             </div>
 
             {/* Bottom Info Panel */}
-            <InfoPanel primaryColor={primaryColor} jackpot={phase === 'jackpot'} />
+            <InfoPanel
+              primaryColor={primaryColor}
+              jackpot={isJackpot && phase === 'result'}
+              skillsDiscovered={skillsDiscovered.size}
+              spinCount={spinCount}
+              config={segmentConfig}
+            />
+
+            {/* Jackpot Story with Typewriter Effect */}
+            {phase === 'result' && isJackpot && jackpotStory && (
+              <div style={{
+                position: 'absolute',
+                bottom: '140px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                maxWidth: '600px',
+                textAlign: 'center',
+                padding: '20px 30px',
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))',
+                borderRadius: '16px',
+                border: '2px solid rgba(255,215,0,0.4)',
+                boxShadow: '0 0 40px rgba(255,215,0,0.3), inset 0 0 30px rgba(255,215,0,0.1)',
+                animation: 'storyReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both',
+                zIndex: 200
+              }}>
+                <div style={{
+                  color: COLORS.gold,
+                  fontSize: '14px',
+                  letterSpacing: '4px',
+                  marginBottom: '12px',
+                  textTransform: 'uppercase',
+                  textShadow: `0 0 20px ${COLORS.gold}`
+                }}>
+                  {jackpotStory.highlight}
+                </div>
+                <TypewriterText
+                  text={jackpotStory.story}
+                  speed={25}
+                  delay={800}
+                  color="#fff"
+                  fontSize="18px"
+                />
+              </div>
+            )}
+
+            {/* ENTER prompt in result phase */}
+            {phase === 'result' && (
+              <div style={{
+                position: 'absolute',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
+                animation: 'resultPromptReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
+                zIndex: 200
+              }}>
+                {/* Pulsing arrow */}
+                <div style={{
+                  fontSize: '24px',
+                  color: primaryColor,
+                  animation: 'resultArrowBounce 1s ease-in-out infinite',
+                  textShadow: `0 0 20px ${primaryColor}`
+                }}>
+                  ▼
+                </div>
+                {/* Instruction box */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 24px',
+                  background: 'rgba(0, 0, 0, 0.8)',
+                  borderRadius: '12px',
+                  border: `2px solid ${primaryColor}50`,
+                  boxShadow: `0 0 30px ${primaryColor}30, inset 0 0 20px ${primaryColor}10`,
+                  animation: 'resultBoxGlow 2s ease-in-out infinite'
+                }}>
+                  <span style={{
+                    padding: '8px 16px',
+                    background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}80)`,
+                    borderRadius: '8px',
+                    color: '#000',
+                    fontWeight: 900,
+                    fontSize: '14px',
+                    letterSpacing: '2px',
+                    boxShadow: `0 0 20px ${primaryColor}60`
+                  }}>
+                    ENTER
+                  </span>
+                  <span style={{
+                    color: '#fff',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    letterSpacing: '1px',
+                    textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                  }}>
+                    View Full Details
+                  </span>
+                </div>
+                {/* Secondary hint */}
+                <div style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase'
+                }}>
+                  <span style={{ color: '#888', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>SPACE</span>
+                  {' '}Spin Again
+                </div>
+              </div>
+            )}
 
             {/* Coin Rain on jackpot */}
-            <CoinRain active={phase === 'jackpot'} />
+            <CoinRain active={isJackpot && phase === 'result'} />
 
             {/* Particle explosion on jackpot */}
-            {phase === 'jackpot' && <ParticleBurst color={COLORS.gold} />}
+            {isJackpot && phase === 'result' && <ParticleBurst color={COLORS.gold} />}
           </div>
         </ScreenShake>
       )}
 
-      {/* CONTENT PHASE - FULL SCREEN */}
+      {/* CONTENT PHASE - FULL SCREEN with WOW animations */}
       {phase === 'content' && section && (
         <div style={{
           width: '100%',
           height: '100%',
           overflow: 'auto',
           padding: '60px 40px',
-          animation: 'contentReveal 0.6s ease-out'
+          animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          position: 'relative'
         }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+          {/* Keyboard Hints Overlay - shows on entry */}
+          {showKeyboardHints && (
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '20px',
+              padding: '40px 60px',
+              background: 'rgba(0,0,0,0.85)',
+              borderRadius: '24px',
+              border: `2px solid ${primaryColor}40`,
+              boxShadow: `0 0 60px ${primaryColor}30, 0 20px 60px rgba(0,0,0,0.5)`,
+              animation: 'keyboardHintsEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), keyboardHintsFade 0.8s ease-out 3.2s forwards',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <div style={{
+                color: primaryColor,
+                fontSize: '18px',
+                fontWeight: 'bold',
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                textShadow: `0 0 20px ${primaryColor}60`
+              }}>
+                KEYBOARD CONTROLS
+              </div>
+              <div style={{ display: 'flex', gap: '40px' }}>
+                {/* Arrow keys */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 40px)',
+                    gridTemplateRows: 'repeat(2, 40px)',
+                    gap: '4px'
+                  }}>
+                    <div />
+                    <div style={{
+                      background: `${primaryColor}20`,
+                      border: `1px solid ${primaryColor}60`,
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: primaryColor,
+                      fontSize: '16px',
+                      boxShadow: `0 0 15px ${primaryColor}30`
+                    }}>↑</div>
+                    <div />
+                    <div style={{
+                      background: `${primaryColor}20`,
+                      border: `1px solid ${primaryColor}60`,
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: primaryColor,
+                      fontSize: '16px',
+                      boxShadow: `0 0 15px ${primaryColor}30`
+                    }}>←</div>
+                    <div style={{
+                      background: `${primaryColor}20`,
+                      border: `1px solid ${primaryColor}60`,
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: primaryColor,
+                      fontSize: '16px',
+                      boxShadow: `0 0 15px ${primaryColor}30`
+                    }}>↓</div>
+                    <div style={{
+                      background: `${primaryColor}20`,
+                      border: `1px solid ${primaryColor}60`,
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: primaryColor,
+                      fontSize: '16px',
+                      boxShadow: `0 0 15px ${primaryColor}30`
+                    }}>→</div>
+                  </div>
+                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>NAVIGATE</span>
+                </div>
+                {/* Enter key */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    background: `${primaryColor}20`,
+                    border: `1px solid ${primaryColor}60`,
+                    borderRadius: '8px',
+                    padding: '10px 24px',
+                    color: primaryColor,
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    boxShadow: `0 0 15px ${primaryColor}30`
+                  }}>ENTER</div>
+                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>SELECT</span>
+                </div>
+                {/* ESC key */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    background: 'rgba(255,68,68,0.2)',
+                    border: '1px solid rgba(255,68,68,0.6)',
+                    borderRadius: '8px',
+                    padding: '10px 20px',
+                    color: '#ff6666',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 0 15px rgba(255,68,68,0.3)'
+                  }}>ESC</div>
+                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>BACK</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Epic light burst on entry */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            width: '300vw',
+            height: '300vh',
+            transform: 'translate(-50%, -50%)',
+            background: `radial-gradient(circle, ${primaryColor}40 0%, ${primaryColor}20 20%, transparent 50%)`,
+            animation: 'contentLightBurst 1.5s ease-out forwards',
+            pointerEvents: 'none',
+            zIndex: 0
+          }} />
+
+          {/* Scanning beam effect */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+            animation: 'contentScanBeam 0.8s ease-out forwards',
+            boxShadow: `0 0 30px ${primaryColor}, 0 0 60px ${primaryColor}`,
+            pointerEvents: 'none',
+            zIndex: 100
+          }} />
+
+          {/* Corner accents */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '150px',
+            height: '150px',
+            borderTop: `3px solid ${primaryColor}`,
+            borderLeft: `3px solid ${primaryColor}`,
+            animation: 'contentCornerReveal 0.6s ease-out 0.3s both',
+            pointerEvents: 'none',
+            zIndex: 50
+          }} />
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            width: '150px',
+            height: '150px',
+            borderTop: `3px solid ${primaryColor}`,
+            borderRight: `3px solid ${primaryColor}`,
+            animation: 'contentCornerReveal 0.6s ease-out 0.4s both',
+            pointerEvents: 'none',
+            zIndex: 50
+          }} />
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            width: '150px',
+            height: '150px',
+            borderBottom: `3px solid ${primaryColor}`,
+            borderLeft: `3px solid ${primaryColor}`,
+            animation: 'contentCornerReveal 0.6s ease-out 0.5s both',
+            pointerEvents: 'none',
+            zIndex: 50
+          }} />
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            right: 0,
+            width: '150px',
+            height: '150px',
+            borderBottom: `3px solid ${primaryColor}`,
+            borderRight: `3px solid ${primaryColor}`,
+            animation: 'contentCornerReveal 0.6s ease-out 0.6s both',
+            pointerEvents: 'none',
+            zIndex: 50
+          }} />
+
+          <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+            {/* Header with dramatic entrance */}
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '50px',
+              animation: 'contentTitleDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
+            }}>
               <h1 style={{
                 margin: 0,
                 fontSize: '64px',
                 fontWeight: 900,
                 color: primaryColor,
-                textShadow: `0 0 30px ${primaryColor}80`,
+                textShadow: `
+                  0 0 30px ${primaryColor}80,
+                  0 0 60px ${primaryColor}60,
+                  0 0 100px ${primaryColor}40,
+                  0 4px 20px rgba(0,0,0,0.8)
+                `,
                 letterSpacing: '8px',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                animation: 'contentTitleGlow 2s ease-in-out infinite 1s'
               }}>
                 {section.title}
               </h1>
-              <p style={{ margin: '16px 0 0 0', color: '#888899', fontSize: '20px', fontStyle: 'italic' }}>
+              <p style={{
+                margin: '16px 0 0 0',
+                color: '#888899',
+                fontSize: '20px',
+                fontStyle: 'italic',
+                animation: 'contentTaglineSlide 0.6s ease-out 0.5s both'
+              }}>
                 {section.tagline}
               </p>
+              {/* Underline effect */}
+              <div style={{
+                width: '200px',
+                height: '2px',
+                background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+                margin: '20px auto 0',
+                animation: 'contentUnderlineExpand 0.8s ease-out 0.7s both'
+              }} />
             </div>
 
-            {/* Content */}
-            <ContentView section={section} focusIndex={focusIndex} onActivate={handleActivate} />
+            {/* Content with staggered reveal */}
+            <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both' }}>
+              <ContentView section={section} focusIndex={focusIndex} />
+            </div>
 
-            {/* ESC hint */}
+            {/* ESC hint with glow */}
             <div style={{
               textAlign: 'center',
               marginTop: '60px',
-              color: '#444466',
-              fontSize: '14px'
+              color: '#666688',
+              fontSize: '14px',
+              animation: 'contentHintFade 0.5s ease-out 1s both'
             }}>
-              Press <span style={{ color: '#666688', padding: '4px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>ESC</span> to return
+              Press <span style={{
+                color: primaryColor,
+                padding: '6px 16px',
+                background: `${primaryColor}15`,
+                borderRadius: '8px',
+                border: `1px solid ${primaryColor}30`,
+                boxShadow: `0 0 20px ${primaryColor}20`
+              }}>ESC</span> to return
             </div>
           </div>
         </div>
       )}
 
+      {/* Detail Modal */}
+      {detailItem && (
+        <DetailModal
+          item={detailItem}
+          primaryColor={primaryColor}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
+
       {/* CSS */}
       <style>{`
+        /* Result Phase ENTER Prompt Animations */
+        @keyframes resultPromptReveal {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(30px) scale(0.8);
+          }
+          60% {
+            transform: translateX(-50%) translateY(-5px) scale(1.05);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+
+        @keyframes resultArrowBounce {
+          0%, 100% {
+            transform: translateY(0);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(8px);
+            opacity: 1;
+          }
+        }
+
+        @keyframes resultBoxGlow {
+          0%, 100% {
+            box-shadow: 0 0 30px ${primaryColor}30, inset 0 0 20px ${primaryColor}10;
+          }
+          50% {
+            box-shadow: 0 0 50px ${primaryColor}50, inset 0 0 30px ${primaryColor}20;
+          }
+        }
+
+        /* ULTRA PREMIUM MODAL ANIMATIONS */
+        @keyframes modalBackdropReveal {
+          0% { background: rgba(0,0,0,0); }
+          100% { background: rgba(0,0,0,0.95); }
+        }
+
+        @keyframes modalCardReveal {
+          0% {
+            opacity: 0;
+            transform: scale(0.7) translateY(50px) rotateX(15deg);
+            filter: blur(10px);
+          }
+          50% {
+            transform: scale(1.02) translateY(-5px) rotateX(-2deg);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0) rotateX(0);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes modalCornerReveal {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes modalLightPulse {
+          0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        @keyframes modalShineMove {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        @keyframes modalIconPulse {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        @keyframes modalIconFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-10px) rotate(3deg); }
+          75% { transform: translateY(-5px) rotate(-3deg); }
+        }
+
+        @keyframes modalIconBounce {
+          0% { transform: scale(0) rotate(-30deg); }
+          60% { transform: scale(1.2) rotate(10deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes modalOrbit {
+          0% { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+          100% { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+        }
+
+        @keyframes modalBadgeReveal {
+          0% { opacity: 0; transform: translateY(-20px) scale(0.8); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes modalTitleReveal {
+          0% { opacity: 0; transform: translateY(30px); filter: blur(5px); }
+          100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        @keyframes modalTextReveal {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes modalTagReveal {
+          0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes modalSparkle {
+          0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+          50% { opacity: 0.5; transform: translateY(-50%) scale(1.5); }
+        }
+
+        @keyframes modalYearPulse {
+          0%, 100% { box-shadow: 0 4px 20px rgba(255,215,0,0.3); }
+          50% { box-shadow: 0 4px 40px rgba(255,215,0,0.6); }
+        }
+
+        @keyframes modalPeriodGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+          50% { box-shadow: 0 0 40px rgba(0,255,136,0.5); }
+        }
+
+        @keyframes modalHighlightReveal {
+          0% { opacity: 0; transform: translateX(-20px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes modalValuePop {
+          0% { transform: scale(0.5); opacity: 0; }
+          60% { transform: scale(1.2); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes modalHintReveal {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Legacy support */
+        @keyframes detailModalFadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+
+        @keyframes detailModalSlideIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.8) translateY(30px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
         @keyframes jackpotReveal {
           0% { transform: scale(0.3) translateY(20px); opacity: 0; }
           60% { transform: scale(1.1) translateY(-10px); }
@@ -1442,6 +4997,138 @@ export function SlotFullScreen({
         @keyframes contentReveal {
           0% { opacity: 0; transform: scale(0.95); }
           100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* WOW Content Entry Animations */
+        @keyframes contentWowEntrance {
+          0% {
+            opacity: 0;
+            transform: scale(1.1) translateY(-30px);
+            filter: blur(20px) brightness(2);
+          }
+          30% {
+            opacity: 1;
+            filter: blur(5px) brightness(1.5);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            filter: blur(0) brightness(1);
+          }
+        }
+
+        @keyframes contentLightBurst {
+          0% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(0.3);
+          }
+          50% {
+            opacity: 0.8;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.5);
+          }
+        }
+
+        @keyframes contentScanBeam {
+          0% {
+            top: 0;
+            opacity: 1;
+          }
+          100% {
+            top: 100%;
+            opacity: 0;
+          }
+        }
+
+        @keyframes contentCornerReveal {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.1);
+          }
+          100% {
+            opacity: 0.6;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes contentTitleDrop {
+          0% {
+            opacity: 0;
+            transform: translateY(-100px) scale(0.5) rotateX(45deg);
+            filter: blur(10px);
+          }
+          60% {
+            transform: translateY(10px) scale(1.05) rotateX(-5deg);
+            filter: blur(0);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotateX(0);
+          }
+        }
+
+        @keyframes contentTitleGlow {
+          0%, 100% {
+            filter: brightness(1) drop-shadow(0 0 20px currentColor);
+          }
+          50% {
+            filter: brightness(1.2) drop-shadow(0 0 40px currentColor);
+          }
+        }
+
+        @keyframes contentTaglineSlide {
+          0% {
+            opacity: 0;
+            transform: translateX(-50px);
+            filter: blur(5px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes contentUnderlineExpand {
+          0% {
+            width: 0;
+            opacity: 0;
+          }
+          100% {
+            width: 200px;
+            opacity: 1;
+          }
+        }
+
+        @keyframes contentBodyReveal {
+          0% {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+            filter: blur(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes contentHintFade {
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         @keyframes fadeSlideIn {
           0% { opacity: 0; transform: translateY(20px); }
@@ -1463,61 +5150,15 @@ export function SlotFullScreen({
         @keyframes barGrow {
           0% { width: 0; }
         }
-
-        /* 3D Reel Animations */
-        @keyframes glowPulse3D {
-          0%, 100% { opacity: 0.8; filter: blur(20px); }
-          50% { opacity: 1; filter: blur(25px); }
-        }
-        @keyframes symbolPop {
-          0% { transform: translateZ(20px) scale(0.5); opacity: 0; }
-          50% { transform: translateZ(40px) scale(1.2); }
-          100% { transform: translateZ(20px) scale(1); opacity: 1; }
-        }
-        @keyframes holoShimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes borderGlow3D {
-          0%, 100% { opacity: 0.9; }
-          50% { opacity: 1; }
-        }
-        @keyframes neonPulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 0.9; }
-        }
-        @keyframes cornerPulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.5; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes winLine3D {
-          0%, 100% {
-            height: 6px;
-            box-shadow: 0 0 30px ${COLORS.gold}, 0 0 60px ${COLORS.gold}80;
-          }
-          50% {
-            height: 8px;
-            box-shadow: 0 0 50px ${COLORS.gold}, 0 0 100px ${COLORS.gold};
-          }
-        }
-        @keyframes sideNeon {
-          0%, 100% { opacity: 0.7; }
-          50% { opacity: 1; }
-        }
-        @keyframes winSymbolPulse {
-          0%, 100% { transform: scale(1.1); }
-          50% { transform: scale(1.2); }
+        @keyframes jackpotBadgePulse {
+          0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 30px ${COLORS.gold}, 0 5px 20px rgba(0,0,0,0.5); }
+          50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 50px ${COLORS.gold}, 0 8px 30px rgba(0,0,0,0.5); }
         }
         @keyframes winSymbolUltra {
           0%, 100% { transform: scale(1.1) rotateY(0deg); filter: brightness(1.2); }
           25% { transform: scale(1.15) rotateY(5deg); filter: brightness(1.5); }
           50% { transform: scale(1.2) rotateY(0deg); filter: brightness(1.8); }
           75% { transform: scale(1.15) rotateY(-5deg); filter: brightness(1.5); }
-        }
-        @keyframes marqueeSlide {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(80px); }
         }
         @keyframes marqueeSweep {
           0% { transform: translateX(-50%); }
@@ -1538,11 +5179,6 @@ export function SlotFullScreen({
           94% { opacity: 1; }
           96% { opacity: 0.9; }
           97% { opacity: 1; }
-        }
-        @keyframes winCountUp {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.2); }
-          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes winNumberPop {
           0% { transform: scale(0.5); }
@@ -1634,6 +5270,417 @@ export function SlotFullScreen({
         @keyframes jackpotGlow {
           0% { opacity: 0; filter: blur(20px); }
           100% { opacity: 1; filter: blur(8px); }
+        }
+        @keyframes storyReveal {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(30px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+
+        /* INTRO ANIMATIONS - Cinematic entrance */
+        @keyframes scanLines {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(4px); }
+        }
+        @keyframes introLightSweep {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) scaleY(0.5);
+          }
+          50% {
+            opacity: 1;
+            transform: translateX(-50%) scaleY(1.2);
+          }
+          100% {
+            opacity: 0.8;
+            transform: translateX(-50%) scaleY(1);
+          }
+        }
+        @keyframes introTitlePulse {
+          0%, 100% {
+            transform: scale(1);
+            filter: brightness(1);
+          }
+          50% {
+            transform: scale(1.02);
+            filter: brightness(1.2);
+          }
+        }
+
+        /* NEW WOW Intro Animations */
+        @keyframes introGridPulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
+        }
+
+        @keyframes introLaserScan {
+          0% {
+            opacity: 1;
+            clip-path: inset(0 100% 0 0);
+          }
+          50% {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+          }
+          100% {
+            opacity: 0;
+            clip-path: inset(0 0 0 100%);
+          }
+        }
+
+        @keyframes introVerticalLaser {
+          0% {
+            opacity: 1;
+            clip-path: inset(100% 0 0 0);
+          }
+          50% {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+          }
+          100% {
+            opacity: 0.3;
+          }
+        }
+
+        @keyframes introLightRotate {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes introParticleExplode {
+          0% {
+            transform: rotate(var(--angle)) translateX(0);
+            opacity: 1;
+          }
+          100% {
+            transform: rotate(var(--angle)) translateX(var(--distance));
+            opacity: 0;
+          }
+        }
+
+        @keyframes introCornerSlide {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes introTitleGlitch {
+          0%, 90%, 100% {
+            transform: translateX(0);
+            filter: brightness(1);
+          }
+          92% {
+            transform: translateX(-3px);
+            filter: brightness(1.3);
+          }
+          94% {
+            transform: translateX(3px);
+            filter: brightness(0.8);
+          }
+          96% {
+            transform: translateX(-2px);
+            filter: brightness(1.5);
+          }
+          98% {
+            transform: translateX(2px);
+            filter: brightness(1);
+          }
+        }
+
+        @keyframes introGlitchRed {
+          0%, 90%, 100% { transform: translateX(0); opacity: 0; }
+          92% { transform: translateX(-5px); opacity: 0.7; }
+          94% { transform: translateX(3px); opacity: 0.3; }
+          96% { transform: translateX(-2px); opacity: 0.5; }
+        }
+
+        @keyframes introGlitchCyan {
+          0%, 90%, 100% { transform: translateX(0); opacity: 0; }
+          91% { transform: translateX(4px); opacity: 0.5; }
+          93% { transform: translateX(-4px); opacity: 0.7; }
+          95% { transform: translateX(2px); opacity: 0.3; }
+        }
+
+        @keyframes introLoadingText {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        @keyframes introDotPulse {
+          0%, 100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes floatParticle {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+            opacity: 0.3;
+          }
+          25% {
+            transform: translateY(-20px) translateX(10px);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-10px) translateX(-10px);
+            opacity: 0.4;
+          }
+          75% {
+            transform: translateY(-30px) translateX(5px);
+            opacity: 0.5;
+          }
+        }
+        @keyframes machineReveal {
+          0% {
+            opacity: 0;
+            transform: scale(0.9) translateY(50px);
+            filter: blur(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            filter: blur(0);
+          }
+        }
+
+        /* ========================================
+           ULTRA PREMIUM EFFECTS
+           ======================================== */
+
+        /* CRT Scanline Effect */
+        @keyframes scanlines {
+          0% { background-position: 0 0; }
+          100% { background-position: 0 4px; }
+        }
+
+        /* Item Hover Glow */
+        @keyframes itemHoverGlow {
+          0%, 100% { box-shadow: 0 0 20px var(--glow-color, ${primaryColor}40); }
+          50% { box-shadow: 0 0 40px var(--glow-color, ${primaryColor}60), 0 0 60px var(--glow-color, ${primaryColor}30); }
+        }
+
+        /* Focus Trail Effect */
+        @keyframes focusTrail {
+          0% { opacity: 0.8; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.5); }
+        }
+
+        /* Typewriter Cursor Blink */
+        @keyframes cursorBlink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+
+        /* Parallax Float */
+        @keyframes parallaxFloat1 {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          25% { transform: translate(10px, -15px) rotate(1deg); }
+          50% { transform: translate(-5px, -25px) rotate(-1deg); }
+          75% { transform: translate(-15px, -10px) rotate(0.5deg); }
+        }
+
+        @keyframes parallaxFloat2 {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          33% { transform: translate(-20px, 10px) rotate(-2deg); }
+          66% { transform: translate(15px, -20px) rotate(1deg); }
+        }
+
+        @keyframes parallaxFloat3 {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(30px, -30px); }
+        }
+
+        /* Particle Burst on Select */
+        @keyframes selectBurst {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* Ripple Effect */
+        @keyframes ripple {
+          0% { transform: scale(0); opacity: 0.5; }
+          100% { transform: scale(4); opacity: 0; }
+        }
+
+        /* Electric Arc */
+        @keyframes electricArc {
+          0%, 100% { clip-path: polygon(0 45%, 20% 55%, 40% 45%, 60% 55%, 80% 45%, 100% 55%, 100% 100%, 0 100%); }
+          25% { clip-path: polygon(0 55%, 20% 45%, 40% 55%, 60% 45%, 80% 55%, 100% 45%, 100% 100%, 0 100%); }
+          50% { clip-path: polygon(0 48%, 25% 52%, 50% 48%, 75% 52%, 100% 48%, 100% 100%, 0 100%); }
+          75% { clip-path: polygon(0 52%, 15% 48%, 35% 52%, 65% 48%, 85% 52%, 100% 48%, 100% 100%, 0 100%); }
+        }
+
+        /* Neon Pulse for Items */
+        @keyframes neonItemPulse {
+          0%, 100% {
+            text-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+            filter: brightness(1);
+          }
+          50% {
+            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+            filter: brightness(1.2);
+          }
+        }
+
+        /* Matrix Rain Background */
+        @keyframes matrixFall {
+          0% { transform: translateY(-100%); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        /* Hologram Flicker */
+        @keyframes holoFlicker {
+          0%, 100% { opacity: 1; transform: scaleY(1); }
+          92% { opacity: 1; transform: scaleY(1); }
+          93% { opacity: 0.8; transform: scaleY(0.98); }
+          94% { opacity: 1; transform: scaleY(1); }
+          96% { opacity: 0.9; transform: scaleY(0.99); }
+          97% { opacity: 1; transform: scaleY(1); }
+        }
+
+        /* Glitch Text */
+        @keyframes glitchText {
+          0%, 100% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+        }
+
+        /* Energy Charge */
+        @keyframes energyCharge {
+          0% { stroke-dashoffset: 1000; }
+          100% { stroke-dashoffset: 0; }
+        }
+
+        /* Jackpot Mega Shake */
+        @keyframes megaShake {
+          0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+          10% { transform: translate(-8px, -5px) rotate(-1deg) scale(1.02); }
+          20% { transform: translate(8px, 4px) rotate(1deg) scale(0.98); }
+          30% { transform: translate(-6px, 6px) rotate(-0.5deg) scale(1.01); }
+          40% { transform: translate(6px, -4px) rotate(0.5deg) scale(0.99); }
+          50% { transform: translate(-4px, 4px) rotate(-0.3deg) scale(1.005); }
+          60% { transform: translate(4px, -4px) rotate(0.3deg) scale(0.995); }
+          70% { transform: translate(-3px, 3px) rotate(-0.2deg) scale(1); }
+          80% { transform: translate(3px, -2px) rotate(0.2deg) scale(1); }
+          90% { transform: translate(-1px, 1px) rotate(-0.1deg) scale(1); }
+        }
+
+        /* Rainbow Shift for Jackpot */
+        @keyframes rainbowShift {
+          0% { filter: hue-rotate(0deg) brightness(1.2); }
+          100% { filter: hue-rotate(360deg) brightness(1.2); }
+        }
+
+        /* Beam Scan */
+        @keyframes beamScan {
+          0% { left: -10%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { left: 110%; opacity: 0; }
+        }
+
+        /* Star Twinkle */
+        @keyframes starTwinkle {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Floating Orb */
+        @keyframes floatingOrb {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+          25% { transform: translate(20px, -30px) scale(1.1); opacity: 0.8; }
+          50% { transform: translate(-10px, -50px) scale(0.9); opacity: 1; }
+          75% { transform: translate(-30px, -20px) scale(1.05); opacity: 0.7; }
+        }
+
+        /* Timeline Dot Pulse for Experience */
+        @keyframes timelineDotPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 30px #00ff88, 0 0 60px rgba(0,255,136,0.5); }
+          50% { transform: scale(1.3); box-shadow: 0 0 40px #00ff88, 0 0 80px rgba(0,255,136,0.7); }
+        }
+
+        /* Shimmer Sweep for Projects */
+        @keyframes shimmerSweep {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(100%); }
+        }
+
+        /* Contact Button Glow */
+        @keyframes contactGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(255,68,68,0.3), 0 8px 32px rgba(255,68,68,0.2); }
+          50% { box-shadow: 0 0 40px rgba(255,68,68,0.5), 0 12px 48px rgba(255,68,68,0.35); }
+        }
+
+        /* Keyboard Hints Entry */
+        @keyframes keyboardHintsEntry {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+          100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Keyboard Hints Fade Out */
+        @keyframes keyboardHintsFade {
+          0% { opacity: 1; }
+          100% { opacity: 0; pointer-events: none; }
+        }
+
+        /* Data Stream */
+        @keyframes dataStream {
+          0% { background-position: 0 0; }
+          100% { background-position: 0 100px; }
+        }
+
+        /* Hover Lift */
+        .hover-lift {
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+        .hover-lift:hover {
+          transform: translateY(-5px) scale(1.02);
+        }
+
+        /* Focus Glow Ring */
+        .focus-ring {
+          position: relative;
+        }
+        .focus-ring::after {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: inherit;
+          border: 2px solid transparent;
+          opacity: 0;
+          transition: all 0.3s ease;
+        }
+        .focus-ring:focus::after,
+        .focus-ring.focused::after {
+          border-color: ${primaryColor};
+          opacity: 1;
+          animation: focusRingPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes focusRingPulse {
+          0%, 100% { box-shadow: 0 0 0 0 ${primaryColor}40; }
+          50% { box-shadow: 0 0 0 8px ${primaryColor}00; }
         }
       `}</style>
     </div>

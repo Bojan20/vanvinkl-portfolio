@@ -404,33 +404,33 @@ export function CasinoScene({ onShowModal, onSlotSpin, introActive = false, slot
     if (!introActive && !audioInitialized.current) {
       audioInitialized.current = true
 
-      // Start ambient casino hum (looping, centered)
-      audio.playSpatial('casino-ambient', 'casinoHum', [0, 3, 0], {
-        volume: 0.3,
-        loop: true,
-        refDistance: 20,
-        maxDistance: 100,
-        rolloffFactor: 0.5
-      })
+      // Background ambient sounds DISABLED per user request
+      // audio.playSpatial('casino-ambient', 'casinoHum', [0, 3, 0], {
+      //   volume: 0.3,
+      //   loop: true,
+      //   refDistance: 20,
+      //   maxDistance: 100,
+      //   rolloffFactor: 0.5
+      // })
 
-      // Neon buzzes at various positions (spatial)
-      const neonPositions: [number, number, number][] = [
-        [-15, 4, -10],  // Back left
-        [15, 4, -10],   // Back right
-        [-25, 3, 8],    // Left lounge
-        [25, 3, 8],     // Right lounge
-        [0, 4, -10]     // Bar
-      ]
-
-      neonPositions.forEach((pos, i) => {
-        audio.playSpatial(`neon-${i}`, 'neonBuzz', pos, {
-          volume: 0.15,
-          loop: true,
-          refDistance: 3,
-          maxDistance: 15,
-          rolloffFactor: 1.5
-        })
-      })
+      // Neon buzzes DISABLED per user request
+      // const neonPositions: [number, number, number][] = [
+      //   [-15, 4, -10],  // Back left
+      //   [15, 4, -10],   // Back right
+      //   [-25, 3, 8],    // Left lounge
+      //   [25, 3, 8],     // Right lounge
+      //   [0, 4, -10]     // Bar
+      // ]
+      //
+      // neonPositions.forEach((pos, i) => {
+      //   audio.playSpatial(`neon-${i}`, 'neonBuzz', pos, {
+      //     volume: 0.15,
+      //     loop: true,
+      //     refDistance: 3,
+      //     maxDistance: 15,
+      //     rolloffFactor: 1.5
+      //   })
+      // })
     }
   }, [introActive, audio])
 

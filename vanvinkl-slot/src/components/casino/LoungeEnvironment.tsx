@@ -6,37 +6,37 @@ import * as THREE from 'three'
 import { useMemo } from 'react'
 
 export function LoungeEnvironment() {
-  // PBR Materials
+  // PBR Materials - BRIGHTER for better visibility
   const floorMaterial = useMemo(() => (
     <meshStandardMaterial
-      color="#2a0a0a"
-      metalness={0.8}
-      roughness={0.2}
-      envMapIntensity={1}
+      color="#4a2020"
+      metalness={0.6}
+      roughness={0.3}
+      envMapIntensity={1.5}
     />
   ), [])
 
   const wallMaterial = useMemo(() => (
     <meshStandardMaterial
-      color="#1a0a0a"
+      color="#3a2020"
       metalness={0.3}
-      roughness={0.7}
+      roughness={0.6}
     />
   ), [])
 
   const ceilingMaterial = useMemo(() => (
     <meshStandardMaterial
-      color="#0a0a0a"
-      metalness={0.5}
+      color="#2a1a1a"
+      metalness={0.4}
       roughness={0.5}
     />
   ), [])
 
   const carpetMaterial = useMemo(() => (
     <meshStandardMaterial
-      color="#8B0000"
+      color="#A52020"
       metalness={0.1}
-      roughness={0.9}
+      roughness={0.8}
     />
   ), [])
 
@@ -227,18 +227,18 @@ export function LoungeEnvironment() {
   )
 }
 
-// Chandelier component
+// Chandelier component - BRIGHTER
 function Chandelier({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Center sphere */}
+      {/* Center sphere - brighter emissive */}
       <Sphere args={[0.3, 32, 32]} castShadow>
         <meshStandardMaterial
           color="#FFD700"
           metalness={1}
           roughness={0}
           emissive="#FFD700"
-          emissiveIntensity={0.5}
+          emissiveIntensity={1.5}
         />
       </Sphere>
 
@@ -255,29 +255,29 @@ function Chandelier({ position }: { position: [number, number, number] }) {
               <meshStandardMaterial color="#FFD700" metalness={1} roughness={0.2} />
             </Cylinder>
 
-            {/* Light bulb */}
+            {/* Light bulb - brighter */}
             <Sphere args={[0.12, 16, 16]} position={[0, -0.4, 0]}>
-              <meshBasicMaterial color="#fff8dc" />
+              <meshBasicMaterial color="#fffef0" />
             </Sphere>
 
-            {/* Point light */}
+            {/* Point light - MUCH BRIGHTER */}
             <pointLight
               position={[0, -0.4, 0]}
               color="#fff8dc"
-              intensity={2}
-              distance={5}
+              intensity={5}
+              distance={8}
               decay={2}
             />
           </group>
         )
       })}
 
-      {/* Main chandelier light */}
+      {/* Main chandelier light - MUCH BRIGHTER */}
       <pointLight
         position={[0, -0.5, 0]}
         color="#FFD700"
-        intensity={3}
-        distance={8}
+        intensity={8}
+        distance={12}
         decay={2}
         castShadow
       />
@@ -285,7 +285,7 @@ function Chandelier({ position }: { position: [number, number, number] }) {
   )
 }
 
-// Wall sconce component
+// Wall sconce component - BRIGHTER
 function WallSconce({
   position,
   rotation
@@ -300,17 +300,17 @@ function WallSconce({
         <meshStandardMaterial color="#8B4513" metalness={0.5} roughness={0.5} />
       </Cylinder>
 
-      {/* Light bulb */}
+      {/* Light bulb - brighter */}
       <Sphere args={[0.1, 16, 16]} position={[0, 0, 0.2]}>
-        <meshBasicMaterial color="#fff8dc" />
+        <meshBasicMaterial color="#fffef0" />
       </Sphere>
 
-      {/* Point light */}
+      {/* Point light - MUCH BRIGHTER */}
       <pointLight
         position={[0, 0, 0.3]}
         color="#fff8dc"
-        intensity={1.5}
-        distance={4}
+        intensity={4}
+        distance={8}
         decay={2}
       />
     </group>
@@ -348,7 +348,7 @@ function Column({ position }: { position: [number, number, number] }) {
   )
 }
 
-// Neon sign on wall
+// Neon sign on wall - BRIGHTER
 function NeonSign({
   text,
   position,
@@ -373,20 +373,23 @@ function NeonSign({
         />
       </RoundedBox>
 
-      {/* Neon glow */}
+      {/* Neon glow - MUCH BRIGHTER */}
       <pointLight
-        position={[0, 0, 0.3]}
+        position={[0, 0, 0.5]}
         color={color}
-        intensity={2}
-        distance={5}
+        intensity={6}
+        distance={10}
         decay={2}
       />
 
-      {/* Text mesh would go here (requires font file) */}
-      {/* For now, using a simple emissive box as placeholder */}
+      {/* Text mesh - brighter emissive */}
       <mesh position={[0, 0, 0.06]}>
         <boxGeometry args={[text.length * 0.35, 0.5, 0.02]} />
-        <meshBasicMaterial color={color} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={2}
+        />
       </mesh>
     </group>
   )

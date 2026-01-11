@@ -9,6 +9,15 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { audioSystem, SoundId, BusId } from './AudioSystem'
+import {
+  playSynthTick,
+  playSynthSelect,
+  playSynthBack,
+  playSynthWhoosh,
+  playSynthSwoosh,
+  playSynthReveal,
+  playSynthTransition
+} from './SynthSounds'
 
 interface UseAudioReturn {
   // Core playback
@@ -171,4 +180,66 @@ export function playReelStop(reelIndex: number, volume = 0.7): void {
   const sounds: SoundId[] = ['reelStop1', 'reelStop2', 'reelStop3']
   const soundIndex = Math.min(reelIndex, sounds.length - 1)
   audioSystem.play(sounds[soundIndex], { volume })
+}
+
+// ============================================
+// SLOT NAVIGATION SOUND HELPERS
+// With synth fallback for missing audio files
+// ============================================
+
+// Navigation tick - arrow key movement
+export function playNavTick(volume = 0.4): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('navTick', { volume, playbackRate: 1.2 })
+  }
+  // Always play synth as backup (silent if file loaded)
+  playSynthTick(volume)
+}
+
+// Navigation select - Enter key
+export function playNavSelect(volume = 0.6): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('navSelect', { volume })
+  }
+  playSynthSelect(volume)
+}
+
+// Navigation back - Escape key
+export function playNavBack(volume = 0.5): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('navBack', { volume })
+  }
+  playSynthBack(volume)
+}
+
+// Modal open with whoosh
+export function playModalOpen(volume = 0.6): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('modalOpen', { volume })
+  }
+  playSynthWhoosh(volume)
+}
+
+// Modal close
+export function playModalClose(volume = 0.5): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('modalClose', { volume })
+  }
+  playSynthSwoosh(volume)
+}
+
+// Content reveal (phase transition)
+export function playContentReveal(volume = 0.5): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('contentReveal', { volume })
+  }
+  playSynthReveal(volume)
+}
+
+// Phase transition (intro -> spinning -> result -> content)
+export function playPhaseTransition(volume = 0.4): void {
+  if (audioSystem.isInitialized()) {
+    audioSystem.play('phaseTransition', { volume })
+  }
+  playSynthTransition(volume)
 }
