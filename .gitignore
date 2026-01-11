@@ -17,6 +17,7 @@ node_modules/
 
 # Production
 /build
+/dist
 
 # Rust/WASM
 target/
