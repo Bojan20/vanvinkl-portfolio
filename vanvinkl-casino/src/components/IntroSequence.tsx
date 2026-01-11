@@ -286,10 +286,12 @@ export function IntroCamera({
 // IMPORTANT: Runs on timer - player movement does NOT interrupt
 export function IntroOverlay({
   active,
-  onComplete
+  onComplete,
+  canSkip = false
 }: {
   active: boolean
   onComplete: () => void
+  canSkip?: boolean
 }) {
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'hold' | 'fade' | 'done'>('glitch')
   const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
@@ -299,6 +301,21 @@ export function IntroOverlay({
 
   const originalText = 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
+
+  // Keyboard skip: ESC or ENTER (only if canSkip)
+  useEffect(() => {
+    if (!active || !canSkip) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault()
+        setPhase('done')
+        onComplete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [active, canSkip, onComplete])
 
   useEffect(() => {
     if (!active) return
@@ -433,7 +450,7 @@ export function IntroOverlay({
       justifyContent: 'center',
       // Dark background that fades out during intro
       backgroundColor: `rgba(5, 3, 10, ${bgOpacity})`,
-      zIndex: 1000,
+      zIndex: 10000, // Above preloader (9999)
       pointerEvents: 'none',
       opacity: opacity,
       transition: 'opacity 0.7s ease-out' // Slower fade
@@ -515,6 +532,42 @@ export function IntroOverlay({
         animation: 'scanLine 2s linear infinite',
         pointerEvents: 'none'
       }} />
+
+      {/* Skip hint for returning visitors - keyboard only */}
+      {canSkip && phase !== 'done' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '40px',
+          right: '40px',
+          background: 'rgba(10, 10, 20, 0.8)',
+          border: '1px solid rgba(0, 255, 255, 0.3)',
+          color: 'rgba(255,255,255,0.7)',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          pointerEvents: 'none'
+        }}>
+          <kbd style={{
+            background: 'rgba(0,255,255,0.2)',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            marginRight: '8px',
+            color: '#00ffff',
+            fontFamily: 'monospace'
+          }}>ESC</kbd>
+          or
+          <kbd style={{
+            background: 'rgba(0,255,255,0.2)',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            marginLeft: '8px',
+            marginRight: '8px',
+            color: '#00ffff',
+            fontFamily: 'monospace'
+          }}>ENTER</kbd>
+          to skip
+        </div>
+      )}
 
       <style>{`
         @keyframes glitchShake {

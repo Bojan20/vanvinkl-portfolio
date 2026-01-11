@@ -14,7 +14,12 @@ export {
   playModalOpen,
   playModalClose,
   playContentReveal,
-  playPhaseTransition
+  playPhaseTransition,
+  startDucking,
+  stopDucking,
+  getFrequencyData,
+  getAverageVolume,
+  getBassLevel
 } from './useAudio'
 
 // Synth sounds for when audio files don't exist

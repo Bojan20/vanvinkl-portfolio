@@ -6,7 +6,6 @@
  */
 
 import { Canvas } from '@react-three/fiber'
-import { useProgress } from '@react-three/drei'
 import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 import { CasinoScene } from './components/CasinoScene'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
@@ -21,211 +20,9 @@ import {
   isWebGLSupported
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
-import { audioSystem } from './audio'
+import { audioSystem, getFrequencyData, getBassLevel } from './audio'
 import { achievementStore, type Achievement } from './store/achievements'
-
-// 3D Scene Preloader - cyberpunk loading screen with progress
-function ScenePreloader() {
-  const { progress, active } = useProgress()
-  const [displayProgress, setDisplayProgress] = useState(0)
-  const [fadeOut, setFadeOut] = useState(false)
-
-  // Smooth progress animation
-  useEffect(() => {
-    const target = Math.round(progress)
-    const step = () => {
-      setDisplayProgress(prev => {
-        if (prev < target) return Math.min(prev + 2, target)
-        return prev
-      })
-    }
-    const interval = setInterval(step, 20)
-    return () => clearInterval(interval)
-  }, [progress])
-
-  // Fade out when complete
-  useEffect(() => {
-    if (progress >= 100 && !active) {
-      const timer = setTimeout(() => setFadeOut(true), 500)
-      return () => clearTimeout(timer)
-    }
-  }, [progress, active])
-
-  if (fadeOut) return null
-
-  return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'linear-gradient(135deg, #050508 0%, #0a0a12 50%, #050508 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      opacity: progress >= 100 ? 0 : 1,
-      transition: 'opacity 0.5s ease-out',
-      pointerEvents: progress >= 100 ? 'none' : 'auto'
-    }}>
-      {/* Animated background particles */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-        {Array.from({ length: 30 }, (_, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            width: `${2 + Math.random() * 4}px`,
-            height: `${2 + Math.random() * 4}px`,
-            background: i % 3 === 0 ? '#00ffff' : i % 3 === 1 ? '#ff00aa' : '#8844ff',
-            borderRadius: '50%',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            opacity: 0.3 + Math.random() * 0.4,
-            animation: `preloaderFloat ${3 + Math.random() * 4}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 2}s`,
-            filter: 'blur(1px)'
-          }} />
-        ))}
-      </div>
-
-      {/* Glowing orb background */}
-      <div style={{
-        position: 'absolute',
-        width: '500px',
-        height: '500px',
-        background: 'radial-gradient(circle, rgba(0, 255, 255, 0.08) 0%, transparent 60%)',
-        borderRadius: '50%',
-        animation: 'preloaderOrbPulse 3s ease-in-out infinite',
-        filter: 'blur(60px)'
-      }} />
-
-      {/* Logo/Title */}
-      <div style={{
-        fontSize: '48px',
-        fontWeight: 900,
-        letterSpacing: '12px',
-        marginBottom: '60px',
-        background: 'linear-gradient(90deg, #00ffff, #ff00aa, #8844ff, #00ffff)',
-        backgroundSize: '300% 100%',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        animation: 'preloaderGradient 3s linear infinite',
-        textShadow: '0 0 40px rgba(0,255,255,0.3)'
-      }}>
-        VANVINKL
-      </div>
-
-      {/* Progress container */}
-      <div style={{
-        width: '400px',
-        maxWidth: '80vw',
-        position: 'relative'
-      }}>
-        {/* Progress bar background */}
-        <div style={{
-          height: '8px',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: '4px',
-          overflow: 'hidden',
-          border: '1px solid rgba(0,255,255,0.2)',
-          boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.5)'
-        }}>
-          {/* Progress bar fill */}
-          <div style={{
-            width: `${displayProgress}%`,
-            height: '100%',
-            background: 'linear-gradient(90deg, #00ffff, #ff00aa)',
-            borderRadius: '4px',
-            boxShadow: '0 0 20px #00ffff, 0 0 40px rgba(255,0,170,0.5)',
-            transition: 'width 0.1s ease-out',
-            position: 'relative'
-          }}>
-            {/* Shine effect */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '50%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.4), transparent)',
-              borderRadius: '4px 4px 0 0'
-            }} />
-            {/* Leading glow */}
-            <div style={{
-              position: 'absolute',
-              right: '-10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '20px',
-              height: '20px',
-              background: '#fff',
-              borderRadius: '50%',
-              boxShadow: '0 0 20px #00ffff, 0 0 40px #00ffff',
-              opacity: displayProgress < 100 ? 1 : 0
-            }} />
-          </div>
-        </div>
-
-        {/* Percentage display */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: '16px',
-          fontFamily: 'monospace'
-        }}>
-          <span style={{
-            color: '#666',
-            fontSize: '12px',
-            letterSpacing: '2px'
-          }}>LOADING CASINO</span>
-          <span style={{
-            color: '#00ffff',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            textShadow: '0 0 10px #00ffff'
-          }}>{displayProgress}%</span>
-        </div>
-
-        {/* Loading items indicator */}
-        <div style={{
-          marginTop: '30px',
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px'
-        }}>
-          {['3D', 'TEX', 'SFX', 'UI'].map((item, i) => (
-            <div key={item} style={{
-              padding: '6px 14px',
-              background: displayProgress > (i + 1) * 25
-                ? 'rgba(0, 255, 255, 0.2)'
-                : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${displayProgress > (i + 1) * 25 ? 'rgba(0,255,255,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: '20px',
-              color: displayProgress > (i + 1) * 25 ? '#00ffff' : '#444',
-              fontSize: '10px',
-              letterSpacing: '2px',
-              transition: 'all 0.3s ease'
-            }}>{item}</div>
-          ))}
-        </div>
-      </div>
-
-      {/* Preloader animations */}
-      <style>{`
-        @keyframes preloaderFloat {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        @keyframes preloaderOrbPulse {
-          0%, 100% { transform: scale(1); opacity: 0.5; }
-          50% { transform: scale(1.2); opacity: 0.8; }
-        }
-        @keyframes preloaderGradient {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 300% 50%; }
-        }
-      `}</style>
-    </div>
-  )
-}
+import { trackSession } from './hooks/useAnalytics'
 
 // Slot Loading Skeleton - premium cyberpunk loading animation
 function SlotLoadingSkeleton() {
@@ -541,6 +338,259 @@ function SoundToggle() {
         </svg>
       )}
     </button>
+  )
+}
+
+// Section Progress Ring - Shows exploration progress
+function SectionProgressRing() {
+  const [visitedSections, setVisitedSections] = useState<Set<string>>(new Set())
+  const totalSections = 6 // skills, services, about, projects, experience, contact
+
+  // Load visited sections from localStorage (reads from vanvinkl-progress)
+  useEffect(() => {
+    const loadVisited = () => {
+      try {
+        const saved = localStorage.getItem('vanvinkl-progress')
+        if (saved) {
+          const progress = JSON.parse(saved)
+          if (progress.visited && Array.isArray(progress.visited)) {
+            setVisitedSections(new Set(progress.visited))
+          }
+        }
+      } catch {}
+    }
+    loadVisited()
+
+    // Listen for storage changes
+    const handleStorage = () => loadVisited()
+    window.addEventListener('storage', handleStorage)
+
+    // Poll for changes (same tab updates)
+    const interval = setInterval(loadVisited, 1000)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      clearInterval(interval)
+    }
+  }, [])
+
+  const progress = visitedSections.size / totalSections
+  const circumference = 2 * Math.PI * 18 // radius 18
+  const strokeDashoffset = circumference * (1 - progress)
+
+  // Section colors
+  const sectionColors: Record<string, string> = {
+    skills: '#00ffff',
+    services: '#ff00aa',
+    about: '#ffd700',
+    projects: '#00ff88',
+    experience: '#8844ff',
+    contact: '#ff4444'
+  }
+
+  const allSections = ['skills', 'services', 'about', 'projects', 'experience', 'contact']
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '12px 16px',
+        background: 'rgba(5, 5, 15, 0.85)',
+        border: '1px solid rgba(0, 255, 255, 0.2)',
+        borderRadius: '16px',
+        backdropFilter: 'blur(10px)',
+        zIndex: 100,
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}
+    >
+      {/* Progress Ring */}
+      <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+        <svg width="44" height="44" style={{ transform: 'rotate(-90deg)' }}>
+          {/* Background circle */}
+          <circle
+            cx="22"
+            cy="22"
+            r="18"
+            fill="none"
+            stroke="rgba(255,255,255,0.1)"
+            strokeWidth="3"
+          />
+          {/* Progress arc */}
+          <circle
+            cx="22"
+            cy="22"
+            r="18"
+            fill="none"
+            stroke="url(#progressGradient)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+          />
+          {/* Gradient definition */}
+          <defs>
+            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00ffff" />
+              <stop offset="50%" stopColor="#ff00aa" />
+              <stop offset="100%" stopColor="#ffd700" />
+            </linearGradient>
+          </defs>
+        </svg>
+        {/* Center percentage */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          color: progress === 1 ? '#ffd700' : '#ffffff'
+        }}>
+          {Math.round(progress * 100)}%
+        </div>
+      </div>
+
+      {/* Section indicators */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '10px', color: '#888', letterSpacing: '1px', marginBottom: '2px' }}>
+          EXPLORED
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {allSections.map(section => (
+            <div
+              key={section}
+              title={section.charAt(0).toUpperCase() + section.slice(1)}
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: visitedSections.has(section)
+                  ? sectionColors[section]
+                  : 'rgba(255,255,255,0.15)',
+                boxShadow: visitedSections.has(section)
+                  ? `0 0 8px ${sectionColors[section]}`
+                  : 'none',
+                transition: 'all 0.3s ease'
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Spectrum Visualizer - Audio reactive bars
+function SpectrumVisualizer() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const animationRef = useRef<number>()
+  const [isActive, setIsActive] = useState(false)
+
+  useEffect(() => {
+    // Check if audio is initialized
+    const checkAudio = setInterval(() => {
+      if (audioSystem.isInitialized()) {
+        setIsActive(true)
+        clearInterval(checkAudio)
+      }
+    }, 500)
+
+    return () => clearInterval(checkAudio)
+  }, [])
+
+  useEffect(() => {
+    if (!isActive || !canvasRef.current) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const barCount = 16
+    const barWidth = 3
+    const barGap = 2
+    const maxHeight = 30
+
+    const draw = () => {
+      const data = getFrequencyData()
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      if (data) {
+        // Sample frequency data to barCount bars
+        const step = Math.floor(data.length / barCount)
+
+        for (let i = 0; i < barCount; i++) {
+          const value = data[i * step] / 255
+          const height = Math.max(2, value * maxHeight)
+
+          // Gradient color based on frequency (low=cyan, mid=magenta, high=gold)
+          const hue = 180 - (i / barCount) * 140 // cyan to pink
+          const saturation = 80 + value * 20
+          const lightness = 50 + value * 20
+
+          ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`
+          ctx.fillRect(
+            i * (barWidth + barGap),
+            maxHeight - height,
+            barWidth,
+            height
+          )
+
+          // Glow effect
+          ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
+          ctx.shadowBlur = value * 8
+        }
+      } else {
+        // Idle animation when no audio
+        for (let i = 0; i < barCount; i++) {
+          const idleHeight = 2 + Math.sin(Date.now() / 500 + i * 0.5) * 3
+          ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'
+          ctx.fillRect(
+            i * (barWidth + barGap),
+            maxHeight - idleHeight,
+            barWidth,
+            idleHeight
+          )
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [isActive])
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '20px',
+      left: '20px',
+      padding: '8px 12px',
+      background: 'rgba(5, 5, 15, 0.85)',
+      border: '1px solid rgba(0, 255, 255, 0.2)',
+      borderRadius: '12px',
+      backdropFilter: 'blur(10px)',
+      zIndex: 100
+    }}>
+      <canvas
+        ref={canvasRef}
+        width={80}
+        height={30}
+        style={{ display: 'block' }}
+      />
+    </div>
   )
 }
 
@@ -924,8 +974,135 @@ function LoadingScreen() {
   )
 }
 
+// Onboarding tooltip for first-time visitors
+function OnboardingTooltip({ onDismiss }: { onDismiss: () => void }) {
+  const [step, setStep] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  const tips = [
+    { icon: '🎮', title: 'Move Around', text: 'WASD or Arrow keys to walk' },
+    { icon: '🎰', title: 'Spin Slots', text: 'Press SPACE near a machine' },
+    { icon: '🛋️', title: 'Sit & Relax', text: 'Press SPACE near a couch' },
+    { icon: '❓', title: 'Need Help?', text: 'Press ? anytime for controls' }
+  ]
+
+  const handleNext = useCallback(() => {
+    if (step < tips.length - 1) {
+      setStep(s => s + 1)
+    } else {
+      setVisible(false)
+      setTimeout(onDismiss, 300)
+    }
+  }, [step, tips.length, onDismiss])
+
+  const handleSkip = useCallback(() => {
+    setVisible(false)
+    setTimeout(onDismiss, 300)
+  }, [onDismiss])
+
+  // Keyboard: ENTER = next, ESC = skip all
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleNext()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        handleSkip()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleNext, handleSkip])
+
+  if (!visible) return null
+
+  const tip = tips[step]
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: '100px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'rgba(10, 10, 20, 0.95)',
+      border: '1px solid rgba(0, 255, 255, 0.3)',
+      borderRadius: '16px',
+      padding: '24px 32px',
+      zIndex: 9000,
+      minWidth: '320px',
+      boxShadow: '0 0 40px rgba(0, 255, 255, 0.2)',
+      animation: 'tooltipSlideUp 0.3s ease-out'
+    }}>
+      {/* Progress dots */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '8px',
+        marginBottom: '16px'
+      }}>
+        {tips.map((_, i) => (
+          <div key={i} style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: i === step ? '#00ffff' : 'rgba(255,255,255,0.2)',
+            transition: 'background 0.3s'
+          }} />
+        ))}
+      </div>
+
+      {/* Tip content */}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '40px', marginBottom: '12px' }}>{tip.icon}</div>
+        <div style={{
+          color: '#00ffff',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          marginBottom: '8px'
+        }}>{tip.title}</div>
+        <div style={{
+          color: 'rgba(255,255,255,0.7)',
+          fontSize: '14px'
+        }}>{tip.text}</div>
+      </div>
+
+      {/* Keyboard hints */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '24px',
+        marginTop: '20px',
+        fontSize: '12px',
+        color: 'rgba(255,255,255,0.5)'
+      }}>
+        <span><kbd style={{
+          background: 'rgba(255,255,255,0.1)',
+          padding: '2px 8px',
+          borderRadius: '4px',
+          marginRight: '6px'
+        }}>ESC</kbd> Skip all</span>
+        <span><kbd style={{
+          background: 'rgba(0,255,255,0.2)',
+          padding: '2px 8px',
+          borderRadius: '4px',
+          marginRight: '6px',
+          color: '#00ffff'
+        }}>ENTER</kbd> {step < tips.length - 1 ? 'Next' : 'Done'}</span>
+      </div>
+
+      <style>{`
+        @keyframes tooltipSlideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 export function App() {
-  const [showIntro, setShowIntro] = useState(true)
+  const [showIntro, setShowIntro] = useState(true) // Intro starts immediately
   const [overlayComplete, setOverlayComplete] = useState(false)
   const [cameraComplete, setCameraComplete] = useState(false)
   const [spinningSlot, setSpinningSlot] = useState<string | null>(null)
@@ -934,6 +1111,21 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [konamiActive, resetKonami] = useKonamiCode()
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
+
+  // Onboarding - show only for first-time visitors
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('vanvinkl-onboarded') !== 'true'
+  })
+
+  const handleOnboardingDismiss = useCallback(() => {
+    setShowOnboarding(false)
+    localStorage.setItem('vanvinkl-onboarded', 'true')
+  }, [])
+
+  // Track session on mount
+  useEffect(() => {
+    trackSession()
+  }, [])
 
   // Subscribe to achievement unlocks
   useEffect(() => {
@@ -994,6 +1186,8 @@ export function App() {
 
   const handleIntroOverlayComplete = useCallback(() => {
     setOverlayComplete(true)
+    // Mark as visited for skip intro next time
+    localStorage.setItem('vanvinkl-visited', 'true')
   }, [])
 
   const handleIntroCameraComplete = useCallback(() => {
@@ -1085,8 +1279,7 @@ export function App() {
         </Suspense>
       </Canvas>
 
-      {/* 3D Scene Preloader with progress bar */}
-      <ScenePreloader />
+      {/* No preloader - intro starts immediately */}
 
       {/* Sound Toggle - always visible after intro */}
       {!showIntro && <SoundToggle />}
@@ -1094,6 +1287,16 @@ export function App() {
       {/* Desktop Controls HUD - hidden on mobile */}
       {!showIntro && !spinningSlot && !isMobile && (
         <ControlsHUD />
+      )}
+
+      {/* Section Progress Ring - shows exploration progress */}
+      {!showIntro && !spinningSlot && !isMobile && (
+        <SectionProgressRing />
+      )}
+
+      {/* Spectrum Visualizer - audio reactive bars */}
+      {!showIntro && !spinningSlot && !isMobile && (
+        <SpectrumVisualizer />
       )}
 
       {/* Mobile Controls - only on mobile devices */}
@@ -1105,10 +1308,11 @@ export function App() {
         />
       )}
 
-      {/* Intro overlay - glitch text */}
+      {/* Intro overlay - glitch text, skip button for returning visitors */}
       <IntroOverlay
         active={showIntro}
         onComplete={handleIntroOverlayComplete}
+        canSkip={localStorage.getItem('vanvinkl-visited') === 'true'}
       />
 
       {/* Full screen slot experience - includes content after spin */}
@@ -1133,6 +1337,11 @@ export function App() {
         achievement={unlockedAchievement}
         onClose={() => setUnlockedAchievement(null)}
       />
+
+      {/* Onboarding tooltip - only for first-time visitors, after intro */}
+      {showOnboarding && !showIntro && !spinningSlot && (
+        <OnboardingTooltip onDismiss={handleOnboardingDismiss} />
+      )}
     </WebGLErrorBoundary>
   )
 }

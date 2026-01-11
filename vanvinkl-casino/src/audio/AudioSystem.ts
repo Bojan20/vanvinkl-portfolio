@@ -74,6 +74,15 @@ class AudioSystem {
   private initialized = false
   private loadingPromise: Promise<void> | null = null
 
+  // Master dynamics
+  private compressor: DynamicsCompressorNode | null = null
+  private analyser: AnalyserNode | null = null
+  private analyserData: Uint8Array | null = null
+
+  // Ducking state
+  private isDucking = false
+  private duckingTargets: Map<BusId, number> = new Map()
+
   // Pool size per sound
   private readonly POOL_SIZE = 8
 
@@ -130,20 +139,75 @@ class AudioSystem {
   private createBuses(): void {
     if (!this.context) return
 
-    // Master bus -> destination
+    // Create master compressor for professional sound
+    this.compressor = this.context.createDynamicsCompressor()
+    this.compressor.threshold.value = -24  // Start compressing at -24dB
+    this.compressor.knee.value = 12        // Soft knee for natural sound
+    this.compressor.ratio.value = 4        // 4:1 compression ratio
+    this.compressor.attack.value = 0.003   // 3ms attack
+    this.compressor.release.value = 0.25   // 250ms release
+    this.compressor.connect(this.context.destination)
+
+    // Create analyser for spectrum visualization
+    this.analyser = this.context.createAnalyser()
+    this.analyser.fftSize = 256  // 128 frequency bins
+    this.analyser.smoothingTimeConstant = 0.8
+    this.analyserData = new Uint8Array(this.analyser.frequencyBinCount)
+
+    // Master bus -> analyser -> compressor -> destination
     const masterGain = this.context.createGain()
     masterGain.gain.value = this.busVolumes.master
-    masterGain.connect(this.context.destination)
+    masterGain.connect(this.analyser)
+    this.analyser.connect(this.compressor)
     this.buses.set('master', masterGain)
 
-    // Sub-buses -> master
+    // Create reverb convolver for casino ambience
+    const convolver = this.context.createConvolver()
+    const reverbGain = this.context.createGain()
+    reverbGain.gain.value = 0.15 // Subtle reverb
+    convolver.connect(reverbGain)
+    reverbGain.connect(masterGain)
+
+    // Generate impulse response for small room reverb
+    this.generateImpulseResponse(convolver)
+
+    // Sub-buses -> master (with reverb send for sfx/slots)
     const busIds: BusId[] = ['ambient', 'sfx', 'slots', 'ui']
     for (const busId of busIds) {
       const gain = this.context.createGain()
       gain.gain.value = this.busVolumes[busId]
       gain.connect(masterGain)
+
+      // Add reverb send for sfx and slots buses
+      if (busId === 'sfx' || busId === 'slots') {
+        const sendGain = this.context.createGain()
+        sendGain.gain.value = 0.3 // Reverb send amount
+        gain.connect(sendGain)
+        sendGain.connect(convolver)
+      }
+
       this.buses.set(busId, gain)
     }
+  }
+
+  private generateImpulseResponse(convolver: ConvolverNode): void {
+    if (!this.context) return
+
+    // Generate synthetic impulse response for small room
+    const sampleRate = this.context.sampleRate
+    const length = sampleRate * 0.8 // 0.8 second reverb tail
+    const impulse = this.context.createBuffer(2, length, sampleRate)
+
+    for (let channel = 0; channel < 2; channel++) {
+      const data = impulse.getChannelData(channel)
+      for (let i = 0; i < length; i++) {
+        // Exponential decay with random noise
+        const decay = Math.exp(-3 * i / length)
+        data[i] = (Math.random() * 2 - 1) * decay
+      }
+    }
+
+    convolver.buffer = impulse
   }
 
   private async loadAllSounds(): Promise<void> {
@@ -462,6 +526,91 @@ class AudioSystem {
     if (this.context?.state === 'suspended') {
       await this.context.resume()
     }
+  }
+
+  /**
+   * Start ducking - reduce other buses for important sounds (jackpot, etc)
+   * @param duckAmount - How much to reduce (0.3 = reduce to 30%)
+   * @param fadeTime - Fade duration in seconds
+   */
+  startDucking(duckAmount = 0.3, fadeTime = 0.3): void {
+    if (!this.context || this.isDucking) return
+    this.isDucking = true
+
+    const now = this.context.currentTime
+    const busesToDuck: BusId[] = ['ambient', 'sfx', 'ui']
+
+    for (const busId of busesToDuck) {
+      const bus = this.buses.get(busId)
+      if (bus) {
+        // Store original volume
+        this.duckingTargets.set(busId, bus.gain.value)
+        // Fade down
+        bus.gain.setValueAtTime(bus.gain.value, now)
+        bus.gain.linearRampToValueAtTime(bus.gain.value * duckAmount, now + fadeTime)
+      }
+    }
+  }
+
+  /**
+   * Stop ducking - restore original bus volumes
+   * @param fadeTime - Fade duration in seconds
+   */
+  stopDucking(fadeTime = 0.5): void {
+    if (!this.context || !this.isDucking) return
+    this.isDucking = false
+
+    const now = this.context.currentTime
+
+    for (const [busId, originalVolume] of this.duckingTargets) {
+      const bus = this.buses.get(busId)
+      if (bus) {
+        bus.gain.setValueAtTime(bus.gain.value, now)
+        bus.gain.linearRampToValueAtTime(originalVolume, now + fadeTime)
+      }
+    }
+
+    this.duckingTargets.clear()
+  }
+
+  /**
+   * Get frequency data for spectrum visualization
+   * Returns array of 0-255 values for each frequency bin
+   */
+  getFrequencyData(): Uint8Array | null {
+    if (!this.analyser || !this.analyserData) return null
+    this.analyser.getByteFrequencyData(this.analyserData)
+    return this.analyserData
+  }
+
+  /**
+   * Get average volume level (0-1) for reactive effects
+   */
+  getAverageVolume(): number {
+    const data = this.getFrequencyData()
+    if (!data) return 0
+
+    let sum = 0
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i]
+    }
+    return sum / (data.length * 255)
+  }
+
+  /**
+   * Get bass level (0-1) for reactive effects
+   */
+  getBassLevel(): number {
+    const data = this.getFrequencyData()
+    if (!data) return 0
+
+    // First 8 bins are bass frequencies
+    let sum = 0
+    const bassRange = Math.min(8, data.length)
+    for (let i = 0; i < bassRange; i++) {
+      sum += data[i]
+    }
+    return sum / (bassRange * 255)
   }
 
   /**

@@ -243,3 +243,32 @@ export function playPhaseTransition(volume = 0.4): void {
   }
   playSynthTransition(volume)
 }
+
+// ============================================
+// DUCKING & ANALYSIS HELPERS
+// ============================================
+
+// Start ducking for important moments (jackpot, etc)
+export function startDucking(duckAmount = 0.3, fadeTime = 0.3): void {
+  audioSystem.startDucking(duckAmount, fadeTime)
+}
+
+// Stop ducking and restore volumes
+export function stopDucking(fadeTime = 0.5): void {
+  audioSystem.stopDucking(fadeTime)
+}
+
+// Get frequency data for visualizers
+export function getFrequencyData(): Uint8Array | null {
+  return audioSystem.getFrequencyData()
+}
+
+// Get average volume (0-1)
+export function getAverageVolume(): number {
+  return audioSystem.getAverageVolume()
+}
+
+// Get bass level (0-1) for reactive effects
+export function getBassLevel(): number {
+  return audioSystem.getBassLevel()
+}

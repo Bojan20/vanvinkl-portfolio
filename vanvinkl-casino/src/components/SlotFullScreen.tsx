@@ -35,7 +35,9 @@ import {
   playPhaseTransition,
   playSound,
   playSynthJackpot,
-  playSynthWin
+  playSynthWin,
+  startDucking,
+  stopDucking
 } from '../audio'
 import { achievementStore } from '../store/achievements'
 
@@ -1552,13 +1554,6 @@ const FullContentPanel = memo(function FullContentPanel({
           <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: '14px' }}>{section.tagline}</p>
         </div>
 
-        {/* Navigation hints */}
-        <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#555' }}>
-          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: primaryColor }}>↑↓</span> Navigacija</span>
-          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: COLORS.gold }}>ENTER</span> Detalji</span>
-          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: COLORS.cyan }}>SPACE</span> Spin</span>
-          <span><span style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', color: '#ff4444' }}>ESC</span> Izlaz</span>
-        </div>
       </div>
 
       {/* Main Content Area */}
@@ -3504,7 +3499,7 @@ export function SlotFullScreen({
   onClose: () => void
   onNavigate?: (id: string) => void
 }) {
-  const [phase, setPhase] = useState<'intro' | 'spinning' | 'result' | 'content'>('intro')
+  const [phase, setPhase] = useState<'intro' | 'spinning' | 'result' | 'content'>('spinning')
   const [focusIndex, setFocusIndex] = useState(0)
   const [spinCount, setSpinCount] = useState(0)
   const [skillsDiscovered, setSkillsDiscovered] = useState(new Set<string>())
@@ -3514,7 +3509,6 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
-  const [showKeyboardHints, setShowKeyboardHints] = useState(false)
   const [showMobileHints, setShowMobileHints] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -3556,9 +3550,12 @@ export function SlotFullScreen({
         setPhase('result')
         // Play win sounds and haptic feedback
         if (isJackpot) {
+          startDucking(0.3, 0.2) // Duck other audio to 30% for jackpot emphasis
           playSynthJackpot(0.7) // Epic jackpot fanfare
           haptic.jackpot() // Strong haptic pattern for jackpot
           achievementStore.trackJackpot() // Track jackpot achievement
+          // Restore audio after jackpot fanfare
+          setTimeout(() => stopDucking(0.8), 3000)
         } else {
           playSynthWin(0.5) // Regular win sound
           haptic.success() // Success haptic pattern
@@ -3591,10 +3588,6 @@ export function SlotFullScreen({
       if (isMobile) {
         setShowMobileHints(true)
         const timer = setTimeout(() => setShowMobileHints(false), 4000)
-        return () => clearTimeout(timer)
-      } else {
-        setShowKeyboardHints(true)
-        const timer = setTimeout(() => setShowKeyboardHints(false), 4000)
         return () => clearTimeout(timer)
       }
     }
@@ -4317,8 +4310,7 @@ export function SlotFullScreen({
         transform: 'translate(-50%, -50%)',
         background: `radial-gradient(ellipse, ${primaryColor}12 0%, ${primaryColor}05 30%, transparent 60%)`,
         pointerEvents: 'none',
-        opacity: phase === 'intro' ? 0 : 1,
-        transition: 'opacity 0.5s ease'
+        opacity: 1
       }} />
 
       {/* Floating particles background - only during spinning/result, NOT in content */}
@@ -4368,8 +4360,8 @@ export function SlotFullScreen({
           justifyContent: 'center',
           zIndex: 1001,
           transition: 'all 0.3s ease',
-          opacity: phase === 'intro' ? 0 : 1,
-          transform: phase === 'intro' ? 'scale(0.5)' : 'scale(1)'
+          opacity: 1,
+          transform: 'scale(1)'
         }}
         onMouseEnter={e => {
           e.currentTarget.style.background = 'rgba(255,60,60,0.3)'
@@ -4407,8 +4399,7 @@ export function SlotFullScreen({
               0 0 80px ${primaryColor}15
             `,
             border: `2px solid ${primaryColor}30`,
-            position: 'relative',
-            animation: spinCount === 1 ? 'machineReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+            position: 'relative'
           }}>
             {/* Outer chrome frame */}
             <div style={{
@@ -4749,125 +4740,6 @@ export function SlotFullScreen({
             touchAction: 'pan-y' // Allow vertical scroll, capture horizontal
           }}
         >
-          {/* Keyboard Hints Overlay - shows on entry (Desktop only) */}
-          {showKeyboardHints && !isMobile && (
-            <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '20px',
-              padding: '40px 60px',
-              background: 'rgba(0,0,0,0.85)',
-              borderRadius: '24px',
-              border: `2px solid ${primaryColor}40`,
-              boxShadow: `0 0 60px ${primaryColor}30, 0 20px 60px rgba(0,0,0,0.5)`,
-              animation: 'keyboardHintsEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), keyboardHintsFade 0.8s ease-out 3.2s forwards',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <div style={{
-                color: primaryColor,
-                fontSize: '18px',
-                fontWeight: 'bold',
-                letterSpacing: '3px',
-                textTransform: 'uppercase',
-                textShadow: `0 0 20px ${primaryColor}60`
-              }}>
-                KEYBOARD CONTROLS
-              </div>
-              <div style={{ display: 'flex', gap: '40px' }}>
-                {/* Arrow keys */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 40px)',
-                    gridTemplateRows: 'repeat(2, 40px)',
-                    gap: '4px'
-                  }}>
-                    <div />
-                    <div style={{
-                      background: `${primaryColor}20`,
-                      border: `1px solid ${primaryColor}60`,
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: primaryColor,
-                      fontSize: '16px',
-                      boxShadow: `0 0 15px ${primaryColor}30`
-                    }}>↑</div>
-                    <div />
-                    <div style={{
-                      background: `${primaryColor}20`,
-                      border: `1px solid ${primaryColor}60`,
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: primaryColor,
-                      fontSize: '16px',
-                      boxShadow: `0 0 15px ${primaryColor}30`
-                    }}>←</div>
-                    <div style={{
-                      background: `${primaryColor}20`,
-                      border: `1px solid ${primaryColor}60`,
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: primaryColor,
-                      fontSize: '16px',
-                      boxShadow: `0 0 15px ${primaryColor}30`
-                    }}>↓</div>
-                    <div style={{
-                      background: `${primaryColor}20`,
-                      border: `1px solid ${primaryColor}60`,
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: primaryColor,
-                      fontSize: '16px',
-                      boxShadow: `0 0 15px ${primaryColor}30`
-                    }}>→</div>
-                  </div>
-                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>NAVIGATE</span>
-                </div>
-                {/* Enter key */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    background: `${primaryColor}20`,
-                    border: `1px solid ${primaryColor}60`,
-                    borderRadius: '8px',
-                    padding: '10px 24px',
-                    color: primaryColor,
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    boxShadow: `0 0 15px ${primaryColor}30`
-                  }}>ENTER</div>
-                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>SELECT</span>
-                </div>
-                {/* ESC key */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    background: 'rgba(255,68,68,0.2)',
-                    border: '1px solid rgba(255,68,68,0.6)',
-                    borderRadius: '8px',
-                    padding: '10px 20px',
-                    color: '#ff6666',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    boxShadow: '0 0 15px rgba(255,68,68,0.3)'
-                  }}>ESC</div>
-                  <span style={{ color: '#888', fontSize: '12px', letterSpacing: '1px' }}>BACK</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Mobile Hints Overlay - shows on entry (Mobile only) */}
           {showMobileHints && isMobile && (

@@ -9,6 +9,20 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    minify: 'terser'
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Split Three.js into separate chunk for parallel loading
+          if (id.includes('node_modules/three/')) {
+            return 'vendor-three'
+          }
+          // Other vendor libs
+          if (id.includes('node_modules/')) {
+            return 'vendor'
+          }
+        }
+      }
+    }
   }
 })
