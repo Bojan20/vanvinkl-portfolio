@@ -119,7 +119,6 @@ export function ContextLostOverlay({ onRetry }: ContextLostOverlayProps) {
             background: `linear-gradient(135deg, ${COLORS.cyan}, ${COLORS.magenta})`,
             border: 'none',
             borderRadius: '8px',
-            cursor: 'pointer',
             transition: 'transform 0.1s'
           }}
           onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
@@ -294,8 +293,7 @@ export class WebGLErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
                   color: COLORS.cyan,
                   background: 'transparent',
                   border: `1px solid ${COLORS.cyan}`,
-                  borderRadius: '6px',
-                  cursor: 'pointer'
+                  borderRadius: '6px'
                 }}
               >
                 Try Again
@@ -310,8 +308,7 @@ export class WebGLErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
                   color: '#000',
                   background: COLORS.cyan,
                   border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
+                  borderRadius: '6px'
                 }}
               >
                 Reload Page

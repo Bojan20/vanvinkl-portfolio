@@ -183,13 +183,29 @@ class AudioDSP {
   }
 
   private async playAsync(id: string, instanceId: string): Promise<void> {
-    if (!this.ctx || this.muted) return
+    if (!this.ctx) {
+      console.warn('[AudioDSP] No context for playback')
+      return
+    }
+    if (this.muted) {
+      console.log('[AudioDSP] Muted, skipping:', id)
+      return
+    }
 
     const config = this.sounds.get(id)
-    if (!config) return
+    if (!config) {
+      console.warn('[AudioDSP] Unknown sound:', id)
+      return
+    }
 
+    console.log('[AudioDSP] Loading:', id, config.url)
     const buffer = await this.load(id)
-    if (!buffer || !this.ctx) return
+    if (!buffer) {
+      console.warn('[AudioDSP] Failed to load buffer:', id)
+      return
+    }
+    if (!this.ctx) return
+    console.log('[AudioDSP] Playing:', id)
 
     // Create nodes
     const source = this.ctx.createBufferSource()
@@ -374,8 +390,8 @@ export const audioDSP = new AudioDSP()
 // ============================================
 
 audioDSP.registerAll({
-  // Music
-  lounge: { url: '/audio/ambient/lounge.wav', volume: 0.35, loop: true, bus: 'music' },
+  // Music (MP3 for faster loading - 4MB vs 48MB WAV)
+  lounge: { url: '/audio/ambient/lounge.mp3', volume: 0.35, loop: true, bus: 'music' },
   casinoHum: { url: '/audio/ambient/casino-hum.wav', volume: 0.2, loop: true, bus: 'music' },
   neonBuzz: { url: '/audio/ambient/neon-buzz.wav', volume: 0.15, loop: true, bus: 'music' },
 

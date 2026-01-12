@@ -1445,7 +1445,6 @@ function getNavigableItems(section: SlotSection): { icon: string; title: string;
                 borderRadius: '30px',
                 fontSize: '16px',
                 fontWeight: 'bold',
-                cursor: 'pointer',
                 marginTop: '20px'
               }}
             >
@@ -1471,7 +1470,7 @@ const FullContentPanel = memo(function FullContentPanel({
   isJackpot: boolean
   primaryColor: string
 }) {
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [selectedIndex, setSelectedIndex] = useState(-1) // -1 = nothing selected initially
   const [showDetails, setShowDetails] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -1487,18 +1486,34 @@ const FullContentPanel = memo(function FullContentPanel({
         if (showDetails) {
           setShowDetails(false)
         } else {
-          setSelectedIndex(prev => (prev - 1 + items.length) % items.length)
+          // If nothing selected, select first item
+          if (selectedIndex === -1) {
+            setSelectedIndex(0)
+          } else {
+            setSelectedIndex(prev => (prev - 1 + items.length) % items.length)
+          }
         }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
         e.preventDefault()
         if (showDetails) {
           setShowDetails(false)
         } else {
-          setSelectedIndex(prev => (prev + 1) % items.length)
+          // If nothing selected, select first item
+          if (selectedIndex === -1) {
+            setSelectedIndex(0)
+          } else {
+            setSelectedIndex(prev => (prev + 1) % items.length)
+          }
         }
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        setShowDetails(prev => !prev)
+        // Only toggle details if something is selected
+        if (selectedIndex >= 0) {
+          setShowDetails(prev => !prev)
+        } else {
+          // Select first item on Enter when nothing selected
+          setSelectedIndex(0)
+        }
       } else if (e.key === 'Backspace') {
         e.preventDefault()
         setShowDetails(false)
@@ -1507,17 +1522,17 @@ const FullContentPanel = memo(function FullContentPanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [visible, items.length, showDetails])
+  }, [visible, items.length, showDetails, selectedIndex])
 
   // Reset on section change
   useEffect(() => {
-    setSelectedIndex(0)
+    setSelectedIndex(-1) // Start with nothing selected
     setShowDetails(false)
   }, [section?.id])
 
   if (!visible || !section || items.length === 0) return null
 
-  const selectedItem = items[selectedIndex]
+  const selectedItem = selectedIndex >= 0 ? items[selectedIndex] : null
 
   return (
     <div ref={containerRef} style={{
@@ -1582,7 +1597,6 @@ const FullContentPanel = memo(function FullContentPanel({
                 padding: '16px 20px',
                 marginBottom: '8px',
                 borderRadius: '12px',
-                cursor: 'pointer',
                 background: index === selectedIndex
                   ? `linear-gradient(135deg, ${primaryColor}20 0%, ${primaryColor}10 100%)`
                   : 'rgba(255,255,255,0.02)',
@@ -1627,7 +1641,7 @@ const FullContentPanel = memo(function FullContentPanel({
         </div>
 
         {/* Details Panel (Right) */}
-        {showDetails && (
+        {showDetails && selectedItem && (
           <div style={{
             flex: 1,
             padding: '30px 40px',
@@ -1969,7 +1983,6 @@ const FullContactContent = memo(function FullContactContent({ section }: { secti
               border: '2px solid rgba(255,68,68,0.3)',
               borderRadius: '20px',
               padding: '30px 25px',
-              cursor: 'pointer',
               textAlign: 'center',
               transition: 'all 0.2s ease',
               animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`
@@ -2189,113 +2202,90 @@ const SpinButton = memo(function SpinButton({ spinning, onSpin, color }: { spinn
 // CONTENT VIEWS - FULL SCREEN (Memoized)
 // ============================================
 const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: SkillsSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   // Flatten all skills for navigation
   let itemIndex = 0
+  const catCount = section.categories.length
+  const columns = catCount <= 2 ? catCount : catCount <= 4 ? 2 : 3
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, 1fr)`,
+      gap: '40px',
+      maxWidth: '1400px',
+      margin: '0 auto'
+    }}>
       {section.categories.map((cat, catIdx) => (
         <div key={cat.name} style={{ animation: `fadeSlideIn 0.5s ease-out ${catIdx * 0.1}s both` }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            marginBottom: '16px',
-            animation: 'holoFlicker 4s ease-in-out infinite',
-            animationDelay: `${catIdx * 0.5}s`
+            gap: '14px',
+            marginBottom: '24px',
+            paddingBottom: '14px',
+            borderBottom: `2px solid ${cat.color}40`
           }}>
             <span style={{
-              fontSize: '32px',
-              filter: `drop-shadow(0 0 10px ${cat.color})`,
-              animation: 'neonItemPulse 2s ease-in-out infinite'
+              fontSize: '36px',
+              filter: `drop-shadow(0 0 12px ${cat.color})`
             }}>{cat.icon}</span>
             <span style={{
               color: cat.color,
               fontWeight: 'bold',
-              fontSize: '20px',
+              fontSize: '22px',
               letterSpacing: '2px',
-              textShadow: `0 0 10px ${cat.color}60`
+              textShadow: `0 0 12px ${cat.color}50`
             }}>{cat.name}</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {cat.skills.map(skill => {
               const currentIndex = itemIndex
               const isFocused = focusIndex === currentIndex
-              const isHovered = hoveredIndex === currentIndex
-              const isActive = isFocused || isHovered
               itemIndex++
               return (
                 <div
                   key={skill.name}
-                  onMouseEnter={() => setHoveredIndex(currentIndex)}
-                  onMouseLeave={() => setHoveredIndex(null)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    background: isActive ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.02)',
-                    border: isActive ? `2px solid ${cat.color}` : '2px solid rgba(255,255,255,0.05)',
-                    boxShadow: isActive ? `0 0 30px ${cat.color}50, inset 0 0 20px ${cat.color}10` : 'none',
-                    transform: isActive ? 'scale(1.03) translateX(10px)' : 'scale(1)',
-                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    padding: '14px 18px',
+                    borderRadius: '14px',
+                    background: isFocused ? `linear-gradient(135deg, ${cat.color}15, ${cat.color}05)` : 'rgba(255,255,255,0.02)',
+                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: isFocused ? `0 8px 30px ${cat.color}25` : 'none',
+                    transition: 'all 0.3s ease'
                   }}
                 >
-                  {/* Hover beam effect */}
-                  {isActive && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 0, bottom: 0, left: '-20%',
-                      width: '20%',
-                      background: `linear-gradient(90deg, transparent, ${cat.color}40, transparent)`,
-                      animation: 'beamScan 1s ease-out',
-                      pointerEvents: 'none'
-                    }} />
-                  )}
                   <span style={{
-                    color: isActive ? '#fff' : '#aaaacc',
+                    color: isFocused ? '#fff' : '#aaaacc',
                     fontSize: '16px',
-                    width: '140px',
-                    fontWeight: isActive ? '600' : '500',
-                    textShadow: isActive ? `0 0 10px ${cat.color}` : 'none'
+                    minWidth: '110px',
+                    flex: '0 0 auto',
+                    fontWeight: isFocused ? '600' : '500'
                   }}>{skill.name}</span>
                   <div style={{
                     flex: 1,
                     height: '14px',
                     background: 'rgba(255,255,255,0.08)',
                     borderRadius: '7px',
-                    overflow: 'hidden',
-                    position: 'relative'
+                    overflow: 'hidden'
                   }}>
                     <div style={{
                       width: `${skill.level}%`,
                       height: '100%',
-                      background: `linear-gradient(90deg, ${cat.color}90, ${cat.color}, ${cat.color}90)`,
+                      background: `linear-gradient(90deg, ${cat.color}90, ${cat.color})`,
                       borderRadius: '7px',
-                      boxShadow: isActive ? `0 0 20px ${cat.color}80` : `0 0 10px ${cat.color}40`,
-                      animation: `barGrow 1s ease-out ${catIdx * 0.1}s both`,
-                      position: 'relative'
-                    }}>
-                      {/* Shine effect */}
-                      <div style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0,
-                        height: '50%',
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)',
-                        borderRadius: '7px 7px 0 0'
-                      }} />
-                    </div>
+                      boxShadow: isFocused ? `0 0 18px ${cat.color}60` : `0 0 10px ${cat.color}30`,
+                      animation: `barGrow 1s ease-out ${catIdx * 0.1}s both`
+                    }} />
                   </div>
                   <span style={{
                     color: cat.color,
                     fontSize: '16px',
                     width: '55px',
                     fontWeight: 'bold',
-                    textShadow: isActive ? `0 0 15px ${cat.color}` : 'none'
+                    textAlign: 'right'
                   }}>{skill.level}%</span>
                 </div>
               )
@@ -2308,101 +2298,62 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
 })
 
 const ServicesView = memo(function ServicesView({ section, focusIndex }: { section: ServicesSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const itemCount = section.items.length
+  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, 1fr)`,
+      gap: '28px',
+      maxWidth: columns === 2 ? '900px' : '1400px',
+      margin: '0 auto'
+    }}>
       {section.items.map((item, i) => {
         const isFocused = focusIndex === i
-        const isHovered = hoveredIndex === i
-        const isActive = isFocused || isHovered
         return (
           <div
             key={item.title}
-            onMouseEnter={() => setHoveredIndex(i)}
-            onMouseLeave={() => setHoveredIndex(null)}
             style={{
-              background: isActive
-                ? 'linear-gradient(135deg, rgba(255,0,170,0.2), rgba(255,0,170,0.08))'
-                : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-              borderRadius: '24px',
-              padding: '32px',
-              border: isActive ? '2px solid #ff00aa' : '1px solid rgba(255,0,170,0.15)',
+              background: isFocused
+                ? 'linear-gradient(135deg, rgba(255,0,170,0.15), rgba(255,0,170,0.05))'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
+              borderRadius: '20px',
+              padding: '36px',
+              border: isFocused ? '2px solid #ff00aa' : '1px solid rgba(255,0,170,0.12)',
               animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-              transform: isActive ? 'scale(1.04) translateY(-5px)' : 'scale(1)',
-              boxShadow: isActive
-                ? '0 15px 40px rgba(255,0,170,0.35), 0 0 60px rgba(255,0,170,0.2), inset 0 0 30px rgba(255,0,170,0.1)'
-                : '0 4px 20px rgba(0,0,0,0.2)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              cursor: 'pointer',
-              position: 'relative',
-              overflow: 'hidden'
+              boxShadow: isFocused
+                ? '0 16px 50px rgba(255,0,170,0.2)'
+                : '0 6px 25px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s ease'
             }}
           >
-            {/* Corner accents */}
-            {isActive && (
-              <>
-                <div style={{
-                  position: 'absolute', top: '8px', left: '8px',
-                  width: '20px', height: '20px',
-                  borderTop: '2px solid #ff00aa',
-                  borderLeft: '2px solid #ff00aa',
-                  animation: 'focusTrail 0.5s ease-out'
-                }} />
-                <div style={{
-                  position: 'absolute', top: '8px', right: '8px',
-                  width: '20px', height: '20px',
-                  borderTop: '2px solid #ff00aa',
-                  borderRight: '2px solid #ff00aa',
-                  animation: 'focusTrail 0.5s ease-out 0.1s'
-                }} />
-                <div style={{
-                  position: 'absolute', bottom: '8px', left: '8px',
-                  width: '20px', height: '20px',
-                  borderBottom: '2px solid #ff00aa',
-                  borderLeft: '2px solid #ff00aa',
-                  animation: 'focusTrail 0.5s ease-out 0.2s'
-                }} />
-                <div style={{
-                  position: 'absolute', bottom: '8px', right: '8px',
-                  width: '20px', height: '20px',
-                  borderBottom: '2px solid #ff00aa',
-                  borderRight: '2px solid #ff00aa',
-                  animation: 'focusTrail 0.5s ease-out 0.3s'
-                }} />
-              </>
-            )}
             <div style={{
-              fontSize: '56px',
+              fontSize: '52px',
               marginBottom: '20px',
-              filter: isActive ? 'drop-shadow(0 0 20px rgba(255,0,170,0.6))' : 'none',
-              transform: isActive ? 'scale(1.1)' : 'scale(1)',
-              transition: 'all 0.3s ease'
+              filter: isFocused ? 'drop-shadow(0 0 18px rgba(255,0,170,0.5))' : 'none'
             }}>{item.icon}</div>
             <h3 style={{
               margin: '0 0 14px 0',
               color: '#ff00aa',
-              fontSize: '22px',
-              fontWeight: 'bold',
-              textShadow: isActive ? '0 0 20px rgba(255,0,170,0.5)' : 'none'
+              fontSize: '24px',
+              fontWeight: 'bold'
             }}>{item.title}</h3>
             <p style={{
               margin: '0 0 20px 0',
-              color: isActive ? '#ddd' : '#888899',
+              color: isFocused ? '#ccc' : '#888899',
               fontSize: '15px',
               lineHeight: 1.7
             }}>{item.description}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {item.features.map((f, fi) => (
+              {item.features.map((f) => (
                 <span key={f} style={{
                   fontSize: '12px',
                   padding: '8px 14px',
-                  background: isActive ? 'rgba(255,0,170,0.25)' : 'rgba(255,0,170,0.12)',
-                  borderRadius: '20px',
+                  background: 'rgba(255,0,170,0.1)',
+                  borderRadius: '14px',
                   color: '#ff00aa',
-                  fontWeight: '600',
-                  transform: isActive ? `translateY(-2px)` : 'translateY(0)',
-                  transition: `all 0.3s ease ${fi * 0.05}s`,
-                  boxShadow: isActive ? '0 4px 12px rgba(255,0,170,0.3)' : 'none'
+                  fontWeight: '600'
                 }}>{f}</span>
               ))}
             </div>
@@ -2414,81 +2365,71 @@ const ServicesView = memo(function ServicesView({ section, focusIndex }: { secti
 })
 
 const AboutView = memo(function AboutView({ section, focusIndex }: { section: AboutSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   return (
     <div style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
-      <p style={{
-        color: '#ccccee',
-        fontSize: '20px',
-        lineHeight: 1.8,
+      {/* Bio - prominent centered text */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(136,68,255,0.08), rgba(136,68,255,0.02))',
+        borderRadius: '20px',
+        padding: '40px',
         marginBottom: '40px',
-        textAlign: 'center',
-        maxWidth: '700px',
-        margin: '0 auto 40px',
-        textShadow: '0 2px 20px rgba(0,0,0,0.5)'
+        border: '1px solid rgba(136,68,255,0.15)',
+        maxWidth: '1000px',
+        margin: '0 auto 40px'
       }}>
-        {section.bio}
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+        <p style={{
+          color: '#ddddf0',
+          fontSize: '20px',
+          lineHeight: 1.9,
+          textAlign: 'center',
+          margin: 0,
+          textShadow: '0 2px 15px rgba(0,0,0,0.4)'
+        }}>
+          {section.bio}
+        </p>
+      </div>
+      {/* Stats grid - 4 in a row on desktop, 2 on tablet, 1 on mobile */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${Math.min(section.stats.length, 4)}, 1fr)`,
+        gap: '24px',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
         {section.stats.map((stat, i) => {
           const isFocused = focusIndex === i
-          const isHovered = hoveredIndex === i
-          const isActive = isFocused || isHovered
           return (
             <div
               key={stat.label}
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
               style={{
-                background: isActive
-                  ? 'linear-gradient(135deg, rgba(136,68,255,0.3), rgba(136,68,255,0.1))'
-                  : 'linear-gradient(135deg, rgba(136,68,255,0.12), rgba(136,68,255,0.05))',
-                borderRadius: '24px',
-                padding: '32px 24px',
+                background: isFocused
+                  ? 'linear-gradient(135deg, rgba(136,68,255,0.18), rgba(136,68,255,0.06))'
+                  : 'linear-gradient(135deg, rgba(136,68,255,0.06), rgba(136,68,255,0.02))',
+                borderRadius: '20px',
+                padding: '40px 24px',
                 textAlign: 'center',
-                border: isActive ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.2)',
+                border: isFocused ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.12)',
                 animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-                transform: isActive ? 'scale(1.08) translateY(-8px)' : 'scale(1)',
-                boxShadow: isActive
-                  ? '0 20px 50px rgba(136,68,255,0.4), 0 0 60px rgba(136,68,255,0.2), inset 0 0 30px rgba(136,68,255,0.1)'
-                  : '0 4px 20px rgba(0,0,0,0.2)',
-                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                cursor: 'pointer',
-                position: 'relative',
-                overflow: 'hidden'
+                boxShadow: isFocused ? '0 16px 50px rgba(136,68,255,0.2)' : '0 6px 25px rgba(0,0,0,0.12)',
+                transition: 'all 0.3s ease'
               }}
             >
-              {/* Glow ring effect */}
-              {isActive && (
-                <div style={{
-                  position: 'absolute',
-                  inset: '-2px',
-                  borderRadius: '26px',
-                  background: 'linear-gradient(135deg, #8844ff, #aa66ff, #8844ff)',
-                  opacity: 0.3,
-                  animation: 'focusRingPulse 1.5s ease-in-out infinite',
-                  zIndex: -1
-                }} />
-              )}
               <div style={{
-                fontSize: '48px',
+                fontSize: '52px',
                 marginBottom: '16px',
-                filter: isActive ? 'drop-shadow(0 0 20px rgba(136,68,255,0.8))' : 'none',
-                transform: isActive ? 'scale(1.15)' : 'scale(1)',
-                transition: 'all 0.3s ease',
-                animation: isActive ? 'neonItemPulse 2s ease-in-out infinite' : 'none'
+                filter: isFocused ? 'drop-shadow(0 0 20px rgba(136,68,255,0.6))' : 'none'
               }}>{stat.icon}</div>
               <div style={{
                 color: '#8844ff',
                 fontWeight: 'bold',
-                fontSize: '28px',
-                marginBottom: '8px',
-                textShadow: isActive ? '0 0 20px rgba(136,68,255,0.8)' : 'none',
-                fontFamily: 'monospace'
+                fontSize: '40px',
+                marginBottom: '10px',
+                fontFamily: 'monospace',
+                textShadow: isFocused ? '0 0 20px rgba(136,68,255,0.4)' : 'none'
               }}>{stat.value}</div>
               <div style={{
-                color: isActive ? '#bbb' : '#666688',
-                fontSize: '13px',
+                color: isFocused ? '#bbb' : '#666688',
+                fontSize: '14px',
                 textTransform: 'uppercase',
                 letterSpacing: '2px',
                 fontWeight: 600
@@ -2502,108 +2443,70 @@ const AboutView = memo(function AboutView({ section, focusIndex }: { section: Ab
 })
 
 const ProjectsView = memo(function ProjectsView({ section, focusIndex }: { section: ProjectsSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const itemCount = section.featured.length
+  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, 1fr)`,
+      gap: '28px',
+      maxWidth: columns === 2 ? '950px' : '1400px',
+      margin: '0 auto'
+    }}>
       {section.featured.map((proj, i) => {
         const isFocused = focusIndex === i
-        const isHovered = hoveredIndex === i
-        const isActive = isFocused || isHovered
         return (
           <div
             key={proj.title}
-            onMouseEnter={() => setHoveredIndex(i)}
-            onMouseLeave={() => setHoveredIndex(null)}
             style={{
-              background: isActive ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.03)',
+              background: isFocused
+                ? 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04))'
+                : 'linear-gradient(135deg, rgba(255,215,0,0.04), rgba(255,215,0,0.01))',
               borderRadius: '20px',
-              padding: '28px',
-              border: isActive ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+              padding: '36px',
+              border: isFocused ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.12)',
               animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-              transform: isActive ? 'scale(1.05) translateY(-6px)' : 'scale(1)',
-              boxShadow: isActive
-                ? '0 20px 50px rgba(255,215,0,0.35), 0 0 60px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
-                : '0 4px 20px rgba(0,0,0,0.3)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              position: 'relative',
-              overflow: 'hidden',
-              cursor: 'pointer'
+              boxShadow: isFocused ? '0 16px 50px rgba(255,215,0,0.15)' : '0 6px 25px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s ease'
             }}
           >
-            {/* Gold shimmer effect on active */}
-            {isActive && (
-              <div style={{
-                position: 'absolute',
-                top: 0, left: '-100%',
-                width: '200%', height: '100%',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.1) 50%, transparent 100%)',
-                animation: 'shimmerSweep 2s ease-in-out infinite',
-                pointerEvents: 'none'
-              }} />
-            )}
-            {/* Corner accents */}
-            <div style={{
-              position: 'absolute', top: '8px', left: '8px',
-              width: '20px', height: '20px',
-              borderTop: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
-              borderLeft: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
-              transition: 'all 0.3s ease',
-              opacity: isActive ? 1 : 0
-            }} />
-            <div style={{
-              position: 'absolute', bottom: '8px', right: '8px',
-              width: '20px', height: '20px',
-              borderBottom: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
-              borderRight: `2px solid ${isActive ? '#ffd700' : 'transparent'}`,
-              transition: 'all 0.3s ease',
-              opacity: isActive ? 1 : 0
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <span style={{
-                fontSize: '48px',
-                filter: isActive ? 'drop-shadow(0 0 10px rgba(255,215,0,0.6))' : 'none',
-                transform: isActive ? 'scale(1.1) rotate(-5deg)' : 'scale(1)',
-                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                display: 'inline-block'
+                fontSize: '52px',
+                filter: isFocused ? 'drop-shadow(0 0 15px rgba(255,215,0,0.5))' : 'none'
               }}>{proj.icon}</span>
               <span style={{
-                color: isActive ? '#ffd700' : '#666688',
-                fontSize: '14px',
-                background: isActive ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                transition: 'all 0.3s ease',
-                boxShadow: isActive ? '0 0 15px rgba(255,215,0,0.3)' : 'none'
+                color: '#ffd700',
+                fontSize: '13px',
+                background: 'rgba(255,215,0,0.12)',
+                padding: '8px 16px',
+                borderRadius: '14px',
+                fontWeight: 600,
+                border: '1px solid rgba(255,215,0,0.25)'
               }}>{proj.year}</span>
             </div>
             <h3 style={{
               margin: '0 0 12px 0',
               color: '#ffd700',
-              fontSize: '22px',
-              fontWeight: 'bold',
-              textShadow: isActive ? '0 0 20px rgba(255,215,0,0.5)' : 'none',
-              transition: 'text-shadow 0.3s ease'
+              fontSize: '24px',
+              fontWeight: 'bold'
             }}>{proj.title}</h3>
             <p style={{
-              margin: '0 0 16px 0',
-              color: isActive ? '#ddd' : '#888899',
+              margin: '0 0 20px 0',
+              color: isFocused ? '#ccc' : '#888899',
               fontSize: '15px',
-              lineHeight: 1.5,
-              transition: 'color 0.3s ease'
+              lineHeight: 1.7
             }}>{proj.description}</p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {proj.tags.map((t, ti) => (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {proj.tags.map((t) => (
                 <span key={t} style={{
                   fontSize: '12px',
-                  padding: '6px 12px',
-                  background: isActive ? 'rgba(255,215,0,0.25)' : 'rgba(255,215,0,0.15)',
-                  borderRadius: '20px',
+                  padding: '8px 14px',
+                  background: 'rgba(255,215,0,0.1)',
+                  borderRadius: '14px',
                   color: '#ffd700',
-                  fontWeight: '500',
-                  transform: isActive ? `translateY(-2px)` : 'translateY(0)',
-                  transition: `all 0.3s ease ${ti * 0.05}s`,
-                  boxShadow: isActive ? '0 4px 12px rgba(255,215,0,0.2)' : 'none'
+                  fontWeight: '500'
                 }}>{t}</span>
               ))}
             </div>
@@ -2615,96 +2518,72 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex }: { secti
 })
 
 const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { section: ExperienceSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const itemCount = section.timeline.length
+  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '700px', margin: '0 auto' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, 1fr)`,
+      gap: '28px',
+      maxWidth: columns === 1 ? '600px' : columns === 2 ? '1000px' : '1400px',
+      margin: '0 auto'
+    }}>
       {section.timeline.map((item, i) => {
         const isFocused = focusIndex === i
-        const isHovered = hoveredIndex === i
-        const isActive = isFocused || isHovered
         return (
           <div
             key={item.period}
-            onMouseEnter={() => setHoveredIndex(i)}
-            onMouseLeave={() => setHoveredIndex(null)}
             style={{
-              borderLeft: isActive ? '4px solid #00ff88' : '3px solid rgba(0,255,136,0.4)',
-              paddingLeft: '28px',
-              animation: `fadeSlideIn 0.5s ease-out ${i * 0.15}s both`,
-              position: 'relative',
-              background: isActive ? 'rgba(0,255,136,0.1)' : 'transparent',
-              padding: isActive ? '24px 28px' : '0 0 0 28px',
-              borderRadius: isActive ? '0 16px 16px 0' : '0',
-              boxShadow: isActive
-                ? '0 15px 40px rgba(0,255,136,0.25), inset 0 1px 0 rgba(255,255,255,0.05)'
-                : 'none',
-              transform: isActive ? 'translateX(10px)' : 'translateX(0)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              cursor: 'pointer'
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
+              background: isFocused
+                ? 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,255,136,0.03))'
+                : 'linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,255,136,0.01))',
+              padding: '28px',
+              borderRadius: '16px',
+              border: isFocused ? '2px solid #00ff88' : '1px solid rgba(0,255,136,0.15)',
+              boxShadow: isFocused ? '0 12px 40px rgba(0,255,136,0.15)' : '0 4px 20px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s ease'
             }}
           >
-            {/* Timeline dot with pulse */}
-            <div style={{
-              position: 'absolute',
-              left: '-10px',
-              top: isActive ? '24px' : '0',
-              width: isActive ? '20px' : '14px',
-              height: isActive ? '20px' : '14px',
-              borderRadius: '50%',
-              background: '#00ff88',
-              boxShadow: isActive ? '0 0 30px #00ff88, 0 0 60px rgba(0,255,136,0.5)' : '0 0 15px #00ff88',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              animation: isActive ? 'timelineDotPulse 1.5s ease-in-out infinite' : 'none'
-            }} />
-            {/* Connecting line glow */}
-            {isActive && (
+            {/* Header row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ flex: '1 1 auto' }}>
+                <div style={{
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  fontSize: '22px',
+                  marginBottom: '4px'
+                }}>{item.role}</div>
+                <div style={{
+                  color: isFocused ? '#00ff88' : '#888899',
+                  fontSize: '16px',
+                  fontWeight: '500'
+                }}>{item.company}</div>
+              </div>
               <div style={{
-                position: 'absolute',
-                left: '-2px',
-                top: 0,
-                bottom: 0,
-                width: '4px',
-                background: 'linear-gradient(180deg, transparent 0%, #00ff88 20%, #00ff88 80%, transparent 100%)',
-                filter: 'blur(4px)',
-                opacity: 0.6
-              }} />
-            )}
-            <div style={{
-              color: '#00ff88',
-              fontSize: '14px',
-              marginBottom: '8px',
-              fontWeight: '600',
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              textShadow: isActive ? '0 0 15px rgba(0,255,136,0.6)' : 'none',
-              transition: 'all 0.3s ease'
-            }}>{item.period}</div>
-            <div style={{
-              color: '#ffffff',
-              fontWeight: 'bold',
-              fontSize: '24px',
-              marginBottom: '6px',
-              textShadow: isActive ? '0 0 20px rgba(255,255,255,0.3)' : 'none',
-              transition: 'all 0.3s ease'
-            }}>{item.role}</div>
-            <div style={{
-              color: isActive ? '#00ff88' : '#888899',
-              fontSize: '16px',
-              marginBottom: '16px',
-              fontWeight: isActive ? '500' : '400',
-              transition: 'all 0.3s ease'
-            }}>{item.company}</div>
+                color: '#00ff88',
+                fontSize: '12px',
+                fontWeight: '600',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                padding: '8px 16px',
+                background: 'rgba(0,255,136,0.1)',
+                borderRadius: '20px',
+                border: '1px solid rgba(0,255,136,0.3)',
+                textShadow: isFocused ? '0 0 10px rgba(0,255,136,0.4)' : 'none',
+                whiteSpace: 'nowrap',
+                flex: '0 0 auto'
+              }}>{item.period}</div>
+            </div>
+            {/* Highlights */}
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
               {item.highlights.map((h, j) => (
                 <li key={j} style={{
-                  color: isActive ? '#bbb' : '#777799',
-                  fontSize: '15px',
-                  marginBottom: '10px',
-                  lineHeight: 1.6,
-                  transition: 'all 0.3s ease',
-                  transform: isActive ? 'translateX(5px)' : 'translateX(0)',
-                  transitionDelay: `${j * 0.05}s`
+                  color: isFocused ? '#ccc' : '#888899',
+                  fontSize: '14px',
+                  marginBottom: '8px',
+                  lineHeight: 1.6
                 }}>{h}</li>
               ))}
             </ul>
@@ -2716,7 +2595,6 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
 })
 
 const ContactView = memo(function ContactView({ section, focusIndex }: { section: ContactSection, focusIndex: number }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
   const handleClick = (method: typeof section.methods[0], index: number) => {
@@ -2731,107 +2609,87 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
     }
   }
 
+  // Determine columns based on item count
+  const itemCount = section.methods.length
+  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
+
   return (
-    <div style={{ animation: 'fadeSlideIn 0.5s ease-out', textAlign: 'center' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', maxWidth: '600px', margin: '0 auto 40px' }}>
+    <div style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
+      {/* Contact cards - fixed columns based on count */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gap: '28px',
+        maxWidth: columns === 2 ? '800px' : '1200px',
+        margin: '0 auto 50px'
+      }}>
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i
-          const isHovered = hoveredIndex === i
-          const isActive = isFocused || isHovered
           const isCopied = copiedIndex === i
           return (
             <button
               key={method.label}
               onClick={() => handleClick(method, i)}
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
               style={{
-                background: isActive ? 'rgba(255,68,68,0.2)' : 'rgba(255,68,68,0.05)',
-                border: isActive ? '2px solid #ff4444' : '2px solid rgba(255,68,68,0.25)',
+                background: isFocused
+                  ? 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))'
+                  : 'linear-gradient(135deg, rgba(255,68,68,0.06), rgba(255,68,68,0.02))',
+                border: isFocused ? '2px solid #ff4444' : '1px solid rgba(255,68,68,0.12)',
                 borderRadius: '20px',
-                padding: '32px 28px',
-                cursor: 'pointer',
+                padding: '48px 32px',
                 textAlign: 'center',
-                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both${isActive ? ', contactGlow 2s ease-in-out infinite' : ''}`,
-                transform: isActive ? 'scale(1.08) translateY(-8px)' : 'scale(1)',
-                boxShadow: isActive
-                  ? '0 20px 50px rgba(255,68,68,0.35), 0 0 60px rgba(255,68,68,0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
-                  : '0 4px 20px rgba(0,0,0,0.3)',
-                outline: 'none',
-                position: 'relative',
-                overflow: 'hidden'
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
+                boxShadow: isFocused
+                  ? '0 16px 50px rgba(255,68,68,0.2)'
+                  : '0 6px 30px rgba(0,0,0,0.12)',
+                outline: 'none'
               }}
             >
-              {/* Glow overlay on active */}
-              {isActive && (
-                <div style={{
-                  position: 'absolute',
-                  top: '-50%', left: '-50%',
-                  width: '200%', height: '200%',
-                  background: 'radial-gradient(circle, rgba(255,68,68,0.15) 0%, transparent 70%)',
-                  animation: 'pulseGlow 2s ease-in-out infinite',
-                  pointerEvents: 'none'
-                }} />
-              )}
-              {/* Corner brackets */}
               <div style={{
-                position: 'absolute', top: '10px', left: '10px',
-                width: '16px', height: '16px',
-                borderTop: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
-                borderLeft: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
-                transition: 'all 0.3s ease',
-                opacity: isActive ? 1 : 0
-              }} />
-              <div style={{
-                position: 'absolute', bottom: '10px', right: '10px',
-                width: '16px', height: '16px',
-                borderBottom: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
-                borderRight: `2px solid ${isActive ? '#ff4444' : 'transparent'}`,
-                transition: 'all 0.3s ease',
-                opacity: isActive ? 1 : 0
-              }} />
-              <div style={{
-                fontSize: '44px',
-                marginBottom: '14px',
-                filter: isActive ? 'drop-shadow(0 0 12px rgba(255,68,68,0.6))' : 'none',
-                transform: isActive ? 'scale(1.15) rotate(5deg)' : 'scale(1)',
-                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                position: 'relative'
+                fontSize: '60px',
+                marginBottom: '20px',
+                filter: isFocused ? 'drop-shadow(0 0 15px rgba(255,68,68,0.6))' : 'none',
+                transition: 'all 0.3s ease'
               }}>{method.icon}</div>
               <div style={{
-                color: isActive ? '#ff6666' : '#ff4444',
+                color: isFocused ? '#ff6666' : '#ff4444',
                 fontWeight: 'bold',
-                fontSize: '19px',
-                marginBottom: '6px',
-                textShadow: isActive ? '0 0 15px rgba(255,68,68,0.5)' : 'none',
-                transition: 'all 0.3s ease',
-                position: 'relative'
+                fontSize: '26px',
+                marginBottom: '12px',
+                transition: 'all 0.3s ease'
               }}>{method.label}</div>
               <div style={{
-                color: isActive ? '#aaa' : '#777788',
-                fontSize: '14px',
-                transition: 'color 0.3s ease',
-                position: 'relative'
+                color: isFocused ? '#bbb' : '#777788',
+                fontSize: '16px',
+                transition: 'color 0.3s ease'
               }}>
-                {isCopied ? 'Copied!' : method.value}
+                {isCopied ? '✓ Copied!' : method.value}
               </div>
             </button>
           )
         })}
       </div>
-      <p style={{
-        color: '#00ff88',
-        fontSize: '18px',
-        fontWeight: '500',
-        textShadow: '0 0 20px rgba(0,255,136,0.3)'
-      }}>
-        {section.availability}
-      </p>
-      {/* Keyboard hint */}
-      <div style={{ marginTop: '30px', color: '#444466', fontSize: '14px', display: 'flex', gap: '20px', justifyContent: 'center' }}>
-        <span><span style={{ color: '#666688', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>←→↑↓</span> Navigate</span>
-        <span><span style={{ color: '#666688', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>ENTER</span> Open</span>
+      {/* Availability badge */}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-block',
+          background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))',
+          padding: '18px 48px',
+          borderRadius: '30px',
+          border: '1px solid rgba(0,255,136,0.3)'
+        }}>
+          <p style={{
+            color: '#00ff88',
+            fontSize: '22px',
+            fontWeight: '600',
+            margin: 0,
+            textShadow: '0 0 20px rgba(0,255,136,0.4)'
+          }}>
+            {section.availability}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -3488,9 +3346,6 @@ const WinSparkles = memo(function WinSparkles({ active, color = '#00ffff' }: { a
 // ============================================
 // MAIN COMPONENT
 // ============================================
-// Detect mobile/touch device
-const isTouchDevice = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0
-
 export function SlotFullScreen({
   machineId,
   onClose
@@ -3500,7 +3355,7 @@ export function SlotFullScreen({
   onNavigate?: (id: string) => void
 }) {
   const [phase, setPhase] = useState<'intro' | 'spinning' | 'result' | 'content'>('spinning')
-  const [focusIndex, setFocusIndex] = useState(0)
+  const [focusIndex, setFocusIndex] = useState(-1) // -1 = nothing focused initially
   const [spinCount, setSpinCount] = useState(0)
   const [skillsDiscovered, setSkillsDiscovered] = useState(new Set<string>())
   const [currentIndices, setCurrentIndices] = useState([0, 0, 0, 0, 0])
@@ -3509,8 +3364,6 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
-  const [showMobileHints, setShowMobileHints] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
 
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -3588,24 +3441,14 @@ export function SlotFullScreen({
   // Reset focus when entering content phase
   useEffect(() => {
     if (phase === 'content') {
-      setFocusIndex(0)
-      // Show appropriate hints based on device type
-      if (isMobile) {
-        setShowMobileHints(true)
-        const timer = setTimeout(() => setShowMobileHints(false), 4000)
-        return () => clearTimeout(timer)
-      }
+      setFocusIndex(-1) // Start with nothing focused
     }
-  }, [phase, isMobile])
+  }, [phase])
 
   useEffect(() => {
     markVisited(machineId)
   }, [machineId])
 
-  // Detect mobile on mount
-  useEffect(() => {
-    setIsMobile(isTouchDevice())
-  }, [])
 
   // Touch/swipe handlers for mobile navigation
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -3638,28 +3481,44 @@ export function SlotFullScreen({
         if (deltaX > 0) {
           // Swipe right = previous
           playNavTick()
-          setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
+          }
         } else {
           // Swipe left = next
           playNavTick()
-          setFocusIndex(prev => (prev + 1) % itemCount)
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => (prev + 1) % itemCount)
+          }
         }
       } else if (Math.abs(deltaY) > minSwipeDistance) {
         // Vertical swipe
         if (deltaY > 0) {
           // Swipe down = previous row
           playNavTick()
-          setFocusIndex(prev => {
-            const newIdx = prev - cols
-            return newIdx < 0 ? prev : newIdx
-          })
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => {
+              const newIdx = prev - cols
+              return newIdx < 0 ? prev : newIdx
+            })
+          }
         } else {
           // Swipe up = next row
           playNavTick()
-          setFocusIndex(prev => {
-            const newIdx = prev + cols
-            return newIdx >= itemCount ? prev : newIdx
-          })
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => {
+              const newIdx = prev + cols
+              return newIdx >= itemCount ? prev : newIdx
+            })
+          }
         }
       }
     }
@@ -3828,19 +3687,32 @@ export function SlotFullScreen({
           e.preventDefault()
           playNavTick() // Sound: navigation tick
           haptic.light() // Haptic: light tap
-          setFocusIndex(prev => (prev + 1) % itemCount)
+          // If nothing focused, select first item
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => (prev + 1) % itemCount)
+          }
           break
         case 'ArrowLeft':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
           haptic.light() // Haptic: light tap
-          setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
+          // If nothing focused, select first item
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else {
+            setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
+          }
           break
         case 'ArrowDown':
           e.preventDefault()
           playNavTick() // Sound: navigation tick
           haptic.light() // Haptic: light tap
-          if (columns > 1) {
+          // If nothing focused, select first item
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev + columns
               return next < itemCount ? next : prev
@@ -3853,7 +3725,10 @@ export function SlotFullScreen({
           e.preventDefault()
           playNavTick() // Sound: navigation tick
           haptic.light() // Haptic: light tap
-          if (columns > 1) {
+          // If nothing focused, select first item
+          if (focusIndex === -1) {
+            setFocusIndex(0)
+          } else if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev - columns
               return next >= 0 ? next : prev
@@ -3864,10 +3739,16 @@ export function SlotFullScreen({
           break
         case 'Enter':
           e.preventDefault()
-          playNavSelect() // Sound: item select
-          playModalOpen() // Sound: modal open
-          haptic.medium() // Haptic: medium tap for selection
-          handleActivate(focusIndex)
+          // Only activate if something is focused
+          if (focusIndex >= 0) {
+            playNavSelect() // Sound: item select
+            playModalOpen() // Sound: modal open
+            haptic.medium() // Haptic: medium tap for selection
+            handleActivate(focusIndex)
+          } else {
+            // Select first item on Enter when nothing focused
+            setFocusIndex(0)
+          }
           break
       }
     }
@@ -4359,7 +4240,6 @@ export function SlotFullScreen({
           border: `2px solid ${primaryColor}40`,
           color: primaryColor,
           fontSize: '28px',
-          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -4647,20 +4527,26 @@ export function SlotFullScreen({
               </div>
             )}
 
-            {/* ENTER prompt in result phase */}
+            {/* ENTER/TAP prompt in result phase */}
             {phase === 'result' && (
-              <div style={{
-                position: 'absolute',
-                bottom: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px',
-                animation: 'resultPromptReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
-                zIndex: 200
-              }}>
+              <div
+                onClick={() => {
+                  // Tap/click to view details
+                  playNavForward()
+                  setPhase('content')
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: '20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  animation: 'resultPromptReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
+                  zIndex: 200
+                }}>
                 {/* Pulsing arrow */}
                 <div style={{
                   fontSize: '24px',
@@ -4692,7 +4578,7 @@ export function SlotFullScreen({
                     letterSpacing: '2px',
                     boxShadow: `0 0 20px ${primaryColor}60`
                   }}>
-                    ENTER
+                    TAP
                   </span>
                   <span style={{
                     color: '#fff',
@@ -4711,8 +4597,10 @@ export function SlotFullScreen({
                   letterSpacing: '2px',
                   textTransform: 'uppercase'
                 }}>
-                  <span style={{ color: '#888', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>SPACE</span>
-                  {' '}Spin Again
+                  <span style={{ color: '#888', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                    X
+                  </span>
+                  {' '}to close
                 </div>
               </div>
             )}
@@ -4739,98 +4627,12 @@ export function SlotFullScreen({
             width: '100%',
             height: '100%',
             overflow: 'auto',
-            padding: isMobile ? '40px 20px' : '60px 40px',
+            padding: '60px 40px',
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             position: 'relative',
-            touchAction: 'pan-y' // Allow vertical scroll, capture horizontal
+            touchAction: 'pan-y'
           }}
         >
-
-          {/* Mobile Hints Overlay - shows on entry (Mobile only) */}
-          {showMobileHints && isMobile && (
-            <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '24px',
-              padding: '32px 40px',
-              background: 'rgba(0,0,0,0.9)',
-              borderRadius: '20px',
-              border: `2px solid ${primaryColor}40`,
-              boxShadow: `0 0 60px ${primaryColor}30, 0 20px 60px rgba(0,0,0,0.5)`,
-              animation: 'keyboardHintsEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), keyboardHintsFade 0.8s ease-out 3.2s forwards',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <div style={{
-                color: primaryColor,
-                fontSize: '16px',
-                fontWeight: 'bold',
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
-                textShadow: `0 0 20px ${primaryColor}60`
-              }}>
-                TOUCH CONTROLS
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-                {/* Swipe gesture */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '60px',
-                    height: '40px',
-                    background: `${primaryColor}20`,
-                    border: `1px solid ${primaryColor}60`,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: primaryColor,
-                    fontSize: '20px'
-                  }}>
-                    <span style={{ animation: 'swipeHint 1.5s ease-in-out infinite' }}>👆</span>
-                  </div>
-                  <span style={{ color: '#aaa', fontSize: '14px' }}>Swipe to navigate</span>
-                </div>
-                {/* Tap gesture */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '60px',
-                    height: '40px',
-                    background: `${primaryColor}20`,
-                    border: `1px solid ${primaryColor}60`,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: primaryColor,
-                    fontSize: '20px'
-                  }}>👆</div>
-                  <span style={{ color: '#aaa', fontSize: '14px' }}>Tap item to select</span>
-                </div>
-                {/* Back button info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '60px',
-                    height: '40px',
-                    background: 'rgba(255,68,68,0.2)',
-                    border: '1px solid rgba(255,68,68,0.6)',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ff6666',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>✕</div>
-                  <span style={{ color: '#aaa', fontSize: '14px' }}>Top-right to close</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Epic light burst on entry */}
           <div style={{
@@ -4840,7 +4642,7 @@ export function SlotFullScreen({
             width: '300vw',
             height: '300vh',
             transform: 'translate(-50%, -50%)',
-            background: `radial-gradient(circle, ${primaryColor}40 0%, ${primaryColor}20 20%, transparent 50%)`,
+            background: `radial-gradient(circle, ${primaryColor}30 0%, ${primaryColor}15 20%, transparent 50%)`,
             animation: 'contentLightBurst 1.5s ease-out forwards',
             pointerEvents: 'none',
             zIndex: 0
@@ -4852,23 +4654,23 @@ export function SlotFullScreen({
             top: 0,
             left: 0,
             right: 0,
-            height: '4px',
+            height: '3px',
             background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
             animation: 'contentScanBeam 0.8s ease-out forwards',
-            boxShadow: `0 0 30px ${primaryColor}, 0 0 60px ${primaryColor}`,
+            boxShadow: `0 0 20px ${primaryColor}, 0 0 40px ${primaryColor}`,
             pointerEvents: 'none',
             zIndex: 100
           }} />
 
-          {/* Corner accents */}
+          {/* Corner accents - smaller for cleaner look */}
           <div style={{
             position: 'fixed',
             top: 0,
             left: 0,
-            width: '150px',
-            height: '150px',
-            borderTop: `3px solid ${primaryColor}`,
-            borderLeft: `3px solid ${primaryColor}`,
+            width: '80px',
+            height: '80px',
+            borderTop: `2px solid ${primaryColor}60`,
+            borderLeft: `2px solid ${primaryColor}60`,
             animation: 'contentCornerReveal 0.6s ease-out 0.3s both',
             pointerEvents: 'none',
             zIndex: 50
@@ -4877,10 +4679,10 @@ export function SlotFullScreen({
             position: 'fixed',
             top: 0,
             right: 0,
-            width: '150px',
-            height: '150px',
-            borderTop: `3px solid ${primaryColor}`,
-            borderRight: `3px solid ${primaryColor}`,
+            width: '80px',
+            height: '80px',
+            borderTop: `2px solid ${primaryColor}60`,
+            borderRight: `2px solid ${primaryColor}60`,
             animation: 'contentCornerReveal 0.6s ease-out 0.4s both',
             pointerEvents: 'none',
             zIndex: 50
@@ -4889,10 +4691,10 @@ export function SlotFullScreen({
             position: 'fixed',
             bottom: 0,
             left: 0,
-            width: '150px',
-            height: '150px',
-            borderBottom: `3px solid ${primaryColor}`,
-            borderLeft: `3px solid ${primaryColor}`,
+            width: '80px',
+            height: '80px',
+            borderBottom: `2px solid ${primaryColor}60`,
+            borderLeft: `2px solid ${primaryColor}60`,
             animation: 'contentCornerReveal 0.6s ease-out 0.5s both',
             pointerEvents: 'none',
             zIndex: 50
@@ -4901,115 +4703,100 @@ export function SlotFullScreen({
             position: 'fixed',
             bottom: 0,
             right: 0,
-            width: '150px',
-            height: '150px',
-            borderBottom: `3px solid ${primaryColor}`,
-            borderRight: `3px solid ${primaryColor}`,
+            width: '80px',
+            height: '80px',
+            borderBottom: `2px solid ${primaryColor}60`,
+            borderRight: `2px solid ${primaryColor}60`,
             animation: 'contentCornerReveal 0.6s ease-out 0.6s both',
             pointerEvents: 'none',
             zIndex: 50
           }} />
 
-          <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
-            {/* Header with dramatic entrance */}
+          <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+            {/* Header - compact and left-aligned for desktop */}
             <div style={{
-              textAlign: 'center',
-              marginBottom: '50px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '40px',
+              paddingBottom: '24px',
+              borderBottom: `1px solid ${primaryColor}30`,
               animation: 'contentTitleDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
             }}>
-              <h1 style={{
-                margin: 0,
-                fontSize: '64px',
-                fontWeight: 900,
-                color: primaryColor,
-                textShadow: `
-                  0 0 30px ${primaryColor}80,
-                  0 0 60px ${primaryColor}60,
-                  0 0 100px ${primaryColor}40,
-                  0 4px 20px rgba(0,0,0,0.8)
-                `,
-                letterSpacing: '8px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                animation: 'contentTitleGlow 2s ease-in-out infinite 1s'
-              }}>
-                {section.title}
-              </h1>
-              <p style={{
-                margin: '16px 0 0 0',
-                color: '#888899',
-                fontSize: '20px',
-                fontStyle: 'italic',
-                animation: 'contentTaglineSlide 0.6s ease-out 0.5s both'
-              }}>
-                {section.tagline}
-              </p>
-              {/* Underline effect */}
+              <div>
+                <h1 style={{
+                  margin: 0,
+                  fontSize: 'clamp(32px, 5vw, 56px)',
+                  fontWeight: 900,
+                  color: primaryColor,
+                  textShadow: `
+                    0 0 20px ${primaryColor}60,
+                    0 0 40px ${primaryColor}40
+                  `,
+                  letterSpacing: '4px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif'
+                }}>
+                  {section.title}
+                </h1>
+                <p style={{
+                  margin: '8px 0 0 0',
+                  color: '#666688',
+                  fontSize: '16px',
+                  fontStyle: 'italic'
+                }}>
+                  {section.tagline}
+                </p>
+              </div>
+              {/* Section icon */}
               <div style={{
-                width: '200px',
-                height: '2px',
-                background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
-                margin: '20px auto 0',
-                animation: 'contentUnderlineExpand 0.8s ease-out 0.7s both'
-              }} />
+                fontSize: '48px',
+                filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
+                opacity: 0.8
+              }}>
+                {section.type === 'skills' ? '⚡' :
+                 section.type === 'services' ? '🎯' :
+                 section.type === 'about' ? '👤' :
+                 section.type === 'projects' ? '🚀' :
+                 section.type === 'experience' ? '📈' :
+                 section.type === 'contact' ? '💬' : '✨'}
+              </div>
             </div>
 
-            {/* Content with staggered reveal */}
+            {/* Content - full width utilization */}
             <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both' }}>
               <ContentView section={section} focusIndex={focusIndex} />
             </div>
 
-            {/* ESC hint with glow - Desktop only */}
-            {!isMobile && (
-              <div style={{
-                textAlign: 'center',
-                marginTop: '60px',
-                color: '#666688',
-                fontSize: '14px',
-                animation: 'contentHintFade 0.5s ease-out 1s both'
-              }}>
-                Press <span style={{
-                  color: primaryColor,
-                  padding: '6px 16px',
-                  background: `${primaryColor}15`,
-                  borderRadius: '8px',
-                  border: `1px solid ${primaryColor}30`,
-                  boxShadow: `0 0 20px ${primaryColor}20`
-                }}>ESC</span> to return
-              </div>
-            )}
           </div>
 
-          {/* Mobile Close Button - Fixed position */}
-          {isMobile && (
-            <button
-              onClick={() => {
-                playNavBack()
-                onClose()
-              }}
-              style={{
-                position: 'fixed',
-                top: '20px',
-                right: '20px',
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                background: 'rgba(255,68,68,0.9)',
-                border: '2px solid #ff6666',
-                color: '#fff',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                zIndex: 1001,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-                animation: 'contentHintFade 0.5s ease-out 0.5s both'
-              }}
-            >
-              ✕
-            </button>
-          )}
+          {/* Close Button - Fixed position (always visible) */}
+          <button
+            onClick={() => {
+              playNavBack()
+              onClose()
+            }}
+            style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              width: '50px',
+              height: '50px',
+              borderRadius: '50%',
+              background: 'rgba(255,68,68,0.9)',
+              border: '2px solid #ff6666',
+              color: '#fff',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
+              animation: 'contentHintFade 0.5s ease-out 0.5s both'
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
 

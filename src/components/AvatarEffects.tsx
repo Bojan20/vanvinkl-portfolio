@@ -1,11 +1,10 @@
 /**
- * AVATAR EFFECTS - OPTIMIZED
+ * AVATAR PARTICLE TRAIL
  *
- * Performance rules:
- * - Use Points instead of multiple meshes
- * - Pre-allocate all buffers
- * - NO per-frame allocations
- * - Minimal draw calls
+ * Suptilan trail iza avatara - isti stil kao cursor trail
+ * - Mali cyan/magenta particles
+ * - Pojavljuju se samo kad se avatar kreće
+ * - Idu iza avatara u smeru kretanja
  */
 
 import { useRef, useMemo } from 'react'
@@ -18,23 +17,26 @@ const COLORS = {
 }
 
 // ============================================
-// FOOTSTEP PARTICLES - Optimized points system
+// AVATAR PARTICLE TRAIL - Cursor-style trail behind avatar
 // ============================================
-export function FootstepParticles({
+export function AvatarParticleTrail({
   positionRef,
-  isMoving
+  isMovingRef
 }: {
   positionRef: React.MutableRefObject<THREE.Vector3>
-  isMoving: boolean
+  isMovingRef: React.MutableRefObject<boolean>
 }) {
-  const particlesRef = useRef<THREE.Points>(null!)
-  const particleCount = 30 // Reduced
+  const pointsRef = useRef<THREE.Points>(null!)
+  const particleCount = 60
   const spawnTimer = useRef(0)
-  const lastSpawnPos = useRef(new THREE.Vector3())
+  const prevPos = useRef(new THREE.Vector3())
+  const initialized = useRef(false)
 
+  // Per-particle data
   const data = useRef({
     velocities: new Float32Array(particleCount * 3),
-    lifetimes: new Float32Array(particleCount)
+    lifetimes: new Float32Array(particleCount),
+    maxLifetimes: new Float32Array(particleCount)
   })
 
   const geometry = useMemo(() => {
@@ -54,6 +56,9 @@ export function FootstepParticles({
       colors[i3] = color.r
       colors[i3 + 1] = color.g
       colors[i3 + 2] = color.b
+
+      data.current.lifetimes[i] = 0
+      data.current.maxLifetimes[i] = 0.5
     }
 
     const geo = new THREE.BufferGeometry()
@@ -62,175 +67,132 @@ export function FootstepParticles({
     return geo
   }, [])
 
-  useFrame((_, delta) => {
-    if (!particlesRef.current) return
-
-    const posAttr = geometry.attributes.position as THREE.BufferAttribute
-    const posArray = posAttr.array as Float32Array
-    const vel = data.current.velocities
-    const life = data.current.lifetimes
-
-    // Spawn when moving
-    if (isMoving) {
-      spawnTimer.current += delta
-      const dist = lastSpawnPos.current.distanceTo(positionRef.current)
-
-      if (spawnTimer.current > 0.08 && dist > 0.3) {
-        spawnTimer.current = 0
-        lastSpawnPos.current.copy(positionRef.current)
-
-        // Find dead particle
-        for (let i = 0; i < particleCount; i++) {
-          if (life[i] <= 0) {
-            const i3 = i * 3
-            posArray[i3] = positionRef.current.x + (Math.random() - 0.5) * 0.2
-            posArray[i3 + 1] = 0.05
-            posArray[i3 + 2] = positionRef.current.z + (Math.random() - 0.5) * 0.2
-
-            const angle = Math.random() * Math.PI * 2
-            vel[i3] = Math.cos(angle) * 0.3
-            vel[i3 + 1] = 1 + Math.random() * 0.5
-            vel[i3 + 2] = Math.sin(angle) * 0.3
-            life[i] = 0.4
-            break
-          }
-        }
-      }
-    }
-
-    // Update all
-    let needsUpdate = false
-    for (let i = 0; i < particleCount; i++) {
-      if (life[i] > 0) {
-        const i3 = i * 3
-        life[i] -= delta
-        posArray[i3] += vel[i3] * delta
-        posArray[i3 + 1] += vel[i3 + 1] * delta
-        posArray[i3 + 2] += vel[i3 + 2] * delta
-        vel[i3 + 1] -= 4 * delta
-
-        if (life[i] <= 0) {
-          posArray[i3 + 1] = -100
-        }
-        needsUpdate = true
-      }
-    }
-
-    if (needsUpdate) posAttr.needsUpdate = true
-  })
-
-  return (
-    <points ref={particlesRef} geometry={geometry}>
-      <pointsMaterial
-        size={0.06}
-        vertexColors
-        transparent
-        opacity={0.8}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </points>
-  )
-}
-
-// ============================================
-// GHOST TRAIL - Using Points instead of meshes
-// ============================================
-export function GhostTrail({
-  positionRef,
-  rotationRef
-}: {
-  positionRef: React.MutableRefObject<THREE.Vector3>
-  rotationRef: React.MutableRefObject<number>
-  isMoving: boolean
-}) {
-  const pointsRef = useRef<THREE.Points>(null!)
-  const ghostCount = 5
-  const updateTimer = useRef(0)
-
-  const history = useRef<THREE.Vector3[]>(
-    Array(ghostCount).fill(null).map(() => new THREE.Vector3(0, -100, 0))
-  )
-
-  const geometry = useMemo(() => {
-    const positions = new Float32Array(ghostCount * 3)
-    const sizes = new Float32Array(ghostCount)
-
-    for (let i = 0; i < ghostCount; i++) {
-      positions[i * 3] = 0
-      positions[i * 3 + 1] = -100 // Hidden initially
-      positions[i * 3 + 2] = 0
-      sizes[i] = 0.3 * (1 - i / ghostCount * 0.6) // Decreasing size
-    }
-
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    return geo
+  const material = useMemo(() => {
+    return new THREE.PointsMaterial({
+      size: 0.08, // Small like cursor trail
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+      sizeAttenuation: true
+    })
   }, [])
 
   useFrame((_, delta) => {
     if (!pointsRef.current) return
 
-    updateTimer.current += delta
+    // Initialize on first frame
+    if (!initialized.current) {
+      prevPos.current.copy(positionRef.current)
+      initialized.current = true
+    }
 
-    if (updateTimer.current > 0.04) {
-      updateTimer.current = 0
+    const posAttr = geometry.attributes.position as THREE.BufferAttribute
+    const posArray = posAttr.array as Float32Array
+    const vel = data.current.velocities
+    const life = data.current.lifetimes
+    const maxLife = data.current.maxLifetimes
 
-      // Shift positions
-      for (let i = ghostCount - 1; i > 0; i--) {
-        history.current[i].copy(history.current[i - 1])
+    // Calculate movement
+    const vx = positionRef.current.x - prevPos.current.x
+    const vz = positionRef.current.z - prevPos.current.z
+    const speed = Math.sqrt(vx * vx + vz * vz)
+    prevPos.current.copy(positionRef.current)
+
+    // Only spawn when moving
+    if (isMovingRef.current && speed > 0.01) {
+      spawnTimer.current += delta
+
+      // Spawn based on speed - faster = more particles
+      const spawnRate = Math.max(0.02, 0.06 - speed * 0.5)
+
+      if (spawnTimer.current > spawnRate) {
+        spawnTimer.current = 0
+
+        // Spawn 1-2 particles behind avatar
+        const count = speed > 0.1 ? 2 : 1
+
+        for (let c = 0; c < count; c++) {
+          for (let i = 0; i < particleCount; i++) {
+            if (life[i] <= 0) {
+              const i3 = i * 3
+
+              // Spawn behind avatar (opposite of movement direction)
+              const backOffset = 0.3 + Math.random() * 0.2
+              const sideOffset = (Math.random() - 0.5) * 0.3
+
+              // Normalize movement direction
+              const len = Math.max(0.001, speed)
+              const dirX = -vx / len
+              const dirZ = -vz / len
+
+              // Position behind avatar feet
+              posArray[i3] = positionRef.current.x + dirX * backOffset + dirZ * sideOffset
+              posArray[i3 + 1] = 0.05 + Math.random() * 0.1 // Near floor
+              posArray[i3 + 2] = positionRef.current.z + dirZ * backOffset - dirX * sideOffset
+
+              // Slow drift velocity
+              vel[i3] = (Math.random() - 0.5) * 0.3 + dirX * 0.2
+              vel[i3 + 1] = 0.3 + Math.random() * 0.4 // Gentle rise
+              vel[i3 + 2] = (Math.random() - 0.5) * 0.3 + dirZ * 0.2
+
+              life[i] = 1.0
+              maxLife[i] = 0.4 + Math.random() * 0.3
+
+              break
+            }
+          }
+        }
       }
-      history.current[0].copy(positionRef.current)
+    }
 
-      // Update geometry
-      const posAttr = geometry.attributes.position as THREE.BufferAttribute
-      const posArray = posAttr.array as Float32Array
-
-      for (let i = 0; i < ghostCount; i++) {
+    // Update particles
+    let needsUpdate = false
+    for (let i = 0; i < particleCount; i++) {
+      if (life[i] > 0) {
         const i3 = i * 3
-        posArray[i3] = history.current[i].x
-        posArray[i3 + 1] = i === 0 ? -100 : 0.15 // Hide first (avatar position)
-        posArray[i3 + 2] = history.current[i].z
-      }
 
+        life[i] -= delta / maxLife[i]
+
+        // Update position
+        posArray[i3] += vel[i3] * delta
+        posArray[i3 + 1] += vel[i3 + 1] * delta
+        posArray[i3 + 2] += vel[i3 + 2] * delta
+
+        // Slow down and slight gravity
+        vel[i3] *= 0.95
+        vel[i3 + 1] -= 0.5 * delta
+        vel[i3 + 2] *= 0.95
+
+        if (life[i] <= 0) {
+          posArray[i3 + 1] = -100
+        }
+
+        needsUpdate = true
+      }
+    }
+
+    if (needsUpdate) {
       posAttr.needsUpdate = true
     }
   })
 
   return (
-    <points ref={pointsRef} geometry={geometry}>
-      <pointsMaterial
-        size={0.25}
-        color={COLORS.magenta}
-        transparent
-        opacity={0.3}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        toneMapped={false}
-        sizeAttenuation
-      />
-    </points>
+    <points ref={pointsRef} geometry={geometry} material={material} frustumCulled={false} />
   )
 }
 
 // ============================================
-// COMBINED - Minimal components
+// MAIN EXPORT
 // ============================================
 export function AvatarEffects({
   positionRef,
-  rotationRef,
-  isMoving
+  isMovingRef
 }: {
   positionRef: React.MutableRefObject<THREE.Vector3>
-  rotationRef: React.MutableRefObject<number>
-  isMoving: boolean
+  isMovingRef: React.MutableRefObject<boolean>
 }) {
-  return (
-    <>
-      <FootstepParticles positionRef={positionRef} isMoving={isMoving} />
-      <GhostTrail positionRef={positionRef} rotationRef={rotationRef} isMoving={isMoving} />
-    </>
-  )
+  return <AvatarParticleTrail positionRef={positionRef} isMovingRef={isMovingRef} />
 }

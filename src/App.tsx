@@ -10,7 +10,7 @@ import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 import { CasinoScene } from './components/CasinoScene'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
 import { MobileControls, isMobileDevice } from './components/MobileControls'
-import { MagicCursorFull } from './components/MagicCursor'
+// MagicCursor removed - particle trail now follows avatar instead
 
 // Lazy load SlotFullScreen for better initial bundle size
 const SlotFullScreen = lazy(() => import('./components/SlotFullScreen').then(m => ({ default: m.SlotFullScreen })))
@@ -27,65 +27,6 @@ import { setSynthVolume } from './audio/SynthSounds'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 
-// Controls HUD - compact bottom-center display (desktop only)
-function ControlsHUD() {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        gap: '20px',
-        padding: '10px 24px',
-        background: 'rgba(5, 5, 15, 0.75)',
-        border: '1px solid rgba(0, 255, 255, 0.25)',
-        borderRadius: '30px',
-        backdropFilter: 'blur(10px)',
-        zIndex: 100,
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}
-    >
-      {/* Arrow keys */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {['←', '↑', '↓', '→'].map(k => (
-          <span key={k} style={{
-            padding: '4px 8px',
-            background: 'rgba(0, 255, 255, 0.15)',
-            border: '1px solid rgba(0, 255, 255, 0.5)',
-            borderRadius: '4px',
-            color: '#00ffff',
-            fontSize: '12px',
-            fontFamily: 'monospace'
-          }}>
-            {k}
-          </span>
-        ))}
-        <span style={{ color: '#888899', fontSize: '12px', marginLeft: '4px' }}>MOVE</span>
-      </div>
-
-      {/* Divider */}
-      <div style={{ width: '1px', background: 'rgba(136, 68, 255, 0.4)' }} />
-
-      {/* Space key */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span style={{
-          padding: '4px 14px',
-          background: 'rgba(255, 0, 170, 0.15)',
-          border: '1px solid rgba(255, 0, 170, 0.5)',
-          borderRadius: '4px',
-          color: '#ff00aa',
-          fontSize: '12px',
-          fontFamily: 'monospace'
-        }}>
-          SPACE
-        </span>
-        <span style={{ color: '#888899', fontSize: '12px' }}>INTERACT</span>
-      </div>
-    </div>
-  )
-}
 
 // Sound Toggle Button - persistent mute control
 function SoundToggle() {
@@ -98,7 +39,8 @@ function SoundToggle() {
   // Apply saved mute state on mount
   useEffect(() => {
     audioSystem.setMuted(isMuted)
-  }, [])
+    dspMute(isMuted) // Sync DSP mute state too
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
@@ -108,6 +50,24 @@ function SoundToggle() {
       dspMute(newVal) // Mute new DSP system too
       return newVal
     })
+  }, [])
+
+  // Listen for M key to sync state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey) {
+        // Toggle mute and sync UI
+        setIsMuted(prev => {
+          const newVal = !prev
+          localStorage.setItem('vanvinkl-muted', String(newVal))
+          audioSystem.setMuted(newVal)
+          dspMute(newVal)
+          return newVal
+        })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   return (
@@ -126,7 +86,6 @@ function SoundToggle() {
           ? 'rgba(0, 255, 255, 0.2)'
           : 'rgba(10, 10, 20, 0.8)',
         border: `2px solid ${isMuted ? 'rgba(255, 100, 100, 0.5)' : 'rgba(0, 255, 255, 0.3)'}`,
-        cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -408,21 +367,18 @@ function KeyboardShortcutsModal({ isOpen, onClose }: { isOpen: boolean, onClose:
 
   const shortcuts = [
     { section: 'MOVEMENT', items: [
-      { keys: ['W', 'A', 'S', 'D'], desc: 'Move around' },
-      { keys: ['↑', '←', '↓', '→'], desc: 'Alternative movement' },
+      { keys: ['↑', '←', '↓', '→'], desc: 'Move around' },
     ]},
     { section: 'INTERACTION', items: [
       { keys: ['SPACE'], desc: 'Interact / Spin' },
-      { keys: ['ENTER'], desc: 'Select item' },
       { keys: ['ESC'], desc: 'Close / Back' },
     ]},
-    { section: 'NAVIGATION', items: [
-      { keys: ['←', '→'], desc: 'Navigate items' },
-      { keys: ['↑', '↓'], desc: 'Navigate grid rows' },
+    { section: 'AUDIO', items: [
+      { keys: ['M'], desc: 'Mute / Unmute' },
+      { keys: ['A'], desc: 'Audio settings' },
     ]},
     { section: 'OTHER', items: [
       { keys: ['?'], desc: 'Show this help' },
-      { keys: ['M'], desc: 'Toggle sound' },
     ]}
   ]
 
@@ -482,7 +438,6 @@ function KeyboardShortcutsModal({ isOpen, onClose }: { isOpen: boolean, onClose:
               borderRadius: '50%',
               width: '40px',
               height: '40px',
-              cursor: 'pointer',
               color: '#ff6666',
               fontSize: '20px',
               display: 'flex',
@@ -788,7 +743,7 @@ function OnboardingTooltip({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(true)
 
   const tips = [
-    { icon: '🎮', title: 'Move Around', text: 'WASD or Arrow keys to walk' },
+    { icon: '🎮', title: 'Move Around', text: 'Arrow keys to walk' },
     { icon: '🎰', title: 'Spin Slots', text: 'Press SPACE near a machine' },
     { icon: '🛋️', title: 'Sit & Relax', text: 'Press SPACE near a couch' },
     { icon: '❓', title: 'Need Help?', text: 'Press ? anytime for controls' }
@@ -909,181 +864,391 @@ function OnboardingTooltip({ onDismiss }: { onDismiss: () => void }) {
   )
 }
 
-// Audio Mixer - sliders for music and SFX (shows when sitting in lounge)
-function AudioMixer({ visible }: { visible: boolean }) {
+// Audio Settings - Opens with A key, controlled with arrow keys
+function AudioSettings({ disabled, isOpen, setIsOpen }: {
+  disabled?: boolean
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+}) {
+  const [selected, setSelected] = useState<'music' | 'sfx'>('music')
   const [musicVol, setMusicVol] = useState(() => dspGetVolume('music'))
   const [sfxVol, setSfxVol] = useState(() => dspGetVolume('sfx'))
 
-  // Sync SynthSounds volume with DSP sfx volume on mount
+  // Sync SynthSounds volume on mount
   useEffect(() => {
     setSynthVolume(sfxVol)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleMusicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value)
-    setMusicVol(val)
-    dspVolume('music', val)
-  }
+  // Keyboard controls
+  useEffect(() => {
+    if (disabled) return
 
-  const handleSfxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value)
-    setSfxVol(val)
-    dspVolume('sfx', val)
-    // Also update SynthSounds volume (footsteps, UI sounds, intro SFX)
-    setSynthVolume(val)
-  }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // A key toggles menu
+      if (e.code === 'KeyA' && !e.ctrlKey && !e.metaKey && !isOpen) {
+        // Don't capture A if used for movement - only when not moving
+        // Actually, let's use it regardless since it's a settings panel
+        e.preventDefault()
+        setIsOpen(true)
+        return
+      }
 
-  if (!visible) return null
+      // Only handle other keys when menu is open
+      if (!isOpen) return
 
+      const step = 0.05 // 5% per press
+
+      switch (e.code) {
+        case 'ArrowUp':
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelected(prev => prev === 'music' ? 'sfx' : 'music')
+          break
+
+        case 'ArrowLeft':
+          e.preventDefault()
+          if (selected === 'music') {
+            const newVal = Math.max(0, musicVol - step)
+            setMusicVol(newVal)
+            dspVolume('music', newVal)
+          } else {
+            const newVal = Math.max(0, sfxVol - step)
+            setSfxVol(newVal)
+            dspVolume('sfx', newVal)
+            setSynthVolume(newVal)
+          }
+          break
+
+        case 'ArrowRight':
+          e.preventDefault()
+          if (selected === 'music') {
+            const newVal = Math.min(1, musicVol + step)
+            setMusicVol(newVal)
+            dspVolume('music', newVal)
+          } else {
+            const newVal = Math.min(1, sfxVol + step)
+            setSfxVol(newVal)
+            dspVolume('sfx', newVal)
+            setSynthVolume(newVal)
+          }
+          break
+
+        case 'Escape':
+          e.preventDefault()
+          setIsOpen(false)
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [disabled, isOpen, selected, musicVol, sfxVol])
+
+  return (
+    <>
+      {/* Hint in controls bar - always visible */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '8px 14px',
+        background: 'rgba(5, 5, 15, 0.75)',
+        border: '1px solid rgba(136, 68, 255, 0.3)',
+        borderRadius: '20px',
+        backdropFilter: 'blur(8px)',
+        zIndex: 100,
+        transition: 'all 0.2s ease',
+        opacity: disabled ? 0.3 : 1
+      }}
+      onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span style={{
+          padding: '2px 8px',
+          background: 'rgba(136, 68, 255, 0.2)',
+          border: '1px solid rgba(136, 68, 255, 0.5)',
+          borderRadius: '4px',
+          color: '#8844ff',
+          fontSize: '11px',
+          fontFamily: 'monospace',
+          fontWeight: 'bold'
+        }}>
+          A
+        </span>
+        <span style={{ color: '#888899', fontSize: '11px' }}>AUDIO</span>
+      </div>
+
+      {/* Audio Settings Panel */}
+      {isOpen && !disabled && (
+        <div style={{
+          position: 'fixed',
+          bottom: '70px',
+          right: '20px',
+          background: 'rgba(5, 5, 15, 0.95)',
+          border: '1px solid rgba(136, 68, 255, 0.4)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          backdropFilter: 'blur(12px)',
+          zIndex: 200,
+          minWidth: '220px',
+          boxShadow: '0 0 40px rgba(136, 68, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5)',
+          animation: 'audioSettingsIn 0.2s ease-out',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px',
+            paddingBottom: '10px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8844ff" strokeWidth="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+              <span style={{
+                color: '#8844ff',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                letterSpacing: '2px'
+              }}>
+                AUDIO
+              </span>
+            </div>
+            <span style={{
+              color: 'rgba(255,255,255,0.3)',
+              fontSize: '9px',
+              letterSpacing: '1px'
+            }}>
+              ESC TO CLOSE
+            </span>
+          </div>
+
+          {/* Music Row */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              marginBottom: '8px',
+              borderRadius: '8px',
+              background: selected === 'music' ? 'rgba(255, 0, 170, 0.15)' : 'transparent',
+              border: selected === 'music' ? '1px solid rgba(255, 0, 170, 0.4)' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span style={{
+              color: selected === 'music' ? '#ff00aa' : '#666',
+              fontSize: '11px',
+              letterSpacing: '1px',
+              fontWeight: selected === 'music' ? 'bold' : 'normal'
+            }}>
+              MUSIC
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Volume bar */}
+              <div style={{
+                width: '80px',
+                height: '6px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${musicVol * 100}%`,
+                  height: '100%',
+                  background: selected === 'music'
+                    ? 'linear-gradient(90deg, #ff00aa, #ff66cc)'
+                    : 'rgba(255, 0, 170, 0.5)',
+                  borderRadius: '3px',
+                  transition: 'width 0.1s ease'
+                }} />
+              </div>
+              <span style={{
+                color: selected === 'music' ? '#ff00aa' : '#666',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                minWidth: '32px',
+                textAlign: 'right'
+              }}>
+                {Math.round(musicVol * 100)}%
+              </span>
+            </div>
+          </div>
+
+          {/* SFX Row */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              background: selected === 'sfx' ? 'rgba(0, 255, 255, 0.15)' : 'transparent',
+              border: selected === 'sfx' ? '1px solid rgba(0, 255, 255, 0.4)' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span style={{
+              color: selected === 'sfx' ? '#00ffff' : '#666',
+              fontSize: '11px',
+              letterSpacing: '1px',
+              fontWeight: selected === 'sfx' ? 'bold' : 'normal'
+            }}>
+              SFX
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Volume bar */}
+              <div style={{
+                width: '80px',
+                height: '6px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${sfxVol * 100}%`,
+                  height: '100%',
+                  background: selected === 'sfx'
+                    ? 'linear-gradient(90deg, #00ffff, #66ffff)'
+                    : 'rgba(0, 255, 255, 0.5)',
+                  borderRadius: '3px',
+                  transition: 'width 0.1s ease'
+                }} />
+              </div>
+              <span style={{
+                color: selected === 'sfx' ? '#00ffff' : '#666',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                minWidth: '32px',
+                textAlign: 'right'
+              }}>
+                {Math.round(sfxVol * 100)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Controls hint */}
+          <div style={{
+            marginTop: '14px',
+            paddingTop: '10px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{
+                padding: '2px 6px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '3px',
+                color: '#666',
+                fontSize: '10px',
+                fontFamily: 'monospace'
+              }}>↑↓</span>
+              <span style={{ color: '#555', fontSize: '9px' }}>SELECT</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{
+                padding: '2px 6px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '3px',
+                color: '#666',
+                fontSize: '10px',
+                fontFamily: 'monospace'
+              }}>←→</span>
+              <span style={{ color: '#555', fontSize: '9px' }}>ADJUST</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes audioSettingsIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </>
+  )
+}
+
+// Keyboard Controls Hint - shows arrow keys at bottom center
+function KeyboardControlsHint() {
   return (
     <div style={{
       position: 'fixed',
-      right: '20px',
-      bottom: '100px',
-      background: 'rgba(5, 5, 15, 0.92)',
-      border: '1px solid rgba(0, 255, 255, 0.25)',
-      borderRadius: '16px',
-      padding: '20px 24px',
-      backdropFilter: 'blur(12px)',
-      zIndex: 200,
-      minWidth: '200px',
-      boxShadow: '0 0 40px rgba(0, 255, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)',
-      animation: 'mixerSlideIn 0.3s ease-out',
+      bottom: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 18px',
+      background: 'rgba(5, 5, 15, 0.75)',
+      border: '1px solid rgba(0, 255, 255, 0.2)',
+      borderRadius: '20px',
+      backdropFilter: 'blur(8px)',
+      zIndex: 100,
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '20px',
-        paddingBottom: '12px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
-      }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffff" strokeWidth="2">
-          <rect x="4" y="2" width="4" height="20" rx="1" />
-          <rect x="10" y="6" width="4" height="16" rx="1" />
-          <rect x="16" y="10" width="4" height="12" rx="1" />
-        </svg>
-        <span style={{
+      {/* Arrow keys display */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+        <div style={{
+          width: '22px',
+          height: '22px',
+          background: 'rgba(0, 255, 255, 0.15)',
+          border: '1px solid rgba(0, 255, 255, 0.4)',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           color: '#00ffff',
-          fontSize: '12px',
-          fontWeight: 'bold',
-          letterSpacing: '2px',
-          textTransform: 'uppercase'
-        }}>
-          AUDIO MIXER
-        </span>
-      </div>
-
-      {/* Music Slider */}
-      <div style={{ marginBottom: '18px' }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '8px'
-        }}>
-          <span style={{ color: '#ff00aa', fontSize: '11px', letterSpacing: '1px' }}>MUSIC</span>
-          <span style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
-            {Math.round(musicVol * 100)}%
-          </span>
+          fontSize: '10px',
+          fontWeight: 'bold'
+        }}>↑</div>
+        <div style={{ display: 'flex', gap: '2px' }}>
+          {['←', '↓', '→'].map(arrow => (
+            <div key={arrow} style={{
+              width: '22px',
+              height: '22px',
+              background: 'rgba(0, 255, 255, 0.15)',
+              border: '1px solid rgba(0, 255, 255, 0.4)',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#00ffff',
+              fontSize: '10px',
+              fontWeight: 'bold'
+            }}>{arrow}</div>
+          ))}
         </div>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={musicVol}
-          onChange={handleMusicChange}
-          style={{
-            width: '100%',
-            height: '6px',
-            WebkitAppearance: 'none',
-            appearance: 'none',
-            background: `linear-gradient(to right, #ff00aa ${musicVol * 100}%, rgba(255,255,255,0.1) ${musicVol * 100}%)`,
-            borderRadius: '3px',
-            outline: 'none',
-            cursor: 'pointer'
-          }}
-        />
       </div>
 
-      {/* SFX Slider */}
-      <div>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '8px'
-        }}>
-          <span style={{ color: '#00ffff', fontSize: '11px', letterSpacing: '1px' }}>SFX</span>
-          <span style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
-            {Math.round(sfxVol * 100)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={sfxVol}
-          onChange={handleSfxChange}
-          style={{
-            width: '100%',
-            height: '6px',
-            WebkitAppearance: 'none',
-            appearance: 'none',
-            background: `linear-gradient(to right, #00ffff ${sfxVol * 100}%, rgba(255,255,255,0.1) ${sfxVol * 100}%)`,
-            borderRadius: '3px',
-            outline: 'none',
-            cursor: 'pointer'
-          }}
-        />
-      </div>
+      <span style={{ color: '#888899', fontSize: '11px', marginLeft: '4px' }}>MOVE</span>
 
-      {/* Hint */}
+      <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+
       <div style={{
-        marginTop: '16px',
-        paddingTop: '12px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-        textAlign: 'center',
-        color: 'rgba(255, 255, 255, 0.35)',
-        fontSize: '10px',
+        padding: '6px 12px',
+        background: 'rgba(136, 68, 255, 0.15)',
+        border: '1px solid rgba(136, 68, 255, 0.4)',
+        borderRadius: '6px',
+        color: '#8844ff',
+        fontSize: '11px',
+        fontWeight: 'bold',
         letterSpacing: '1px'
-      }}>
-        RELAX MODE
-      </div>
+      }}>SPACE</div>
 
-      <style>{`
-        @keyframes mixerSlideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          background: #fff;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-          transition: transform 0.15s ease;
-        }
-        input[type="range"]::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          background: #fff;
-          border-radius: 50%;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-      `}</style>
+      <span style={{ color: '#888899', fontSize: '11px' }}>ACTION</span>
     </div>
   )
 }
@@ -1124,7 +1289,6 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'pointer',
         zIndex: 50000,
         opacity: isClicking ? 0 : 1,
         transition: 'opacity 0.4s ease-out',
@@ -1309,6 +1473,7 @@ export function App() {
   const [konamiActive, resetKonami] = useKonamiCode()
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
   const [isSitting, setIsSitting] = useState(false)
+  const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
   // Onboarding - show only for first-time visitors
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -1330,10 +1495,12 @@ export function App() {
     // Initialize audio systems (this click enables audio)
     audioSystem.init()
 
-    if (localStorage.getItem('vanvinkl-muted') !== 'true') {
-      await initAudio()
-      dspPlay('lounge')
-    }
+    // Always init DSP audio
+    await initAudio()
+    console.log('[Audio] DSP initialized, starting lounge music...')
+
+    // Always try to play music (mute state is handled by masterGain)
+    dspPlay('lounge')
 
     // Hide splash and start intro
     setShowSplash(false)
@@ -1363,21 +1530,14 @@ export function App() {
     setIsMobile(isMobileDevice())
   }, [])
 
-  // Global keyboard shortcuts (? for help, M for mute)
+  // Global keyboard shortcuts (? for help)
+  // Note: M for mute is handled by SoundToggle component
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // ? or / for help (Shift+/ = ?)
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault()
         setShowHelp(prev => !prev)
-      }
-      // M for mute toggle
-      if (e.key === 'm' || e.key === 'M') {
-        const currentMuted = localStorage.getItem('vanvinkl-muted') === 'true'
-        const newMuted = !currentMuted
-        localStorage.setItem('vanvinkl-muted', String(newMuted))
-        audioSystem.setMuted(newMuted)
-        dspMute(newMuted)
       }
       // ESC closes help
       if (e.key === 'Escape' && showHelp) {
@@ -1490,6 +1650,7 @@ export function App() {
             onSitChange={setIsSitting}
             introActive={showIntro}
             slotOpen={!!spinningSlot}
+            audioSettingsOpen={audioSettingsOpen}
           />
         </Suspense>
       </Canvas>
@@ -1499,13 +1660,9 @@ export function App() {
       {/* Sound Toggle - always visible after intro */}
       {!showIntro && <SoundToggle />}
 
-      {/* Audio Mixer - shows when sitting in lounge */}
-      <AudioMixer visible={isSitting && !showIntro && !spinningSlot} />
+      {/* Audio Settings - keyboard-controlled panel (A key to open) */}
+      {!showIntro && <AudioSettings disabled={!!spinningSlot} isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}
 
-      {/* Desktop Controls HUD - hidden on mobile */}
-      {!showIntro && !spinningSlot && !isMobile && (
-        <ControlsHUD />
-      )}
 
       {/* Section Progress Ring - shows exploration progress */}
       {!showIntro && !spinningSlot && !isMobile && (
@@ -1515,6 +1672,11 @@ export function App() {
       {/* Spectrum Visualizer - audio reactive bars */}
       {!showIntro && !spinningSlot && !isMobile && (
         <SpectrumVisualizer />
+      )}
+
+      {/* Keyboard Controls Hint - arrow keys + space at bottom center */}
+      {!showIntro && !spinningSlot && !isMobile && (
+        <KeyboardControlsHint />
       )}
 
       {/* Mobile Controls - only on mobile devices */}
@@ -1561,8 +1723,7 @@ export function App() {
         <OnboardingTooltip onDismiss={handleOnboardingDismiss} />
       )}
 
-      {/* Magic Cursor - particle trail + magnetic effect (desktop only) */}
-      {!isMobile && <MagicCursorFull />}
+      {/* Magic Cursor removed - particle trail now follows avatar in 3D scene */}
 
       {/* Click to Enter Splash - first thing user sees */}
       {showSplash && <ClickToEnterSplash onEnter={handleSplashEnter} />}

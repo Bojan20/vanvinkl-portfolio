@@ -239,6 +239,7 @@ export function FloorPulse({
 }
 
 // Combined proximity indicator component
+// Note: Couch "PRESS SPACE TO SIT" hints are now permanent FloatingSitSign in CasinoScene
 export function ProximityIndicator({
   avatarPosition,
   nearMachine,
@@ -252,7 +253,7 @@ export function ProximityIndicator({
   machinePositions: { id: string; x: number; z: number }[]
   couchPositions: { id: string; x: number; z: number }[]
 }) {
-  // Find the nearest interactable position
+  // Find the nearest machine position (couch hints are permanent in CasinoScene)
   let hintPosition: [number, number, number] | null = null
   let hintText = 'PRESS SPACE'
   let hintColor = COLORS.cyan
@@ -264,11 +265,8 @@ export function ProximityIndicator({
       hintText = 'PRESS SPACE TO SPIN'
       hintColor = COLORS.magenta
     }
-  } else if (nearCouch) {
-    hintPosition = [nearCouch.x, 2, nearCouch.z]
-    hintText = 'PRESS SPACE TO SIT'
-    hintColor = COLORS.purple
   }
+  // Couch hint removed - now permanent FloatingSitSign in CasinoScene
 
   const isNearAnything = nearMachine !== null || nearCouch !== null
 
@@ -281,7 +279,7 @@ export function ProximityIndicator({
         color={nearMachine ? COLORS.magenta : COLORS.purple}
       />
 
-      {/* Floating hint text */}
+      {/* Floating hint text - only for machines now */}
       {hintPosition && (
         <FloatingHint
           position={hintPosition}

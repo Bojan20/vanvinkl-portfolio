@@ -276,7 +276,6 @@ function ActionButton({ size, onPress, label = 'ACTION' }: ActionButtonProps) {
         fontWeight: 'bold',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         letterSpacing: '2px',
-        cursor: 'pointer',
         touchAction: 'none',
         userSelect: 'none',
         WebkitUserSelect: 'none',

@@ -136,7 +136,6 @@ function SkillsView({ section }: { section: SkillsSection }) {
               borderRadius: '20px',
               color: i === activeCategory ? cat.color : '#888899',
               fontSize: '14px',
-              cursor: 'pointer',
               transition: 'all 0.15s ease'
             }}
           >
@@ -473,7 +472,6 @@ function ContactView({ section }: { section: ContactSection }) {
               border: '1px solid rgba(255, 68, 68, 0.3)',
               borderRadius: '12px',
               padding: '16px',
-              cursor: 'pointer',
               textAlign: 'left',
               transition: 'border-color 0.15s, transform 0.15s'
             }}
@@ -722,7 +720,6 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
               color: section.color,
               fontSize: '16px',
               fontWeight: '600',
-              cursor: 'pointer',
               transition: 'all 0.15s ease',
               marginBottom: '20px'
             }}
@@ -756,7 +753,6 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
               border: 'none',
               color: '#888899',
               fontSize: '14px',
-              cursor: 'pointer',
               padding: '8px 12px',
               borderRadius: '8px',
               transition: 'color 0.15s'
@@ -790,7 +786,6 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
               border: 'none',
               color: '#888899',
               fontSize: '14px',
-              cursor: 'pointer',
               padding: '8px 12px',
               borderRadius: '8px',
               transition: 'color 0.15s'

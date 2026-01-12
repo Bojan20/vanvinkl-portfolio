@@ -17,6 +17,7 @@ import * as THREE from 'three'
 
 import { CyberpunkSlotMachine } from './CyberpunkSlotMachine'
 import { Avatar } from './Avatar'
+import { AvatarEffects } from './AvatarEffects'
 import { ProximityIndicator } from './ProximityFeedback'
 import { WinCelebrationGPU } from './GPUParticles'
 import { DustParticles } from './DustParticles'
@@ -216,11 +217,323 @@ function GodRaySource({ position, color = '#ffffff', intensity = 2 }: {
   )
 }
 
-// Permanent "PRESS SPACE TO SIT" holographic sign for lounge areas
-function LoungeSitSign({ position, color = '#8844ff' }: {
-  position: [number, number, number], color?: string
+// Logo on wall - cyberpunk style with holographic shader and neon frame
+function LogoWall({ position, scale = 1 }: { position: [number, number, number], scale?: number }) {
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const [aspectRatio, setAspectRatio] = useState(2)
+
+  const texture = useMemo(() => {
+    const loader = new THREE.TextureLoader()
+    const tex = loader.load('/logo_van.png', (loadedTex) => {
+      const img = loadedTex.image
+      if (img && img.width && img.height) {
+        setAspectRatio(img.width / img.height)
+      }
+    })
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [])
+
+  // Holographic shader with atmospheric mask - blends into dark environment
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      time: { value: 0 },
+      bass: { value: 0 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      uniform float time;
+      uniform float bass;
+      varying vec2 vUv;
+
+      // Noise for smoke/fog effect
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      void main() {
+        vec4 texColor = texture2D(map, vUv);
+        if (texColor.a < 0.1) discard;
+
+        // === VIGNETTE MASK - strong fade to black on edges ===
+        vec2 center = vUv - 0.5;
+        float vignette = 1.0 - smoothstep(0.2, 0.6, length(center) * 1.2);
+
+        // Edge fade - stronger on all sides
+        float edgeFade = smoothstep(0.0, 0.25, vUv.x) * smoothstep(1.0, 0.75, vUv.x) *
+                         smoothstep(0.0, 0.25, vUv.y) * smoothstep(1.0, 0.75, vUv.y);
+
+        // === SMOKE/FOG OVERLAY ===
+        float smokeNoise = noise(vUv * 4.0 + time * 0.15) * 0.4;
+        float smokeNoise2 = noise(vUv * 8.0 - time * 0.1) * 0.2;
+        float smoke = smokeNoise + smokeNoise2;
+
+        // === DESATURATE - reduce color intensity ===
+        float luminance = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+        vec3 desaturated = mix(texColor.rgb, vec3(luminance), 0.4); // 40% desaturation
+
+        // === DARKEN overall ===
+        vec3 darkened = desaturated * 0.5; // 50% darker
+
+        // === SUBTLE color tint towards purple/cyan ===
+        vec3 atmosphereTint = vec3(0.7, 0.75, 0.9); // slight cool tint
+        vec3 tinted = darkened * atmosphereTint;
+
+        // === SCANLINES - more subtle ===
+        float scanline = sin(vUv.y * 80.0 + time * 1.5) * 0.015;
+
+        // === VERY SUBTLE holographic shimmer ===
+        float hueShift = time * 0.05 + vUv.x * 0.1;
+        vec3 shimmer = vec3(
+          sin(hueShift) * 0.03,
+          sin(hueShift + 2.09) * 0.03,
+          sin(hueShift + 4.18) * 0.03
+        );
+
+        // === SUBTLE edge glow - magenta/cyan ===
+        float glowMask = 1.0 - edgeFade;
+        vec3 edgeColor = mix(vec3(0.6, 0.0, 0.4), vec3(0.0, 0.5, 0.6), vUv.x) * glowMask * 0.15;
+
+        // === BASS PULSE - very subtle ===
+        float pulse = 1.0 + bass * 0.1;
+
+        // === COMBINE all effects ===
+        vec3 finalColor = tinted * pulse + shimmer + scanline + edgeColor;
+
+        // Apply smoke overlay - darkens randomly
+        finalColor = finalColor * (1.0 - smoke * 0.3);
+
+        // Apply vignette and edge fade
+        float totalMask = vignette * edgeFade;
+        finalColor *= totalMask;
+
+        // Final alpha also affected by mask for soft edges
+        float finalAlpha = texColor.a * totalMask * 0.85;
+
+        gl_FragColor = vec4(finalColor, finalAlpha);
+      }
+    `,
+    transparent: true,
+    toneMapped: false
+  }), [texture])
+
+  useFrame((state) => {
+    if (material) {
+      material.uniforms.time.value = state.clock.elapsedTime
+      material.uniforms.bass.value = getBassLevel()
+    }
+  })
+
+  const height = 4 * scale
+  const width = height * aspectRatio
+
+  return (
+    <group position={position}>
+      {/* Logo with holographic shader */}
+      <mesh ref={meshRef} material={material}>
+        <planeGeometry args={[width, height]} />
+      </mesh>
+
+      {/* Subtle neon frame - dimmer to blend with atmosphere */}
+      <NeonStrip color="#660044" position={[0, height/2 + 0.1, 0.05]} size={[width + 0.4, 0.04, 0.04]} pulse />
+      <NeonStrip color="#660044" position={[0, -height/2 - 0.1, 0.05]} size={[width + 0.4, 0.04, 0.04]} pulse />
+      <NeonStrip color="#004455" position={[-width/2 - 0.1, 0, 0.05]} size={[0.04, height + 0.4, 0.04]} pulse />
+      <NeonStrip color="#004455" position={[width/2 + 0.1, 0, 0.05]} size={[0.04, height + 0.4, 0.04]} pulse />
+
+      {/* Very subtle ambient glow */}
+      <pointLight color="#440033" intensity={1} distance={8} />
+    </group>
+  )
+}
+
+// Single floating 3D letter with holographic animation
+function FloatingLetter({
+  letter,
+  position,
+  color = '#ff00aa',
+  orbitRadius = 0,
+  orbitSpeed = 0.5,
+  floatAmplitude = 0.3,
+  floatSpeed = 1,
+  rotateSpeed = 0.3,
+  scale = 1,
+  phaseOffset = 0
+}: {
+  letter: string
+  position: [number, number, number]
+  color?: string
+  orbitRadius?: number
+  orbitSpeed?: number
+  floatAmplitude?: number
+  floatSpeed?: number
+  rotateSpeed?: number
+  scale?: number
+  phaseOffset?: number
 }) {
-  const groupRef = useRef<THREE.Group>(null!)
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const basePos = useMemo(() => new THREE.Vector3(...position), [position])
+
+  // Create canvas texture for single letter
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')!
+
+    ctx.fillStyle = 'transparent'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // Outer glow
+    ctx.shadowColor = color
+    ctx.shadowBlur = 40
+    ctx.font = 'bold 180px "Orbitron", system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = color
+    ctx.fillText(letter, canvas.width / 2, canvas.height / 2)
+
+    // Inner bright
+    ctx.shadowBlur = 15
+    ctx.shadowColor = '#ffffff'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(letter, canvas.width / 2, canvas.height / 2)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [letter, color])
+
+  // Holographic shader material
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      time: { value: 0 },
+      bass: { value: 0 },
+      baseColor: { value: new THREE.Color(color) }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      uniform float time;
+      uniform float bass;
+      uniform vec3 baseColor;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 texColor = texture2D(map, vUv);
+        if (texColor.a < 0.1) discard;
+
+        // Rainbow hue shift based on time
+        float hue = time * 0.3 + vUv.x * 0.5 + vUv.y * 0.3;
+        vec3 rainbow = vec3(
+          sin(hue * 6.28) * 0.5 + 0.5,
+          sin(hue * 6.28 + 2.09) * 0.5 + 0.5,
+          sin(hue * 6.28 + 4.18) * 0.5 + 0.5
+        );
+
+        // Mix base color with holographic rainbow
+        vec3 holoColor = mix(baseColor, rainbow, 0.4 + bass * 0.3);
+
+        // Pulse with bass
+        float pulse = 1.0 + bass * 0.5;
+
+        gl_FragColor = vec4(holoColor * texColor.rgb * pulse * 1.5, texColor.a);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    toneMapped: false
+  }), [texture, color])
+
+  useFrame((state) => {
+    if (!meshRef.current) return
+    const t = state.clock.elapsedTime + phaseOffset
+
+    // Update shader uniforms
+    material.uniforms.time.value = t
+    material.uniforms.bass.value = getBassLevel()
+
+    // Orbital movement
+    if (orbitRadius > 0) {
+      meshRef.current.position.x = basePos.x + Math.sin(t * orbitSpeed) * orbitRadius
+      meshRef.current.position.z = basePos.z + Math.cos(t * orbitSpeed) * orbitRadius
+    }
+
+    // Floating up/down
+    meshRef.current.position.y = basePos.y + Math.sin(t * floatSpeed) * floatAmplitude
+
+    // Rotation
+    meshRef.current.rotation.y = t * rotateSpeed
+    meshRef.current.rotation.x = Math.sin(t * 0.5) * 0.1
+  })
+
+  return (
+    <group>
+      <mesh ref={meshRef} position={position} scale={scale} material={material}>
+        <planeGeometry args={[2, 2]} />
+      </mesh>
+      <pointLight position={position} color={color} intensity={2} distance={8} />
+    </group>
+  )
+}
+
+// Collection of floating letters spelling "VAN VINKL" - reads right to left (V starts on right)
+function FloatingLetters() {
+  // "VAN VINKL" reading from right to left: V-A-N (space) V-I-N-K-L
+  // Positions go from right (20) to left (-16)
+  const letters = [
+    // "VAN" - starts on right
+    { letter: 'V', position: [20, 5.5, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.2, rotateSpeed: 0.2, scale: 2.8, phaseOffset: 0 },
+    { letter: 'A', position: [15, 6.2, 30] as [number, number, number], color: '#00ffff', floatSpeed: 0.9, rotateSpeed: -0.15, scale: 2.8, phaseOffset: 0.5 },
+    { letter: 'N', position: [10, 5.8, 30] as [number, number, number], color: '#8844ff', floatSpeed: 1.1, rotateSpeed: 0.18, scale: 2.8, phaseOffset: 1 },
+
+    // "VINKL" - continues to the left (with space)
+    { letter: 'V', position: [4, 6, 30] as [number, number, number], color: '#ffd700', floatSpeed: 0.8, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 1.5 },
+    { letter: 'I', position: [-1, 5.5, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.3, rotateSpeed: 0.22, scale: 2.8, phaseOffset: 2 },
+    { letter: 'N', position: [-6, 6.3, 30] as [number, number, number], color: '#00ffff', floatSpeed: 1.0, rotateSpeed: -0.18, scale: 2.8, phaseOffset: 2.5 },
+    { letter: 'K', position: [-11, 5.7, 30] as [number, number, number], color: '#8844ff', floatSpeed: 0.7, rotateSpeed: 0.15, scale: 2.8, phaseOffset: 3 },
+    { letter: 'L', position: [-16, 6, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.4, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 3.5 },
+  ]
+
+  return (
+    <group>
+      {letters.map((props, i) => (
+        <FloatingLetter key={i} {...props} />
+      ))}
+    </group>
+  )
+}
+
+
+// Floating "PRESS SPACE TO SIT" sign above lounge areas
+function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, number, number], color?: string }) {
+  const meshRef = useRef<THREE.Mesh>(null!)
   const time = useRef(Math.random() * 100)
 
   // Create canvas texture for text
@@ -235,13 +548,17 @@ function LoungeSitSign({ position, color = '#8844ff' }: {
 
     // Glow
     ctx.shadowColor = color
-    ctx.shadowBlur = 15
-
-    // Text
+    ctx.shadowBlur = 20
     ctx.font = 'bold 36px "Orbitron", system-ui, sans-serif'
-    ctx.fillStyle = color
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
+    ctx.fillStyle = color
+    ctx.fillText('PRESS SPACE TO SIT', canvas.width / 2, canvas.height / 2)
+
+    // Brighter core
+    ctx.shadowBlur = 8
+    ctx.shadowColor = '#ffffff'
+    ctx.fillStyle = '#ffffff'
     ctx.fillText('PRESS SPACE TO SIT', canvas.width / 2, canvas.height / 2)
 
     const tex = new THREE.CanvasTexture(canvas)
@@ -249,27 +566,67 @@ function LoungeSitSign({ position, color = '#8844ff' }: {
     return tex
   }, [color])
 
-  useFrame((_, delta) => {
-    if (!groupRef.current) return
+  // Holographic shader
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      time: { value: 0 },
+      baseColor: { value: new THREE.Color(color) }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      uniform float time;
+      uniform vec3 baseColor;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 texColor = texture2D(map, vUv);
+        if (texColor.a < 0.1) discard;
+
+        // Rainbow shimmer
+        float hue = time * 0.5 + vUv.x * 2.0;
+        vec3 rainbow = vec3(
+          sin(hue) * 0.3 + 0.7,
+          sin(hue + 2.09) * 0.3 + 0.7,
+          sin(hue + 4.18) * 0.3 + 0.7
+        );
+
+        // Pulse
+        float pulse = 0.8 + sin(time * 3.0) * 0.2;
+
+        vec3 finalColor = texColor.rgb * rainbow * pulse;
+        gl_FragColor = vec4(finalColor, texColor.a * 0.9);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    toneMapped: false
+  }), [texture, color])
+
+  useFrame((state, delta) => {
+    if (!meshRef.current) return
     time.current += delta
-    // Subtle floating
-    groupRef.current.position.y = position[1] + Math.sin(time.current * 2) * 0.05
+    material.uniforms.time.value = time.current
+
+    // Floating animation
+    meshRef.current.position.y = position[1] + Math.sin(time.current * 2) * 0.1
   })
 
   return (
-    <group ref={groupRef} position={position}>
-      <mesh>
-        <planeGeometry args={[2.2, 0.4]} />
-        <meshBasicMaterial
-          map={texture}
-          transparent
-          opacity={0.85}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-          depthWrite={false}
-        />
+    <group>
+      <mesh ref={meshRef} position={position}>
+        <planeGeometry args={[2.5, 0.5]} />
+        <primitive object={material} attach="material" />
       </mesh>
-      <pointLight color={color} intensity={0.3} distance={2} />
+      <pointLight position={position} color={color} intensity={1} distance={5} />
     </group>
   )
 }
@@ -605,9 +962,10 @@ interface CasinoSceneProps {
   onSitChange?: (isSitting: boolean) => void
   introActive?: boolean
   slotOpen?: boolean // When true, avatar input is disabled
+  audioSettingsOpen?: boolean // When true, avatar input is disabled
 }
 
-export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive = false, slotOpen = false }: CasinoSceneProps) {
+export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive = false, slotOpen = false, audioSettingsOpen = false }: CasinoSceneProps) {
   const { camera } = useThree()
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
@@ -924,32 +1282,32 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
       {/* Environment removed for performance */}
 
-      {/* ===== FLOOR - Reflective with SSR ===== */}
+      {/* ===== FLOOR - Reflective with SSR (optimized) ===== */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 5]}>
         <planeGeometry args={[70, 55]} />
         <MeshReflectorMaterial
-          blur={[300, 100]}
-          resolution={512}
+          blur={[200, 80]}
+          resolution={256}
           mixBlur={1}
-          mixStrength={0.6}
-          roughness={0.8}
-          depthScale={1.2}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
+          mixStrength={0.4}
+          roughness={0.85}
+          depthScale={1.0}
+          minDepthThreshold={0.5}
+          maxDepthThreshold={1.2}
           color="#1a1520"
-          metalness={0.5}
-          mirror={0.3}
+          metalness={0.4}
+          mirror={0.2}
         />
       </mesh>
 
-      {/* ===== CONTACT SHADOWS - Subtle depth ===== */}
+      {/* ===== CONTACT SHADOWS - Subtle depth (optimized) ===== */}
       <ContactShadows
         position={[0, 0.01, 5]}
-        opacity={0.4}
+        opacity={0.3}
         scale={80}
         blur={2}
-        far={20}
-        resolution={256}
+        far={15}
+        resolution={128}
         color="#000000"
       />
 
@@ -1019,8 +1377,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <CoffeeTable position={[1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />
-        {/* Permanent sit hint sign */}
-        <LoungeSitSign position={[0, 2.5, 2]} color={COLORS.magenta} />
+        <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.magenta} />
       </group>
 
       {/* Right lounge - Deep Teal velvet */}
@@ -1029,8 +1386,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <CoffeeTable position={[-1.5, 0, 2]} />
         <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />
-        {/* Permanent sit hint sign */}
-        <LoungeSitSign position={[0, 2.5, 2]} color={COLORS.cyan} />
+        <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.cyan} />
       </group>
 
       {/* Center back lounge - Wine Red velvet */}
@@ -1039,6 +1395,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         <VIPCouch position={[4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
         <CoffeeTable position={[0, 0, 1.5]} />
         <pointLight position={[0, 2.5, 0]} color={COLORS.purple} intensity={1.5} distance={8} />
+        <FloatingSitSign position={[0, 2.8, 0]} color={COLORS.purple} />
       </group>
 
       {/* ===== BAR AREA - SHARED materials ===== */}
@@ -1064,6 +1421,12 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
       {/* ===== TROPHY ROOM - Achievement display ===== */}
       <TrophyRoom position={[-28, 0, -8]} />
+
+      {/* ===== LOGO - Right side of back wall (right of slots) ===== */}
+      <LogoWall position={[25, 5, -11.5]} scale={1.5} />
+
+      {/* ===== FLOATING LETTERS - "VAN VINKL" on front wall ===== */}
+      <FloatingLetters />
 
       {/* ===== VIP ROPE BARRIERS - SHARED materials ===== */}
       {[-20, 20].map((x, i) => (
@@ -1100,10 +1463,14 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         collisionBoxes={COLLISION_BOXES}
         isSittingRef={isSittingRef}
         sittingRotationRef={sittingRotationRef}
-        inputDisabled={slotOpen}
+        inputDisabled={slotOpen || audioSettingsOpen}
       />
 
-      {/* AVATAR EFFECTS REMOVED FOR PERFORMANCE */}
+      {/* ===== AVATAR PARTICLE TRAIL ===== */}
+      <AvatarEffects
+        positionRef={avatarPos}
+        isMovingRef={isMovingRef}
+      />
 
       {/* ===== PROXIMITY FEEDBACK ===== */}
       {!introActive && (
@@ -1137,24 +1504,24 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
       {/* ===== AMBIENT DUST PARTICLES ===== */}
       <DustParticles
-        count={300}
+        count={150}
         area={[60, 9, 50]}
         color="#8866ff"
-        opacity={0.25}
-        size={0.04}
+        opacity={0.2}
+        size={0.03}
       />
 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
 
-      {/* ===== POST-PROCESSING - GPU-driven effects (AAA Stack) ===== */}
+      {/* ===== POST-PROCESSING - GPU-driven effects (optimized) ===== */}
       <PostProcessing
-        quality="medium"
-        enableSSAO={false}  // Disabled - requires NormalPass which causes warnings
+        quality="low"
+        enableSSAO={false}
         enableBloom={true}
-        enableChromatic={true}
+        enableChromatic={false}  // Disabled for performance
         enableVignette={true}
-        enableNoise={true}  // Subtle film grain for cinematic look
+        enableNoise={false}
       />
 
       {/* WebGL context loss handler */}
