@@ -217,6 +217,133 @@ function GodRaySource({ position, color = '#ffffff', intensity = 2 }: {
   )
 }
 
+// Floating hint for VanVinkl Studio logo - appears when near, with logo image
+function LogoHint({ active, position }: { active: boolean, position: [number, number, number] }) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const time = useRef(Math.random() * 100)
+  const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null)
+
+  // Load logo image
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => setLogoImg(img)
+    img.src = '/logo_van.png'
+  }, [])
+
+  // Create canvas texture with logo + text
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1024
+    canvas.height = 320
+    const ctx = canvas.getContext('2d')!
+
+    ctx.fillStyle = 'transparent'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // Draw logo if loaded (left side)
+    if (logoImg) {
+      const logoSize = 140
+      const logoX = 180
+      const logoY = (canvas.height - logoSize) / 2
+      ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
+    }
+
+    // Strong glow for text
+    ctx.shadowColor = '#00ffff'
+    ctx.shadowBlur = 25
+
+    // Text (right of logo)
+    ctx.font = 'bold 64px "Orbitron", system-ui, sans-serif'
+    ctx.fillStyle = '#00ffff'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('VANVINKL', 350, canvas.height / 2 - 35)
+
+    ctx.font = 'bold 48px "Orbitron", system-ui, sans-serif'
+    ctx.fillStyle = '#ff00aa'
+    ctx.shadowColor = '#ff00aa'
+    ctx.fillText('STUDIO', 350, canvas.height / 2 + 40)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [logoImg])
+
+  // Holographic shader
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      time: { value: 0 },
+      opacity: { value: 0 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      uniform float time;
+      uniform float opacity;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 texColor = texture2D(map, vUv);
+        if (texColor.a < 0.1) discard;
+
+        // Holographic shimmer
+        float shimmer = sin(vUv.x * 15.0 + time * 2.0) * 0.08 + 0.92;
+
+        // Subtle rainbow
+        float hue = vUv.x * 0.5 + time * 0.15;
+        vec3 rainbow = vec3(
+          sin(hue * 6.28) * 0.1 + 0.9,
+          sin(hue * 6.28 + 2.09) * 0.1 + 0.9,
+          sin(hue * 6.28 + 4.18) * 0.1 + 0.9
+        );
+
+        vec3 finalColor = texColor.rgb * shimmer * rainbow * 1.3;
+        gl_FragColor = vec4(finalColor, texColor.a * opacity);
+      }
+    `,
+    transparent: true,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  }), [texture])
+
+  // Update texture when it changes
+  useEffect(() => {
+    material.uniforms.map.value = texture
+  }, [texture, material])
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return
+
+    time.current += delta
+    material.uniforms.time.value = time.current
+
+    // Fade in/out
+    const targetOpacity = active ? 1 : 0
+    material.uniforms.opacity.value += (targetOpacity - material.uniforms.opacity.value) * 0.1
+
+    // Float animation
+    if (active) {
+      groupRef.current.position.y = position[1] + Math.sin(time.current * 2) * 0.1
+    }
+  })
+
+  return (
+    <group ref={groupRef} position={position}>
+      <mesh material={material}>
+        <planeGeometry args={[8, 2.5]} />
+      </mesh>
+    </group>
+  )
+}
+
 // Logo on wall - cyberpunk style with holographic shader and neon frame
 function LogoWall({ position, scale = 1 }: { position: [number, number, number], scale?: number }) {
   const meshRef = useRef<THREE.Mesh>(null!)
@@ -982,6 +1109,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
   const winMachineRef = useRef<string | null>(null)
   const isJackpotRef = useRef(false)
   const nearCouchRef = useRef<typeof COUCH_POSITIONS[0] | null>(null)
+  const [nearLogo, setNearLogo] = useState(false)
   const isSittingRef = useRef(false)
   const sittingRotationRef = useRef(0)
   const currentCouch = useRef<typeof COUCH_POSITIONS[0] | null>(null)
@@ -1267,6 +1395,14 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         }
       }
       nearCouchRef.current = closestCouch
+
+      // Check logo proximity (position: [25, 5, -11.5], threshold: 8)
+      const logoX = 25, logoZ = -11.5
+      const dxLogo = avatarPos.current.x - logoX
+      const dzLogo = avatarPos.current.z - logoZ
+      const distSqLogo = dxLogo * dxLogo + dzLogo * dzLogo
+      const isNearLogo = distSqLogo < 64 // 8²
+      if (isNearLogo !== nearLogo) setNearLogo(isNearLogo)
     }
   })
 
@@ -1424,6 +1560,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
       {/* ===== LOGO - Right side of back wall (right of slots) ===== */}
       <LogoWall position={[25, 5, -11.5]} scale={1.5} />
+      <LogoHint active={nearLogo} position={[25, 1.5, -10]} />
 
       {/* ===== FLOATING LETTERS - "VAN VINKL" on front wall ===== */}
       <FloatingLetters />
