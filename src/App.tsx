@@ -23,7 +23,7 @@ import {
 import { gameRefs } from './store'
 import { audioSystem, getFrequencyData, getBassLevel } from './audio'
 import { initAudio, dspPlay, dspMute, dspVolume, dspGetVolume, dspGetFrequencyData } from './audio/AudioDSP'
-import { setSynthVolume } from './audio/SynthSounds'
+import { setSynthVolume, initSynthSounds } from './audio/SynthSounds'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 
@@ -1494,6 +1494,9 @@ export function App() {
   const handleSplashEnter = useCallback(async () => {
     // Initialize audio systems (this click enables audio)
     audioSystem.init()
+
+    // Initialize SynthSounds AudioContext (for intro WOW sound etc)
+    initSynthSounds()
 
     // Always init DSP audio
     await initAudio()

@@ -387,6 +387,15 @@ export function IntroOverlay({
   }, [phase])
 
   // GRADUAL REVEAL - letters transform one by one from glitch to real
+  // Play WOW sound when transitioning to hold phase (all letters revealed)
+  useEffect(() => {
+    if (phase === 'hold') {
+      console.log('[Intro] Phase changed to HOLD - playing CyberWow!')
+      playCyberWow(0.4)
+      setShowBurst(true)
+    }
+  }, [phase])
+
   useEffect(() => {
     if (phase !== 'reveal') {
       if (phase === 'hold' || phase === 'fade') {
@@ -406,15 +415,12 @@ export function IntroOverlay({
       currentChar++
       // Play cyber reveal sound for each letter (not for spaces)
       if (originalText[currentChar - 1] !== ' ') {
-        playCyberReveal(0.15)
+        playCyberReveal(0.25)
       }
       if (currentChar >= originalText.length) {
         setRevealedChars(originalText.length)
         clearInterval(interval)
-        // Play epic WOW sound when all letters are shown
-        playCyberWow(0.5)
-        // Trigger burst animation
-        setShowBurst(true)
+        // WOW sound is now triggered by phase change to 'hold'
       } else {
         setRevealedChars(currentChar)
       }

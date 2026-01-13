@@ -11,7 +11,7 @@
 // Sound definitions
 export const SOUNDS = {
   // Ambient
-  lounge: '/audio/ambient/lounge.wav',
+  lounge: '/audio/ambient/lounge.mp3',
   casinoHum: '/audio/ambient/casino-hum.wav',
   neonBuzz: '/audio/ambient/neon-buzz.wav',
 

@@ -23,11 +23,30 @@ type SynthSoundType =
   | 'cyberReveal'    // Text reveal with digital artifacts
   | 'cyberBass'      // Deep bass hit
   | 'cyberWow'       // Epic finale sound - shimmering impact
+  | 'uiOpen'         // Soft UI popup/info panel open
+  | 'uiClose'        // Soft UI popup/info panel close
 
 class SynthSoundGenerator {
   private context: AudioContext | null = null
   private masterGain: GainNode | null = null
   private _volumeMultiplier = 1.0  // Controlled by DSP sfx slider
+
+  /**
+   * Initialize audio context - MUST be called on user interaction (click)
+   * This ensures AudioContext is not blocked by browser autoplay policy
+   */
+  init(): void {
+    if (!this.context) {
+      this.context = new AudioContext({ latencyHint: 'interactive' })
+      this.masterGain = this.context.createGain()
+      this.masterGain.gain.value = this._volumeMultiplier
+      this.masterGain.connect(this.context.destination)
+    }
+    if (this.context.state === 'suspended') {
+      this.context.resume()
+    }
+    console.log('[SynthSounds] AudioContext initialized, state:', this.context.state)
+  }
 
   /**
    * Set volume multiplier (0-1) - called by DSP system
@@ -124,7 +143,19 @@ class SynthSoundGenerator {
           this.playCyberBass(ctx, now, volume)
           break
         case 'cyberWow':
+          console.log('[SynthSounds] Playing cyberWow, ctx state:', ctx.state, 'volume:', volume, 'masterGain:', this.masterGain?.gain.value)
+          // Force resume if suspended
+          if (ctx.state === 'suspended') {
+            console.log('[SynthSounds] Resuming suspended AudioContext...')
+            ctx.resume()
+          }
           this.playCyberWow(ctx, now, volume)
+          break
+        case 'uiOpen':
+          this.playUiOpen(ctx, now, volume)
+          break
+        case 'uiClose':
+          this.playUiClose(ctx, now, volume)
           break
       }
     } catch (e) {
@@ -817,6 +848,9 @@ class SynthSoundGenerator {
    * Cyber WOW - Epic finale sound with shimmer, bass impact, and rising chord
    */
   private playCyberWow(ctx: AudioContext, now: number, vol: number): void {
+    // Boost volume significantly for impact
+    const boostVol = vol * 1.5
+
     // === BASS IMPACT ===
     const bassOsc = ctx.createOscillator()
     bassOsc.type = 'sine'
@@ -824,7 +858,7 @@ class SynthSoundGenerator {
     bassOsc.frequency.exponentialRampToValueAtTime(40, now + 0.4)
 
     const bassGain = ctx.createGain()
-    bassGain.gain.setValueAtTime(vol * 0.5, now)
+    bassGain.gain.setValueAtTime(boostVol * 0.6, now)
     bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
 
     bassOsc.connect(bassGain)
@@ -845,8 +879,8 @@ class SynthSoundGenerator {
       const gain = ctx.createGain()
       const delay = i * 0.03
       gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(vol * (0.25 - i * 0.03), now + delay + 0.05)
-      gain.gain.setValueAtTime(vol * (0.2 - i * 0.02), now + 0.4)
+      gain.gain.linearRampToValueAtTime(boostVol * (0.3 - i * 0.03), now + delay + 0.05)
+      gain.gain.setValueAtTime(boostVol * (0.25 - i * 0.02), now + 0.4)
       gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
 
       osc.connect(gain)
@@ -870,7 +904,7 @@ class SynthSoundGenerator {
 
     const shimmerGain = ctx.createGain()
     shimmerGain.gain.setValueAtTime(0, now)
-    shimmerGain.gain.linearRampToValueAtTime(vol * 0.15, now + 0.1)
+    shimmerGain.gain.linearRampToValueAtTime(boostVol * 0.2, now + 0.1)
     shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
 
     shimmerOsc.connect(shimmerFilter)
@@ -899,13 +933,91 @@ class SynthSoundGenerator {
 
     const sparkleGain = ctx.createGain()
     sparkleGain.gain.setValueAtTime(0, now)
-    sparkleGain.gain.linearRampToValueAtTime(vol * 0.3, now + 0.15)
+    sparkleGain.gain.linearRampToValueAtTime(boostVol * 0.35, now + 0.15)
     sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
 
     sparkleSource.connect(sparkleFilter)
     sparkleFilter.connect(sparkleGain)
     sparkleGain.connect(this.getOutput())
     sparkleSource.start(now + 0.05)
+  }
+
+  /**
+   * UI Open - Soft, pleasant popup sound
+   * Gentle rising tone with soft attack - like a notification
+   */
+  private playUiOpen(ctx: AudioContext, now: number, vol: number): void {
+    // Soft sine tone - rising
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(400, now)
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.15)
+
+    // Second harmonic for richness
+    const osc2 = ctx.createOscillator()
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(800, now)
+    osc2.frequency.exponentialRampToValueAtTime(1200, now + 0.15)
+
+    // Soft envelope
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0, now)
+    gain.gain.linearRampToValueAtTime(vol * 0.25, now + 0.05)
+    gain.gain.exponentialRampToValueAtTime(vol * 0.15, now + 0.1)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
+
+    const gain2 = ctx.createGain()
+    gain2.gain.setValueAtTime(0, now)
+    gain2.gain.linearRampToValueAtTime(vol * 0.1, now + 0.05)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+
+    // Low-pass filter for softness
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 2000
+    filter.Q.value = 0.5
+
+    osc.connect(gain)
+    osc2.connect(gain2)
+    gain.connect(filter)
+    gain2.connect(filter)
+    filter.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.35)
+    osc2.start(now)
+    osc2.stop(now + 0.3)
+  }
+
+  /**
+   * UI Close - Soft descending tone
+   * Gentle falling tone - like dismissing a notification
+   */
+  private playUiClose(ctx: AudioContext, now: number, vol: number): void {
+    // Soft sine tone - falling
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(500, now)
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.15)
+
+    // Soft envelope
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0, now)
+    gain.gain.linearRampToValueAtTime(vol * 0.2, now + 0.03)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+
+    // Low-pass filter for softness
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 1500
+    filter.Q.value = 0.5
+
+    osc.connect(gain)
+    gain.connect(filter)
+    filter.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.25)
   }
 }
 
@@ -934,6 +1046,13 @@ export const playCyberReveal = (vol = 0.3) => synthSounds.play('cyberReveal', vo
 export const playCyberBass = (vol = 0.5) => synthSounds.play('cyberBass', vol)
 export const playCyberWow = (vol = 0.6) => synthSounds.play('cyberWow', vol)
 
+// UI SFX exports - soft notification sounds
+export const playUiOpen = (vol = 0.4) => synthSounds.play('uiOpen', vol)
+export const playUiClose = (vol = 0.3) => synthSounds.play('uiClose', vol)
+
 // Volume control - connects to DSP sfx slider
 export const setSynthVolume = (vol: number) => synthSounds.setVolumeMultiplier(vol)
 export const getSynthVolume = () => synthSounds.getVolumeMultiplier()
+
+// Initialize audio context - call on user click to enable audio
+export const initSynthSounds = () => synthSounds.init()

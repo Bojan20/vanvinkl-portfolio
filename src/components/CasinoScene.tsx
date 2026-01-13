@@ -25,6 +25,7 @@ import { PostProcessing } from './PostProcessing'
 import { ContextHandler } from './WebGLErrorBoundary'
 import { useAudio, playReelStop, getBassLevel as getOldBassLevel } from '../audio'
 import { dspGetBassLevel } from '../audio/AudioDSP'
+import { playUiOpen, playUiClose } from '../audio/SynthSounds'
 
 // Combined bass level - tries new DSP first, falls back to old system
 const getBassLevel = (): number => {
@@ -357,23 +358,36 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
 function LogoWall({ position, scale = 1 }: { position: [number, number, number], scale?: number }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const [aspectRatio, setAspectRatio] = useState(2)
+  const textureRef = useRef<THREE.Texture | null>(null)
 
-  const texture = useMemo(() => {
+  // Shader material ref for updating uniforms
+  const materialRef = useRef<THREE.ShaderMaterial | null>(null)
+
+  // Load texture in useEffect to avoid state updates during render
+  useEffect(() => {
+    let mounted = true
     const loader = new THREE.TextureLoader()
-    const tex = loader.load('/logo_van.png', (loadedTex) => {
+    loader.load('/logo_van.png', (loadedTex) => {
+      if (!mounted) return
+      loadedTex.colorSpace = THREE.SRGBColorSpace
+      textureRef.current = loadedTex
+      // Update material uniform when texture loads
+      if (materialRef.current) {
+        materialRef.current.uniforms.map.value = loadedTex
+      }
       const img = loadedTex.image
       if (img && img.width && img.height) {
         setAspectRatio(img.width / img.height)
       }
     })
-    tex.colorSpace = THREE.SRGBColorSpace
-    return tex
+    return () => { mounted = false }
   }, [])
 
   // Holographic shader with atmospheric mask - blends into dark environment
-  const material = useMemo(() => new THREE.ShaderMaterial({
+  const material = useMemo(() => {
+    const mat = new THREE.ShaderMaterial({
     uniforms: {
-      map: { value: texture },
+      map: { value: null },
       time: { value: 0 },
       bass: { value: 0 }
     },
@@ -470,7 +484,10 @@ function LogoWall({ position, scale = 1 }: { position: [number, number, number],
     `,
     transparent: true,
     toneMapped: false
-  }), [texture])
+  })
+    materialRef.current = mat
+    return mat
+  }, [])
 
   useFrame((state) => {
     if (material) {
@@ -1411,7 +1428,15 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       const dzLogo = avatarPos.current.z - logoZ
       const distSqLogo = dxLogo * dxLogo + dzLogo * dzLogo
       const isNearLogo = distSqLogo < 64 // 8²
-      if (isNearLogo !== nearLogo) setNearLogo(isNearLogo)
+      if (isNearLogo !== nearLogo) {
+        // Play soft UI sounds on state change
+        if (isNearLogo) {
+          playUiOpen(0.5) // Soft open sound when approaching
+        } else {
+          playUiClose(0.4) // Soft close sound when leaving
+        }
+        setNearLogo(isNearLogo)
+      }
     }
   })
 
