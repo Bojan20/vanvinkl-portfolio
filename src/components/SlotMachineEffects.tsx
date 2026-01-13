@@ -228,6 +228,65 @@ function ActivationLight({ x, z, active }: { x: number; z: number; active: boole
 }
 
 // ============================================
+// WIN FLASH - Screen flash effect on win
+// ============================================
+function WinFlash({ x, z, active, isJackpot }: { x: number; z: number; active: boolean; isJackpot: boolean }) {
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const startTime = useRef(0)
+  const wasActive = useRef(false)
+
+  useFrame((state) => {
+    if (!meshRef.current) return
+
+    const mat = meshRef.current.material as THREE.MeshBasicMaterial
+
+    // Detect win start
+    if (active && !wasActive.current) {
+      startTime.current = state.clock.elapsedTime
+    }
+    wasActive.current = active
+
+    if (active) {
+      const elapsed = state.clock.elapsedTime - startTime.current
+      // Quick flash then fade
+      if (elapsed < 0.15) {
+        // Flash in
+        mat.opacity = Math.min(elapsed / 0.08, isJackpot ? 0.8 : 0.5)
+      } else if (elapsed < 0.5) {
+        // Fade out
+        const fadeProgress = (elapsed - 0.15) / 0.35
+        mat.opacity = (isJackpot ? 0.8 : 0.5) * (1 - fadeProgress)
+      } else {
+        mat.opacity = 0
+      }
+
+      // Strobe effect for jackpot
+      if (isJackpot && elapsed > 0.5 && elapsed < 2) {
+        const strobe = Math.sin(elapsed * 20) > 0.7 ? 0.3 : 0
+        mat.opacity = strobe
+      }
+    } else {
+      mat.opacity = 0
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={[x, 3, z + 1.5]}>
+      <planeGeometry args={[8, 6]} />
+      <meshBasicMaterial
+        color={isJackpot ? COLORS.gold : COLORS.cyan}
+        transparent
+        opacity={0}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        toneMapped={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
+
+// ============================================
 // COMBINED - Minimal, optimized
 // ============================================
 export function SlotMachineEffects({
@@ -254,6 +313,7 @@ export function SlotMachineEffects({
       <ActivationLight x={x} z={z} active={isNear} />
 
       {/* Win effects - only when winning */}
+      <WinFlash x={x} z={z} active={isWin} isJackpot={isJackpot} />
       <WinParticles x={x} z={z} active={isWin} isJackpot={isJackpot} />
       <WinText x={x} z={z} active={isWin} isJackpot={isJackpot} />
     </>

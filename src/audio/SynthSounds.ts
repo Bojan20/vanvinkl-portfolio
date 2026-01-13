@@ -23,8 +23,13 @@ type SynthSoundType =
   | 'cyberReveal'    // Text reveal with digital artifacts
   | 'cyberBass'      // Deep bass hit
   | 'cyberWow'       // Epic finale sound - shimmering impact
+  | 'magicReveal'    // Magical cyber reveal - ethereal + digital
+  | 'leverPull'      // Slot machine lever pull down
+  | 'leverRelease'   // Slot machine lever spring back
   | 'uiOpen'         // Soft UI popup/info panel open
   | 'uiClose'        // Soft UI popup/info panel close
+  | 'reelSpin'       // Continuous reel spinning sound
+  | 'reelStop'       // Single reel stopping with mechanical thud
 
 class SynthSoundGenerator {
   private context: AudioContext | null = null
@@ -151,11 +156,28 @@ class SynthSoundGenerator {
           }
           this.playCyberWow(ctx, now, volume)
           break
+        case 'magicReveal':
+          console.log('[SynthSounds] Playing magicReveal')
+          if (ctx.state === 'suspended') ctx.resume()
+          this.playMagicReveal(ctx, now, volume)
+          break
+        case 'leverPull':
+          this.playLeverPull(ctx, now, volume)
+          break
+        case 'leverRelease':
+          this.playLeverRelease(ctx, now, volume)
+          break
         case 'uiOpen':
           this.playUiOpen(ctx, now, volume)
           break
         case 'uiClose':
           this.playUiClose(ctx, now, volume)
+          break
+        case 'reelSpin':
+          this.playReelSpin(ctx, now, volume)
+          break
+        case 'reelStop':
+          this.playReelStop(ctx, now, volume)
           break
       }
     } catch (e) {
@@ -943,6 +965,296 @@ class SynthSoundGenerator {
   }
 
   /**
+   * Magic Reveal - Clean ethereal sound
+   * Pure sine/triangle only - NO noise, NO distortion
+   */
+  private playMagicReveal(ctx: AudioContext, now: number, vol: number): void {
+    const v = vol * 1.2
+
+    // === WARM PAD CHORD - C major 7 ===
+    const padFreqs = [261.63, 329.63, 392.00, 493.88] // C4, E4, G4, B4
+
+    padFreqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, now)
+
+      // Gentle vibrato
+      const lfo = ctx.createOscillator()
+      lfo.type = 'sine'
+      lfo.frequency.value = 3
+      const lfoGain = ctx.createGain()
+      lfoGain.gain.value = freq * 0.004 // Very subtle
+      lfo.connect(lfoGain)
+      lfoGain.connect(osc.frequency)
+      lfo.start(now)
+      lfo.stop(now + 1.8)
+
+      // Soft lowpass
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(1200, now)
+      filter.frequency.linearRampToValueAtTime(2500, now + 0.4)
+      filter.frequency.linearRampToValueAtTime(800, now + 1.5)
+      filter.Q.value = 0.7
+
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(v * (0.12 - i * 0.015), now + 0.2)
+      gain.gain.setValueAtTime(v * (0.10 - i * 0.012), now + 0.8)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6)
+
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.getOutput())
+      osc.start(now)
+      osc.stop(now + 1.8)
+    })
+
+    // === BELL TONES - clean high sparkle ===
+    const bellFreqs = [1046.50, 1318.51, 1567.98, 2093.00] // C6, E6, G6, C7
+    const bellTimes = [0.05, 0.12, 0.19, 0.26]
+
+    bellFreqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, now + bellTimes[i])
+
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(0, now + bellTimes[i])
+      gain.gain.linearRampToValueAtTime(v * 0.08, now + bellTimes[i] + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + bellTimes[i] + 0.6)
+
+      osc.connect(gain)
+      gain.connect(this.getOutput())
+      osc.start(now + bellTimes[i])
+      osc.stop(now + bellTimes[i] + 0.7)
+    })
+
+    // === RISING SHIMMER - pure sine sweep ===
+    const shimmerOsc = ctx.createOscillator()
+    shimmerOsc.type = 'sine'
+    shimmerOsc.frequency.setValueAtTime(800, now)
+    shimmerOsc.frequency.exponentialRampToValueAtTime(2400, now + 0.5)
+    shimmerOsc.frequency.exponentialRampToValueAtTime(1600, now + 1.0)
+
+    const shimmerGain = ctx.createGain()
+    shimmerGain.gain.setValueAtTime(0, now)
+    shimmerGain.gain.linearRampToValueAtTime(v * 0.06, now + 0.15)
+    shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9)
+
+    shimmerOsc.connect(shimmerGain)
+    shimmerGain.connect(this.getOutput())
+    shimmerOsc.start(now)
+    shimmerOsc.stop(now + 1.0)
+
+    // === SOFT SUB - foundation ===
+    const subOsc = ctx.createOscillator()
+    subOsc.type = 'sine'
+    subOsc.frequency.setValueAtTime(65, now) // C2
+    subOsc.frequency.linearRampToValueAtTime(82, now + 0.3)
+    subOsc.frequency.linearRampToValueAtTime(65, now + 0.7)
+
+    const subGain = ctx.createGain()
+    subGain.gain.setValueAtTime(0, now)
+    subGain.gain.linearRampToValueAtTime(v * 0.18, now + 0.1)
+    subGain.gain.setValueAtTime(v * 0.15, now + 0.5)
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9)
+
+    subOsc.connect(subGain)
+    subGain.connect(this.getOutput())
+    subOsc.start(now)
+    subOsc.stop(now + 1.0)
+  }
+
+  /**
+   * Lever Pull - Mechanical slot machine lever being pulled down
+   * Metallic click + ratchet sound + spring tension
+   */
+  private playLeverPull(ctx: AudioContext, now: number, vol: number): void {
+    // === INITIAL CLICK - metal contact ===
+    const clickOsc = ctx.createOscillator()
+    clickOsc.type = 'square'
+    clickOsc.frequency.setValueAtTime(1200, now)
+    clickOsc.frequency.exponentialRampToValueAtTime(300, now + 0.03)
+
+    const clickFilter = ctx.createBiquadFilter()
+    clickFilter.type = 'bandpass'
+    clickFilter.frequency.value = 800
+    clickFilter.Q.value = 2
+
+    const clickGain = ctx.createGain()
+    clickGain.gain.setValueAtTime(vol * 0.4, now)
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+
+    clickOsc.connect(clickFilter)
+    clickFilter.connect(clickGain)
+    clickGain.connect(this.getOutput())
+    clickOsc.start(now)
+    clickOsc.stop(now + 0.06)
+
+    // === RATCHET CLICKS - mechanical teeth ===
+    const ratchetCount = 4
+    for (let i = 0; i < ratchetCount; i++) {
+      const delay = 0.02 + i * 0.035
+      const ratchetOsc = ctx.createOscillator()
+      ratchetOsc.type = 'square'
+      ratchetOsc.frequency.setValueAtTime(600 - i * 80, now + delay)
+      ratchetOsc.frequency.exponentialRampToValueAtTime(200, now + delay + 0.015)
+
+      const ratchetFilter = ctx.createBiquadFilter()
+      ratchetFilter.type = 'highpass'
+      ratchetFilter.frequency.value = 400
+      ratchetFilter.Q.value = 1
+
+      const ratchetGain = ctx.createGain()
+      ratchetGain.gain.setValueAtTime(vol * (0.25 - i * 0.04), now + delay)
+      ratchetGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.025)
+
+      ratchetOsc.connect(ratchetFilter)
+      ratchetFilter.connect(ratchetGain)
+      ratchetGain.connect(this.getOutput())
+      ratchetOsc.start(now + delay)
+      ratchetOsc.stop(now + delay + 0.03)
+    }
+
+    // === SPRING TENSION - low rumble ===
+    const springOsc = ctx.createOscillator()
+    springOsc.type = 'sine'
+    springOsc.frequency.setValueAtTime(80, now)
+    springOsc.frequency.linearRampToValueAtTime(120, now + 0.15)
+
+    const springGain = ctx.createGain()
+    springGain.gain.setValueAtTime(0, now)
+    springGain.gain.linearRampToValueAtTime(vol * 0.2, now + 0.05)
+    springGain.gain.linearRampToValueAtTime(vol * 0.15, now + 0.15)
+    springGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+
+    springOsc.connect(springGain)
+    springGain.connect(this.getOutput())
+    springOsc.start(now)
+    springOsc.stop(now + 0.25)
+
+    // === METAL CREAK - friction sound ===
+    const creakOsc = ctx.createOscillator()
+    creakOsc.type = 'sawtooth'
+    creakOsc.frequency.setValueAtTime(150, now + 0.02)
+    creakOsc.frequency.linearRampToValueAtTime(200, now + 0.12)
+
+    const creakFilter = ctx.createBiquadFilter()
+    creakFilter.type = 'bandpass'
+    creakFilter.frequency.value = 180
+    creakFilter.Q.value = 8
+
+    const creakGain = ctx.createGain()
+    creakGain.gain.setValueAtTime(0, now + 0.02)
+    creakGain.gain.linearRampToValueAtTime(vol * 0.08, now + 0.05)
+    creakGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+
+    creakOsc.connect(creakFilter)
+    creakFilter.connect(creakGain)
+    creakGain.connect(this.getOutput())
+    creakOsc.start(now + 0.02)
+    creakOsc.stop(now + 0.18)
+  }
+
+  /**
+   * Lever Release - Spring mechanism releasing and snapping back
+   * Whoosh + spring boing + impact
+   */
+  private playLeverRelease(ctx: AudioContext, now: number, vol: number): void {
+    // === SPRING RELEASE - twang sound ===
+    const springOsc = ctx.createOscillator()
+    springOsc.type = 'sine'
+    springOsc.frequency.setValueAtTime(400, now)
+    springOsc.frequency.exponentialRampToValueAtTime(80, now + 0.15)
+
+    // Modulate for spring wobble
+    const wobbleLfo = ctx.createOscillator()
+    wobbleLfo.type = 'sine'
+    wobbleLfo.frequency.setValueAtTime(25, now)
+    wobbleLfo.frequency.exponentialRampToValueAtTime(8, now + 0.15)
+    const wobbleGain = ctx.createGain()
+    wobbleGain.gain.setValueAtTime(50, now)
+    wobbleGain.gain.exponentialRampToValueAtTime(10, now + 0.15)
+    wobbleLfo.connect(wobbleGain)
+    wobbleGain.connect(springOsc.frequency)
+    wobbleLfo.start(now)
+    wobbleLfo.stop(now + 0.2)
+
+    const springGain = ctx.createGain()
+    springGain.gain.setValueAtTime(vol * 0.3, now)
+    springGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
+
+    springOsc.connect(springGain)
+    springGain.connect(this.getOutput())
+    springOsc.start(now)
+    springOsc.stop(now + 0.2)
+
+    // === WHOOSH - air movement ===
+    const whooshSize = ctx.sampleRate * 0.1
+    const whooshBuffer = ctx.createBuffer(1, whooshSize, ctx.sampleRate)
+    const whooshData = whooshBuffer.getChannelData(0)
+    for (let i = 0; i < whooshSize; i++) {
+      whooshData[i] = (Math.random() * 2 - 1) * (1 - i / whooshSize)
+    }
+
+    const whooshSource = ctx.createBufferSource()
+    whooshSource.buffer = whooshBuffer
+
+    const whooshFilter = ctx.createBiquadFilter()
+    whooshFilter.type = 'bandpass'
+    whooshFilter.frequency.setValueAtTime(2000, now)
+    whooshFilter.frequency.exponentialRampToValueAtTime(500, now + 0.08)
+    whooshFilter.Q.value = 1
+
+    const whooshGain = ctx.createGain()
+    whooshGain.gain.setValueAtTime(vol * 0.15, now)
+    whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+
+    whooshSource.connect(whooshFilter)
+    whooshFilter.connect(whooshGain)
+    whooshGain.connect(this.getOutput())
+    whooshSource.start(now)
+
+    // === IMPACT THUD - lever hitting stop ===
+    const impactOsc = ctx.createOscillator()
+    impactOsc.type = 'sine'
+    impactOsc.frequency.setValueAtTime(150, now + 0.08)
+    impactOsc.frequency.exponentialRampToValueAtTime(60, now + 0.12)
+
+    const impactGain = ctx.createGain()
+    impactGain.gain.setValueAtTime(vol * 0.4, now + 0.08)
+    impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+
+    impactOsc.connect(impactGain)
+    impactGain.connect(this.getOutput())
+    impactOsc.start(now + 0.08)
+    impactOsc.stop(now + 0.18)
+
+    // === METAL CLANK - final stop ===
+    const clankOsc = ctx.createOscillator()
+    clankOsc.type = 'square'
+    clankOsc.frequency.setValueAtTime(800, now + 0.08)
+    clankOsc.frequency.exponentialRampToValueAtTime(400, now + 0.1)
+
+    const clankFilter = ctx.createBiquadFilter()
+    clankFilter.type = 'bandpass'
+    clankFilter.frequency.value = 600
+    clankFilter.Q.value = 3
+
+    const clankGain = ctx.createGain()
+    clankGain.gain.setValueAtTime(vol * 0.25, now + 0.08)
+    clankGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12)
+
+    clankOsc.connect(clankFilter)
+    clankFilter.connect(clankGain)
+    clankGain.connect(this.getOutput())
+    clankOsc.start(now + 0.08)
+    clankOsc.stop(now + 0.15)
+  }
+
+  /**
    * UI Open - Soft, pleasant popup sound
    * Gentle rising tone with soft attack - like a notification
    */
@@ -1019,6 +1331,195 @@ class SynthSoundGenerator {
     osc.start(now)
     osc.stop(now + 0.25)
   }
+
+  /**
+   * Reel Spin - Continuous mechanical spinning sound
+   * Realistic slot machine reel rotation with bearing noise
+   */
+  private playReelSpin(ctx: AudioContext, now: number, vol: number): void {
+    const duration = 0.4 // Short burst, called repeatedly
+
+    // === MECHANICAL BEARING NOISE - filtered noise ===
+    const noiseSize = ctx.sampleRate * duration
+    const noiseBuffer = ctx.createBuffer(1, noiseSize, ctx.sampleRate)
+    const noiseData = noiseBuffer.getChannelData(0)
+
+    // Generate rhythmic mechanical noise
+    for (let i = 0; i < noiseSize; i++) {
+      const t = i / ctx.sampleRate
+      // Rhythmic clicking pattern (simulates symbols passing)
+      const clickRate = 30 // clicks per second
+      const clickPhase = (t * clickRate) % 1
+      const isClick = clickPhase < 0.1
+      noiseData[i] = (Math.random() * 2 - 1) * (isClick ? 0.8 : 0.2)
+    }
+
+    const noiseSource = ctx.createBufferSource()
+    noiseSource.buffer = noiseBuffer
+
+    // Bandpass for mechanical character
+    const mechFilter = ctx.createBiquadFilter()
+    mechFilter.type = 'bandpass'
+    mechFilter.frequency.value = 800
+    mechFilter.Q.value = 2
+
+    const noiseGain = ctx.createGain()
+    noiseGain.gain.setValueAtTime(vol * 0.25, now)
+    noiseGain.gain.exponentialRampToValueAtTime(vol * 0.2, now + duration)
+
+    noiseSource.connect(mechFilter)
+    mechFilter.connect(noiseGain)
+    noiseGain.connect(this.getOutput())
+    noiseSource.start(now)
+
+    // === LOW MOTOR HUM - continuous rotation ===
+    const motorOsc = ctx.createOscillator()
+    motorOsc.type = 'sine'
+    motorOsc.frequency.value = 60 // Motor hum
+
+    const motorOsc2 = ctx.createOscillator()
+    motorOsc2.type = 'sine'
+    motorOsc2.frequency.value = 120 // Harmonic
+
+    const motorGain = ctx.createGain()
+    motorGain.gain.setValueAtTime(vol * 0.08, now)
+
+    const motorGain2 = ctx.createGain()
+    motorGain2.gain.setValueAtTime(vol * 0.04, now)
+
+    motorOsc.connect(motorGain)
+    motorOsc2.connect(motorGain2)
+    motorGain.connect(this.getOutput())
+    motorGain2.connect(this.getOutput())
+
+    motorOsc.start(now)
+    motorOsc.stop(now + duration)
+    motorOsc2.start(now)
+    motorOsc2.stop(now + duration)
+
+    // === SYMBOL TICKING - rapid clicks ===
+    const tickCount = 8
+    for (let i = 0; i < tickCount; i++) {
+      const delay = (i / tickCount) * duration
+      const tickOsc = ctx.createOscillator()
+      tickOsc.type = 'square'
+      tickOsc.frequency.setValueAtTime(1500 - i * 50, now + delay)
+      tickOsc.frequency.exponentialRampToValueAtTime(800, now + delay + 0.02)
+
+      const tickFilter = ctx.createBiquadFilter()
+      tickFilter.type = 'highpass'
+      tickFilter.frequency.value = 600
+
+      const tickGain = ctx.createGain()
+      tickGain.gain.setValueAtTime(vol * 0.12, now + delay)
+      tickGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.025)
+
+      tickOsc.connect(tickFilter)
+      tickFilter.connect(tickGain)
+      tickGain.connect(this.getOutput())
+      tickOsc.start(now + delay)
+      tickOsc.stop(now + delay + 0.03)
+    }
+  }
+
+  /**
+   * Reel Stop - Mechanical thud when reel locks into place
+   * Satisfying "chunk" sound with metal impact
+   */
+  private playReelStop(ctx: AudioContext, now: number, vol: number): void {
+    // === MAIN IMPACT - heavy mechanical thud ===
+    const impactOsc = ctx.createOscillator()
+    impactOsc.type = 'sine'
+    impactOsc.frequency.setValueAtTime(200, now)
+    impactOsc.frequency.exponentialRampToValueAtTime(60, now + 0.08)
+
+    const impactGain = ctx.createGain()
+    impactGain.gain.setValueAtTime(vol * 0.6, now)
+    impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
+
+    impactOsc.connect(impactGain)
+    impactGain.connect(this.getOutput())
+    impactOsc.start(now)
+    impactOsc.stop(now + 0.18)
+
+    // === METAL CLICK - locking mechanism ===
+    const clickOsc = ctx.createOscillator()
+    clickOsc.type = 'square'
+    clickOsc.frequency.setValueAtTime(2000, now)
+    clickOsc.frequency.exponentialRampToValueAtTime(600, now + 0.02)
+
+    const clickFilter = ctx.createBiquadFilter()
+    clickFilter.type = 'bandpass'
+    clickFilter.frequency.value = 1200
+    clickFilter.Q.value = 3
+
+    const clickGain = ctx.createGain()
+    clickGain.gain.setValueAtTime(vol * 0.4, now)
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
+
+    clickOsc.connect(clickFilter)
+    clickFilter.connect(clickGain)
+    clickGain.connect(this.getOutput())
+    clickOsc.start(now)
+    clickOsc.stop(now + 0.05)
+
+    // === SPRING RESONANCE - slight wobble after stop ===
+    const springOsc = ctx.createOscillator()
+    springOsc.type = 'sine'
+    springOsc.frequency.setValueAtTime(180, now + 0.02)
+    springOsc.frequency.exponentialRampToValueAtTime(120, now + 0.1)
+
+    // Wobble LFO
+    const wobbleLfo = ctx.createOscillator()
+    wobbleLfo.type = 'sine'
+    wobbleLfo.frequency.value = 15
+    const wobbleGain = ctx.createGain()
+    wobbleGain.gain.value = 20
+    wobbleLfo.connect(wobbleGain)
+    wobbleGain.connect(springOsc.frequency)
+    wobbleLfo.start(now + 0.02)
+    wobbleLfo.stop(now + 0.12)
+
+    const springGain = ctx.createGain()
+    springGain.gain.setValueAtTime(0, now + 0.02)
+    springGain.gain.linearRampToValueAtTime(vol * 0.15, now + 0.03)
+    springGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12)
+
+    springOsc.connect(springGain)
+    springGain.connect(this.getOutput())
+    springOsc.start(now + 0.02)
+    springOsc.stop(now + 0.15)
+
+    // === SUB BASS THUMP - weight of reel ===
+    const subOsc = ctx.createOscillator()
+    subOsc.type = 'sine'
+    subOsc.frequency.setValueAtTime(80, now)
+    subOsc.frequency.exponentialRampToValueAtTime(40, now + 0.1)
+
+    const subGain = ctx.createGain()
+    subGain.gain.setValueAtTime(vol * 0.35, now)
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12)
+
+    subOsc.connect(subGain)
+    subGain.connect(this.getOutput())
+    subOsc.start(now)
+    subOsc.stop(now + 0.15)
+
+    // === SECONDARY CLICK - mechanical lock ===
+    const lockOsc = ctx.createOscillator()
+    lockOsc.type = 'triangle'
+    lockOsc.frequency.setValueAtTime(800, now + 0.01)
+    lockOsc.frequency.exponentialRampToValueAtTime(400, now + 0.03)
+
+    const lockGain = ctx.createGain()
+    lockGain.gain.setValueAtTime(vol * 0.2, now + 0.01)
+    lockGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+
+    lockOsc.connect(lockGain)
+    lockGain.connect(this.getOutput())
+    lockOsc.start(now + 0.01)
+    lockOsc.stop(now + 0.06)
+  }
 }
 
 // Singleton
@@ -1045,10 +1546,19 @@ export const playCyberSweep = (vol = 0.4) => synthSounds.play('cyberSweep', vol)
 export const playCyberReveal = (vol = 0.3) => synthSounds.play('cyberReveal', vol)
 export const playCyberBass = (vol = 0.5) => synthSounds.play('cyberBass', vol)
 export const playCyberWow = (vol = 0.6) => synthSounds.play('cyberWow', vol)
+export const playMagicReveal = (vol = 0.5) => synthSounds.play('magicReveal', vol)
 
 // UI SFX exports - soft notification sounds
 export const playUiOpen = (vol = 0.4) => synthSounds.play('uiOpen', vol)
 export const playUiClose = (vol = 0.3) => synthSounds.play('uiClose', vol)
+
+// Lever SFX exports - slot machine lever sounds (louder)
+export const playLeverPull = (vol = 0.7) => synthSounds.play('leverPull', vol)
+export const playLeverRelease = (vol = 0.6) => synthSounds.play('leverRelease', vol)
+
+// Reel SFX exports - slot machine reel sounds
+export const playReelSpin = (vol = 0.5) => synthSounds.play('reelSpin', vol)
+export const playReelStop = (vol = 0.6) => synthSounds.play('reelStop', vol)
 
 // Volume control - connects to DSP sfx slider
 export const setSynthVolume = (vol: number) => synthSounds.setVolumeMultiplier(vol)

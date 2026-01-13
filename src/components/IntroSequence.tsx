@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { playSynthSelect, playCyberReveal, playCyberWow } from '../audio/SynthSounds'
+import { playSynthSelect, playCyberReveal, playMagicReveal } from '../audio/SynthSounds'
 
 const COLORS = {
   cyan: '#00ffff',
@@ -43,7 +43,7 @@ function TeleportParticles({
   const allGoneRef = useRef(false)
   const spawnRateRef = useRef(1.0) // 1.0 = full spawn, 0 = no spawn
 
-  const particleCount = 200 // More particles for WOW
+  const particleCount = 80 // Reduced for performance (was 200)
 
   const { geometry, material } = useMemo(() => {
     const positions = new Float32Array(particleCount * 3)
@@ -387,11 +387,11 @@ export function IntroOverlay({
   }, [phase])
 
   // GRADUAL REVEAL - letters transform one by one from glitch to real
-  // Play WOW sound when transitioning to hold phase (all letters revealed)
+  // Play magic reveal sound when transitioning to hold phase (all letters revealed)
   useEffect(() => {
     if (phase === 'hold') {
-      console.log('[Intro] Phase changed to HOLD - playing CyberWow!')
-      playCyberWow(0.4)
+      console.log('[Intro] Phase changed to HOLD - playing MagicReveal!')
+      playMagicReveal(0.5)
       setShowBurst(true)
     }
   }, [phase])

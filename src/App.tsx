@@ -113,6 +113,18 @@ function SoundToggle() {
           <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
         </svg>
       )}
+      {/* M key hint - left of speaker, red color for visibility */}
+      <span style={{
+        position: 'absolute',
+        left: '-32px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: '18px',
+        fontWeight: 700,
+        color: '#ff4444',
+        textShadow: '0 0 10px rgba(255, 68, 68, 0.7)',
+        letterSpacing: '1px'
+      }}>M</span>
     </button>
   )
 }
@@ -263,9 +275,11 @@ function SectionProgressRing() {
 }
 
 // Spectrum Visualizer - Audio reactive bars (uses DSP frequency data)
+// OPTIMIZED: Throttled to 20fps instead of 60fps
 function SpectrumVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
+  const lastDrawRef = useRef(0)
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -278,8 +292,23 @@ function SpectrumVisualizer() {
     const barWidth = 3
     const barGap = 2
     const maxHeight = 30
+    const targetFps = 20 // Throttle to 20fps for performance
+    const frameInterval = 1000 / targetFps
 
-    const draw = () => {
+    // Pre-calculate bar colors to avoid HSL string creation every frame
+    const barColors = Array.from({ length: barCount }, (_, i) => {
+      const hue = 180 - (i / barCount) * 140
+      return { hue, base: `hsl(${hue}, 80%, 50%)`, glow: `hsl(${hue}, 100%, 60%)` }
+    })
+
+    const draw = (timestamp: number) => {
+      animationRef.current = requestAnimationFrame(draw)
+
+      // Throttle to targetFps
+      const elapsed = timestamp - lastDrawRef.current
+      if (elapsed < frameInterval) return
+      lastDrawRef.current = timestamp - (elapsed % frameInterval)
+
       // Try DSP first, fallback to old audio system
       let data = dspGetFrequencyData()
       if (!data) {
@@ -287,36 +316,28 @@ function SpectrumVisualizer() {
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.shadowBlur = 0 // Reset shadow for performance
 
       if (data && data.length > 0) {
-        // Sample frequency data to barCount bars
         const step = Math.max(1, Math.floor(data.length / barCount))
 
         for (let i = 0; i < barCount; i++) {
           const value = data[i * step] / 255
           const height = Math.max(2, value * maxHeight)
 
-          // Gradient color based on frequency (low=cyan, mid=magenta, high=gold)
-          const hue = 180 - (i / barCount) * 140 // cyan to pink
-          const saturation = 80 + value * 20
-          const lightness = 50 + value * 20
-
-          ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`
+          ctx.fillStyle = barColors[i].base
           ctx.fillRect(
             i * (barWidth + barGap),
             maxHeight - height,
             barWidth,
             height
           )
-
-          // Glow effect
-          ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
-          ctx.shadowBlur = value * 8
         }
       } else {
-        // Idle animation when no audio
+        // Idle animation when no audio - simplified
+        const now = timestamp / 500
         for (let i = 0; i < barCount; i++) {
-          const idleHeight = 2 + Math.sin(Date.now() / 500 + i * 0.5) * 3
+          const idleHeight = 2 + Math.sin(now + i * 0.5) * 3
           ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'
           ctx.fillRect(
             i * (barWidth + barGap),
@@ -326,11 +347,9 @@ function SpectrumVisualizer() {
           )
         }
       }
-
-      animationRef.current = requestAnimationFrame(draw)
     }
 
-    draw()
+    animationRef.current = requestAnimationFrame(draw)
 
     return () => {
       if (animationRef.current) {
@@ -1319,30 +1338,51 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
 
       {/* VanVinkl logo text */}
       <div style={{
-        fontSize: '48px',
-        fontWeight: 900,
-        letterSpacing: '12px',
-        marginBottom: '60px',
-        background: 'linear-gradient(90deg, #00ffff, #ff00aa, #00ffff)',
-        backgroundSize: '200% 100%',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        animation: 'splashGradient 3s linear infinite',
-        textShadow: '0 0 60px rgba(0, 255, 255, 0.5)',
-        position: 'relative'
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        marginBottom: '60px'
       }}>
-        VANVINKL
-        {/* Glitch layer */}
+        {/* VANVINKL - main title */}
         <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'inherit',
+          fontSize: '48px',
+          fontWeight: 900,
+          letterSpacing: '12px',
+          background: 'linear-gradient(90deg, #00ffff, #ff00aa, #00ffff)',
+          backgroundSize: '200% 100%',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-          animation: 'splashGlitch 2s infinite',
-          opacity: 0.8
+          backgroundClip: 'text',
+          animation: 'splashGradient 3s linear infinite',
+          textShadow: '0 0 60px rgba(0, 255, 255, 0.5)',
+          position: 'relative'
         }}>
           VANVINKL
+          {/* Glitch layer */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'inherit',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            animation: 'splashGlitch 2s infinite',
+            opacity: 0.8
+          }}>
+            VANVINKL
+          </div>
+        </div>
+
+        {/* STUDIO - below main title */}
+        <div style={{
+          fontSize: '28px',
+          fontWeight: 700,
+          letterSpacing: '16px',
+          marginTop: '8px',
+          color: '#00ffff',
+          textShadow: '0 0 30px rgba(0, 255, 255, 0.8), 0 0 60px rgba(136, 68, 255, 0.5)'
+        }}>
+          STUDIO
         </div>
       </div>
 
@@ -1408,6 +1448,19 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
             <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
           </svg>
           <span>SOUND ON FOR BEST EXPERIENCE</span>
+        </div>
+
+        {/* CASINO LOUNGE - at the very bottom */}
+        <div style={{
+          fontSize: '14px',
+          fontWeight: 600,
+          letterSpacing: '6px',
+          marginTop: '30px',
+          color: '#ffd700',
+          textShadow: '0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3)',
+          opacity: 0.85
+        }}>
+          CASINO LOUNGE
         </div>
       </div>
 

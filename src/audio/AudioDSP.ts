@@ -391,7 +391,7 @@ export const audioDSP = new AudioDSP()
 
 audioDSP.registerAll({
   // Music (MP3 for faster loading - 4MB vs 48MB WAV)
-  lounge: { url: '/audio/ambient/lounge.mp3', volume: 0.35, loop: true, bus: 'music' },
+  lounge: { url: '/audio/ambient/lounge.mp3', volume: 0.4, loop: true, bus: 'music' },
   casinoHum: { url: '/audio/ambient/casino-hum.wav', volume: 0.2, loop: true, bus: 'music' },
   neonBuzz: { url: '/audio/ambient/neon-buzz.wav', volume: 0.15, loop: true, bus: 'music' },
 

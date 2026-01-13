@@ -13,6 +13,7 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
+import { playLeverPull, playLeverRelease } from '../audio/SynthSounds'
 
 interface CyberpunkSlotMachineProps {
   position: [number, number, number]
@@ -94,6 +95,66 @@ function useNeonMaterial(color: string) {
   return mat
 }
 
+// HOLOGRAPHIC OVERLAY - Scanlines + shimmer for premium feel
+function useHoloOverlayMaterial() {
+  const mat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      time: { value: 0 },
+      intensity: { value: 0 },
+      spinning: { value: 0 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float time;
+      uniform float intensity;
+      uniform float spinning;
+      varying vec2 vUv;
+
+      void main() {
+        // Scanlines
+        float scanline = sin(vUv.y * 120.0 + time * 2.0) * 0.5 + 0.5;
+        scanline = pow(scanline, 8.0) * 0.15;
+
+        // Horizontal sweep
+        float sweep = smoothstep(0.0, 0.1, fract(vUv.y - time * 0.3));
+        sweep *= smoothstep(0.2, 0.1, fract(vUv.y - time * 0.3));
+        sweep *= 0.2;
+
+        // Edge glow
+        float edgeX = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
+        float edgeY = smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+        float edge = 1.0 - edgeX * edgeY;
+
+        // Chromatic aberration hint
+        float chromaR = sin(time * 3.0 + vUv.x * 10.0) * 0.02;
+        float chromaB = sin(time * 3.0 + vUv.x * 10.0 + 2.0) * 0.02;
+
+        // Spin blur effect
+        float blur = spinning * sin(vUv.y * 50.0 + time * 20.0) * 0.1;
+
+        vec3 color = vec3(0.0, 1.0, 1.0); // Cyan base
+        color.r += chromaR + edge * 0.3;
+        color.b += chromaB;
+
+        float alpha = (scanline + sweep + edge * 0.15 + blur) * intensity;
+
+        gl_FragColor = vec4(color, alpha * 0.6);
+      }
+    `,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false
+  }), [])
+  return mat
+}
+
 export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRef, spinningMachineRef }: CyberpunkSlotMachineProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const reelsRef = useRef<THREE.Group>(null!)
@@ -103,8 +164,13 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
   const labelGlowRef = useRef<THREE.Mesh>(null!)
   const labelOuterGlowRef = useRef<THREE.Mesh>(null!)
   const labelBorderRef = useRef<THREE.Mesh>(null!)
+  const holoOverlayRef = useRef<THREE.Mesh>(null!)
+  const ctaRef = useRef<THREE.Group>(null!)
+  const leverRef = useRef<THREE.Group>(null!)
 
   const timeRef = useRef(Math.random() * 100)
+  const leverPullRef = useRef(0) // 0 = up, 1 = pulled down
+  const leverSoundPlayed = useRef({ pull: false, release: false })
 
   // Smooth activation level (0 = idle, 1 = fully active)
   const activationLevel = useRef(0)
@@ -115,14 +181,14 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
     labelActive: new THREE.Color(COLORS.cyan)
   })
 
-  // Attraction state removed for performance
-
-  // Spin state
+  // Spin state with elastic bounce
   const spinState = useRef({
     spinning: false,
     spinTime: 0,
     reelOffsets: [0, 0, 0, 0, 0],
-    reelSpeeds: [0, 0, 0, 0, 0]
+    reelSpeeds: [0, 0, 0, 0, 0],
+    targetOffsets: [0, 0, 0, 0, 0],
+    bouncePhase: [0, 0, 0, 0, 0] // For elastic overshoot
   })
 
   // Track previous states for change detection
@@ -132,6 +198,7 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
   // GPU-animated neon materials
   const leftNeonMat = useNeonMaterial(COLORS.magenta)
   const rightNeonMat = useNeonMaterial(COLORS.cyan)
+  const holoOverlayMat = useHoloOverlayMaterial()
 
   useFrame((state, delta) => {
     timeRef.current += delta
@@ -155,8 +222,36 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
       spinState.current.spinning = true
       spinState.current.spinTime = 0
       spinState.current.reelSpeeds = [22, 24, 26, 28, 30]
+      // Pull the lever!
+      leverPullRef.current = 1
+      // Play lever pull sound (loud)
+      playLeverPull(0.7)
+      leverSoundPlayed.current.pull = true
+      leverSoundPlayed.current.release = false
     }
     wasSpinning.current = isSpinning
+
+    // Lever animation - pull down then spring back
+    if (leverRef.current) {
+      const targetLever = spinState.current.spinning && spinState.current.spinTime < 0.3 ? 1 : 0
+      const prevLeverPos = leverPullRef.current
+      leverPullRef.current += (targetLever - leverPullRef.current) * delta * (targetLever === 1 ? 15 : 4)
+
+      // Play release sound when lever starts returning (crosses 0.7 threshold going down)
+      if (prevLeverPos > 0.7 && leverPullRef.current <= 0.7 && leverSoundPlayed.current.pull && !leverSoundPlayed.current.release) {
+        playLeverRelease(0.6)
+        leverSoundPlayed.current.release = true
+      }
+
+      // Reset sound flags when lever is back up
+      if (leverPullRef.current < 0.05) {
+        leverSoundPlayed.current.pull = false
+        leverSoundPlayed.current.release = false
+      }
+
+      // Rotate lever around X axis (pull down motion)
+      leverRef.current.rotation.x = leverPullRef.current * 0.6 // ~35 degrees pull
+    }
 
     // FAST activation transition - near instant
     const targetActivation = isActive ? 1 : 0
@@ -164,12 +259,20 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
     activationLevel.current += (targetActivation - activationLevel.current) * Math.min(delta * lerpSpeed, 1)
     const act = activationLevel.current // shorthand
 
-    // Update shader uniforms - minimal overhead (just 4 floats)
+    // Update shader uniforms - minimal overhead
     const elapsedTime = state.clock.elapsedTime
     leftNeonMat.uniforms.time.value = elapsedTime
     rightNeonMat.uniforms.time.value = elapsedTime
     leftNeonMat.uniforms.intensity.value = THREE.MathUtils.lerp(0.4, 1.0, act)
     rightNeonMat.uniforms.intensity.value = THREE.MathUtils.lerp(0.4, 1.0, act)
+
+    // Get spin state reference
+    const spin = spinState.current
+
+    // Holographic overlay shader
+    holoOverlayMat.uniforms.time.value = elapsedTime
+    holoOverlayMat.uniforms.intensity.value = act
+    holoOverlayMat.uniforms.spinning.value = spin.spinning ? 1 : 0
 
     // Label color transitions (using cached colors)
     const colors = cachedColors.current
@@ -182,24 +285,50 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
       matBorder.color.copy(colors.labelIdle).lerp(colors.labelActive, act)
     }
 
-    // Reel spinning - FAST animation (1.5s total)
-    const spin = spinState.current
+    // CTA pulsing animation
+    if (ctaRef.current) {
+      const pulse = 1 + Math.sin(t * 4) * 0.08 * act
+      ctaRef.current.scale.setScalar(pulse)
+      // Also animate Y position for "bouncy" feel
+      ctaRef.current.position.y = 1.7 + Math.sin(t * 3) * 0.02 * act
+    }
+
+    // Reel spinning with ELASTIC BOUNCE
 
     if (spin.spinning) {
       spin.spinTime += delta
-      // Much faster durations: 0.6s, 0.8s, 1.0s, 1.2s, 1.4s
-      const durations = [0.6, 0.8, 1.0, 1.2, 1.4]
+      // Staggered durations for dramatic effect
+      const durations = [0.7, 0.95, 1.2, 1.45, 1.7]
+      const bounceStart = [0.5, 0.75, 1.0, 1.25, 1.5]
 
       for (let i = 0; i < 5; i++) {
         if (spin.spinTime < durations[i]) {
+          // Main spin phase
           const progress = spin.spinTime / durations[i]
           const easeOut = 1 - Math.pow(1 - progress, 3)
           spin.reelOffsets[i] += spin.reelSpeeds[i] * (1 - easeOut * 0.96) * delta
+
+          // Calculate target for bounce
+          if (spin.spinTime > bounceStart[i] && spin.targetOffsets[i] === 0) {
+            // Snap to nearest symbol position
+            const symbolAngle = (Math.PI * 2) / 8 // 8 symbols
+            spin.targetOffsets[i] = Math.round(spin.reelOffsets[i] / symbolAngle) * symbolAngle
+          }
+        } else {
+          // ELASTIC BOUNCE phase
+          spin.bouncePhase[i] += delta * 12
+          const bounce = spin.bouncePhase[i]
+          // Damped spring oscillation
+          const elasticOffset = Math.sin(bounce * 3) * Math.exp(-bounce * 2) * 0.15
+          spin.reelOffsets[i] = spin.targetOffsets[i] + elasticOffset
         }
       }
 
-      if (spin.spinTime > durations[4] + 0.2) {
+      if (spin.spinTime > durations[4] + 0.5) {
         spin.spinning = false
+        // Reset bounce state
+        spin.bouncePhase = [0, 0, 0, 0, 0]
+        spin.targetOffsets = [0, 0, 0, 0, 0]
       }
     }
 
@@ -359,25 +488,32 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
         })}
       </group>
 
-      {/* ===== INFO DISPLAY ===== */}
-      <mesh position={[0, 1.7, 0.69]}>
-        <planeGeometry args={[2.3, 0.45]} />
-        <meshBasicMaterial
-          color={isActive ? COLORS.cyan : COLORS.purple}
-          toneMapped={false}
-          transparent
-          opacity={isActive ? 0.9 : 0.55}
-        />
+      {/* ===== HOLOGRAPHIC OVERLAY - Premium scanline effect ===== */}
+      <mesh ref={holoOverlayRef} position={[0, 2.9, 0.75]} material={holoOverlayMat}>
+        <planeGeometry args={[2.6, 1.7]} />
       </mesh>
-      <Text
-        position={[0, 1.7, 0.7]}
-        fontSize={0.16}
-        color="#000000"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {isActive ? 'PRESS SPACE TO PLAY' : 'WALK CLOSER'}
-      </Text>
+
+      {/* ===== INFO DISPLAY with PULSING CTA ===== */}
+      <group ref={ctaRef} position={[0, 1.7, 0]}>
+        <mesh position={[0, 0, 0.69]}>
+          <planeGeometry args={[2.3, 0.45]} />
+          <meshBasicMaterial
+            color={isActive ? COLORS.cyan : COLORS.purple}
+            toneMapped={false}
+            transparent
+            opacity={isActive ? 0.9 : 0.55}
+          />
+        </mesh>
+        <Text
+          position={[0, 0, 0.7]}
+          fontSize={0.16}
+          color="#000000"
+          anchorX="center"
+          anchorY="middle"
+        >
+          {isActive ? 'PRESS SPACE TO PLAY' : 'WALK CLOSER'}
+        </Text>
+      </group>
 
       {/* ===== BUTTON PANEL ===== */}
       <RoundedBox args={[2.4, 0.45, 0.28]} radius={0.04} position={[0, 1.0, 0.68]}>
@@ -432,6 +568,48 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
           toneMapped={false}
         />
       </mesh>
+
+      {/* ===== LEVER (PULL HANDLE) ===== */}
+      <group ref={leverRef} position={[1.7, 2.8, 0.3]}>
+        {/* Lever mount bracket */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.15, 0.25, 0.2]} />
+          <meshStandardMaterial color={COLORS.chrome} metalness={0.9} roughness={0.1} />
+        </mesh>
+
+        {/* Lever arm - pivots from top */}
+        <group position={[0, 0.1, 0.15]}>
+          {/* Main rod */}
+          <mesh position={[0, 0.5, 0]} rotation={[0, 0, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 1.0, 12]} />
+            <meshStandardMaterial color={COLORS.chrome} metalness={0.95} roughness={0.05} />
+          </mesh>
+
+          {/* Handle ball (top) */}
+          <mesh position={[0, 1.0, 0]}>
+            <sphereGeometry args={[0.12, 16, 12]} />
+            <meshStandardMaterial
+              color={isActive ? '#ff3333' : '#aa2222'}
+              metalness={0.3}
+              roughness={0.4}
+              emissive={isActive ? '#ff0000' : '#000000'}
+              emissiveIntensity={isActive ? 0.3 : 0}
+            />
+          </mesh>
+
+          {/* Chrome ring on handle */}
+          <mesh position={[0, 0.85, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.08, 0.015, 8, 16]} />
+            <meshStandardMaterial color={COLORS.chrome} metalness={1} roughness={0.05} />
+          </mesh>
+        </group>
+
+        {/* Lever slot/guide */}
+        <mesh position={[0, 0.4, 0.25]} rotation={[0.3, 0, 0]}>
+          <boxGeometry args={[0.08, 0.6, 0.04]} />
+          <meshStandardMaterial color="#1a1a24" metalness={0.6} roughness={0.4} />
+        </mesh>
+      </group>
 
       {/* Single machine light - animated intensity */}
       <pointLight

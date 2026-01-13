@@ -629,7 +629,7 @@ class AudioSystem {
    * @param fadeTime - Fade in duration (seconds)
    * @param volume - Target volume (0-1)
    */
-  startAmbientMusic(soundId: SoundId, fadeTime = 1.0, volume = 0.3): void {
+  startAmbientMusic(soundId: SoundId, fadeTime = 1.0, volume = 0.4): void {
     if (!this.initialized || !this.context) return
 
     const buffer = this.buffers.get(soundId)
@@ -708,7 +708,7 @@ class AudioSystem {
    * @param fadeTime - Crossfade duration (seconds)
    * @param volume - Target volume
    */
-  crossfadeAmbientMusic(soundId: SoundId, fadeTime = 2.0, volume = 0.3): void {
+  crossfadeAmbientMusic(soundId: SoundId, fadeTime = 2.0, volume = 0.4): void {
     if (!this.initialized || !this.context) return
 
     const buffer = this.buffers.get(soundId)

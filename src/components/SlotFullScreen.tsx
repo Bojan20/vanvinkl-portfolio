@@ -39,6 +39,7 @@ import {
   startDucking,
   stopDucking
 } from '../audio'
+import { playReelSpin, playReelStop } from '../audio/SynthSounds'
 import { achievementStore } from '../store/achievements'
 
 // HAPTIC FEEDBACK - Mobile vibration patterns
@@ -685,7 +686,8 @@ const SkillReelColumn = memo(function SkillReelColumn({
   delay = 0,
   reelIndex,
   jackpot,
-  forceStop = false
+  forceStop = false,
+  onReelStop
 }: {
   reelData: SkillReelSymbol[]
   spinning: boolean
@@ -694,6 +696,7 @@ const SkillReelColumn = memo(function SkillReelColumn({
   reelIndex: number
   jackpot: boolean
   forceStop?: boolean
+  onReelStop?: (reelIndex: number) => void
 }) {
   // BATCHED STATE: Single state object reduces re-renders
   const [reelState, setReelState] = useState({
@@ -820,6 +823,9 @@ const SkillReelColumn = memo(function SkillReelColumn({
           visibleSymbols: getVisibleSymbols(finalIndex),
           bouncePhase: 'overshoot'
         }))
+
+        // Play reel stop sound when this reel locks into place
+        onReelStop?.(reelIndex)
 
         // Bounce sequence via timeouts (small, predictable)
         bounceTimeoutRef.current = window.setTimeout(() => {
@@ -3406,17 +3412,12 @@ export function SlotFullScreen({
       const totalSpinTime = 1800 + 4 * 500 + 400 // Last reel stop + bounce + buffer
       const timer = setTimeout(() => {
         setPhase('result')
-        // Play win sounds and haptic feedback
+        // Only haptic feedback - no win/jackpot sounds (reel sounds are enough)
         if (isJackpot) {
-          startDucking(0.3, 0.2) // Duck other audio to 30% for jackpot emphasis
-          playSynthJackpot(0.7) // Epic jackpot fanfare
-          haptic.jackpot() // Strong haptic pattern for jackpot
-          achievementStore.trackJackpot() // Track jackpot achievement
-          // Restore audio after jackpot fanfare
-          setTimeout(() => stopDucking(0.8), 3000)
+          haptic.jackpot()
+          achievementStore.trackJackpot()
         } else {
-          playSynthWin(0.5) // Regular win sound
-          haptic.success() // Success haptic pattern
+          haptic.success()
         }
         // Track section visit for achievement
         if (section) {
@@ -3449,6 +3450,25 @@ export function SlotFullScreen({
     markVisited(machineId)
   }, [machineId])
 
+  // Continuous reel spin sound during spinning phase (quieter)
+  useEffect(() => {
+    if (phase === 'spinning') {
+      // Play spin sound repeatedly during spin - reduced volume
+      playReelSpin(0.25)
+      const interval = setInterval(() => {
+        playReelSpin(0.2)
+      }, 380) // Slightly less than duration to overlap smoothly
+
+      return () => clearInterval(interval)
+    }
+  }, [phase])
+
+  // Handle individual reel stop - plays synced sound
+  const handleReelStop = useCallback((reelIndex: number) => {
+    // Slightly different volume for each reel for realism
+    const volumes = [0.5, 0.55, 0.6, 0.55, 0.65]
+    playReelStop(volumes[reelIndex] || 0.6)
+  }, [])
 
   // Touch/swipe handlers for mobile navigation
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -3480,7 +3500,6 @@ export function SlotFullScreen({
         // Horizontal swipe
         if (deltaX > 0) {
           // Swipe right = previous
-          playNavTick()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3488,7 +3507,6 @@ export function SlotFullScreen({
           }
         } else {
           // Swipe left = next
-          playNavTick()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3499,7 +3517,6 @@ export function SlotFullScreen({
         // Vertical swipe
         if (deltaY > 0) {
           // Swipe down = previous row
-          playNavTick()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3510,7 +3527,6 @@ export function SlotFullScreen({
           }
         } else {
           // Swipe up = next row
-          playNavTick()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3626,11 +3642,9 @@ export function SlotFullScreen({
       // ESC - close detail modal first, then close slot
       if (e.key === 'Escape') {
         if (detailItem) {
-          playModalClose() // Sound: modal close
           setDetailItem(null)
           return
         }
-        playNavBack() // Sound: slot close
         onClose()
         return
       }
@@ -3640,12 +3654,12 @@ export function SlotFullScreen({
         e.preventDefault()
         if (phase === 'spinning') {
           // HARD STOP - immediately stop all reels and show result
-          playSound('click', 0.5) // Sound: stop
+          // No click sound - reel stop sounds will play instead
           setForceStop(true)
           // Small delay to let reels react, then show result
           setTimeout(() => {
             setPhase('result')
-            playPhaseTransition() // Sound: phase change
+            // No transition sound - reel stop sounds are enough
             // Update discovered skills
             targetIndices.forEach((idx, reelIdx) => {
               const reel = segmentConfig.reels[reelIdx]
@@ -3662,7 +3676,7 @@ export function SlotFullScreen({
           }, 150)
         } else if (phase === 'intro' || phase === 'result') {
           // Only allow new spin in intro or result phase (NOT during spinning or content)
-          playSound('click', 0.6) // Sound: spin start
+          // No click sound - reel spin sound will start instead
           handleSpin()
         }
         return
@@ -3671,7 +3685,6 @@ export function SlotFullScreen({
       // ENTER in result phase → go to content
       if (e.key === 'Enter' && phase === 'result') {
         e.preventDefault()
-        playContentReveal() // Sound: content reveal
         setPhase('content')
         return
       }
@@ -3685,9 +3698,7 @@ export function SlotFullScreen({
       switch (e.key) {
         case 'ArrowRight':
           e.preventDefault()
-          playNavTick() // Sound: navigation tick
-          haptic.light() // Haptic: light tap
-          // If nothing focused, select first item
+          haptic.light()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3696,9 +3707,7 @@ export function SlotFullScreen({
           break
         case 'ArrowLeft':
           e.preventDefault()
-          playNavTick() // Sound: navigation tick
-          haptic.light() // Haptic: light tap
-          // If nothing focused, select first item
+          haptic.light()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else {
@@ -3707,9 +3716,7 @@ export function SlotFullScreen({
           break
         case 'ArrowDown':
           e.preventDefault()
-          playNavTick() // Sound: navigation tick
-          haptic.light() // Haptic: light tap
-          // If nothing focused, select first item
+          haptic.light()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else if (columns > 1) {
@@ -3723,9 +3730,7 @@ export function SlotFullScreen({
           break
         case 'ArrowUp':
           e.preventDefault()
-          playNavTick() // Sound: navigation tick
-          haptic.light() // Haptic: light tap
-          // If nothing focused, select first item
+          haptic.light()
           if (focusIndex === -1) {
             setFocusIndex(0)
           } else if (columns > 1) {
@@ -3739,14 +3744,10 @@ export function SlotFullScreen({
           break
         case 'Enter':
           e.preventDefault()
-          // Only activate if something is focused
           if (focusIndex >= 0) {
-            playNavSelect() // Sound: item select
-            playModalOpen() // Sound: modal open
-            haptic.medium() // Haptic: medium tap for selection
+            haptic.medium()
             handleActivate(focusIndex)
           } else {
-            // Select first item on Enter when nothing focused
             setFocusIndex(0)
           }
           break
@@ -4225,44 +4226,37 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* Close button - enhanced */}
-      <button
-        onClick={onClose}
+      {/* ESC hint - keyboard navigation indicator */}
+      <div
         style={{
           position: 'fixed',
           top: '24px',
           right: '24px',
-          width: '50px',
-          height: '50px',
-          borderRadius: '50%',
-          background: 'rgba(0,0,0,0.5)',
+          padding: '10px 16px',
+          borderRadius: '8px',
+          background: 'rgba(0,0,0,0.6)',
           backdropFilter: 'blur(10px)',
-          border: `2px solid ${primaryColor}40`,
+          border: `1px solid ${primaryColor}40`,
           color: primaryColor,
-          fontSize: '28px',
+          fontSize: '13px',
+          fontWeight: 600,
+          letterSpacing: '1px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: '8px',
           zIndex: 1001,
-          transition: 'all 0.3s ease',
-          opacity: 1,
-          transform: 'scale(1)'
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(255,60,60,0.3)'
-          e.currentTarget.style.borderColor = '#ff4040'
-          e.currentTarget.style.color = '#ff4040'
-          e.currentTarget.style.transform = 'scale(1.1)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.background = 'rgba(0,0,0,0.5)'
-          e.currentTarget.style.borderColor = `${primaryColor}40`
-          e.currentTarget.style.color = primaryColor
-          e.currentTarget.style.transform = 'scale(1)'
+          opacity: 0.9
         }}
       >
-        ×
-      </button>
+        <span style={{
+          padding: '4px 8px',
+          background: `${primaryColor}20`,
+          borderRadius: '4px',
+          border: `1px solid ${primaryColor}60`,
+          fontSize: '12px'
+        }}>ESC</span>
+        EXIT
+      </div>
 
       {/* SKILL REEL SLOT MACHINE */}
       {(phase === 'spinning' || phase === 'result') && (
@@ -4395,6 +4389,7 @@ export function SlotFullScreen({
                     reelIndex={i}
                     jackpot={isJackpot && phase === 'result'}
                     forceStop={forceStop}
+                    onReelStop={handleReelStop}
                   />
                 ))}
               </div>
@@ -4532,7 +4527,6 @@ export function SlotFullScreen({
               <div
                 onClick={() => {
                   // Tap/click to view details
-                  playNavForward()
                   setPhase('content')
                 }}
                 style={{
@@ -4772,7 +4766,6 @@ export function SlotFullScreen({
           {/* Close Button - Fixed position (always visible) */}
           <button
             onClick={() => {
-              playNavBack()
               onClose()
             }}
             style={{

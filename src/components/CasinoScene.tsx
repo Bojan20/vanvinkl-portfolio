@@ -23,9 +23,9 @@ import { WinCelebrationGPU } from './GPUParticles'
 import { DustParticles } from './DustParticles'
 import { PostProcessing } from './PostProcessing'
 import { ContextHandler } from './WebGLErrorBoundary'
-import { useAudio, playReelStop, getBassLevel as getOldBassLevel } from '../audio'
+import { useAudio, getBassLevel as getOldBassLevel } from '../audio'
 import { dspGetBassLevel } from '../audio/AudioDSP'
-import { playUiOpen, playUiClose } from '../audio/SynthSounds'
+import { playUiOpen, playUiClose, playSynthFootstep } from '../audio/SynthSounds'
 
 // Combined bass level - tries new DSP first, falls back to old system
 const getBassLevel = (): number => {
@@ -33,8 +33,6 @@ const getBassLevel = (): number => {
   if (dspBass > 0) return dspBass
   return getOldBassLevel()
 }
-import { playSynthFootstep } from '../audio/SynthSounds'
-import { playSynthSpinMech, stopSynthSpinMech } from '../audio/SynthSounds'
 import { COLORS as THEME_COLORS, SLOT_CONFIG, TIMING, DISTANCES } from '../store'
 import { achievementStore, type Achievement } from '../store/achievements'
 
@@ -647,36 +645,32 @@ function FloatingLetter({
   })
 
   return (
-    <group>
-      <mesh ref={meshRef} position={position} scale={scale} material={material}>
-        <planeGeometry args={[2, 2]} />
-      </mesh>
-      <pointLight position={position} color={color} intensity={2} distance={8} />
-    </group>
+    <mesh ref={meshRef} position={position} scale={scale} material={material}>
+      <planeGeometry args={[2, 2]} />
+    </mesh>
   )
 }
 
-// Collection of floating letters spelling "VAN VINKL" - reads right to left (V starts on right)
+// Collection of floating letters - VANVINKL top, CASINO LOUNGE bottom
 function FloatingLetters() {
-  // "VAN VINKL" reading from right to left: V-A-N (space) V-I-N-K-L
-  // Positions go from right (20) to left (-16)
-  const letters = [
+  // Main title - "VANVINKL" reading from right to left - centered vertically
+  const vanvinklLetters = [
     // "VAN" - starts on right
-    { letter: 'V', position: [20, 5.5, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.2, rotateSpeed: 0.2, scale: 2.8, phaseOffset: 0 },
-    { letter: 'A', position: [15, 6.2, 30] as [number, number, number], color: '#00ffff', floatSpeed: 0.9, rotateSpeed: -0.15, scale: 2.8, phaseOffset: 0.5 },
-    { letter: 'N', position: [10, 5.8, 30] as [number, number, number], color: '#8844ff', floatSpeed: 1.1, rotateSpeed: 0.18, scale: 2.8, phaseOffset: 1 },
+    { letter: 'V', position: [20, 4, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.2, rotateSpeed: 0.2, scale: 2.8, phaseOffset: 0 },
+    { letter: 'A', position: [15, 4.7, 30] as [number, number, number], color: '#00ffff', floatSpeed: 0.9, rotateSpeed: -0.15, scale: 2.8, phaseOffset: 0.5 },
+    { letter: 'N', position: [10, 4.3, 30] as [number, number, number], color: '#8844ff', floatSpeed: 1.1, rotateSpeed: 0.18, scale: 2.8, phaseOffset: 1 },
 
     // "VINKL" - continues to the left (with space)
-    { letter: 'V', position: [4, 6, 30] as [number, number, number], color: '#ffd700', floatSpeed: 0.8, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 1.5 },
-    { letter: 'I', position: [-1, 5.5, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.3, rotateSpeed: 0.22, scale: 2.8, phaseOffset: 2 },
-    { letter: 'N', position: [-6, 6.3, 30] as [number, number, number], color: '#00ffff', floatSpeed: 1.0, rotateSpeed: -0.18, scale: 2.8, phaseOffset: 2.5 },
-    { letter: 'K', position: [-11, 5.7, 30] as [number, number, number], color: '#8844ff', floatSpeed: 0.7, rotateSpeed: 0.15, scale: 2.8, phaseOffset: 3 },
-    { letter: 'L', position: [-16, 6, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.4, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 3.5 },
+    { letter: 'V', position: [4, 4.5, 30] as [number, number, number], color: '#ffd700', floatSpeed: 0.8, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 1.5 },
+    { letter: 'I', position: [-1, 4, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.3, rotateSpeed: 0.22, scale: 2.8, phaseOffset: 2 },
+    { letter: 'N', position: [-6, 4.8, 30] as [number, number, number], color: '#00ffff', floatSpeed: 1.0, rotateSpeed: -0.18, scale: 2.8, phaseOffset: 2.5 },
+    { letter: 'K', position: [-11, 4.2, 30] as [number, number, number], color: '#8844ff', floatSpeed: 0.7, rotateSpeed: 0.15, scale: 2.8, phaseOffset: 3 },
+    { letter: 'L', position: [-16, 4.5, 30] as [number, number, number], color: '#ff00aa', floatSpeed: 1.4, rotateSpeed: -0.2, scale: 2.8, phaseOffset: 3.5 },
   ]
 
   return (
     <group>
-      {letters.map((props, i) => (
+      {vanvinklLetters.map((props, i) => (
         <FloatingLetter key={i} {...props} />
       ))}
     </group>
@@ -1270,52 +1264,21 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
           return
         }
 
-        // Slot machine interaction - FAST animation (2.5s total)
+        // Slot machine interaction - direct transition to fullscreen slot
         if (nearMachineRef.current && !spinningMachineRef.current) {
           spinningMachineRef.current = nearMachineRef.current
-          forceUpdate(n => n + 1) // Update slot machines
+          forceUpdate(n => n + 1)
 
           const machineId = nearMachineRef.current
 
-          // Play mechanical spin sound (lower volume)
-          playSynthSpinMech(0.15)
-
-          // Trigger slot transition overlay
+          // Trigger slot transition overlay immediately (no sounds here - sounds are in SlotFullScreen)
           onSlotSpin?.(machineId)
 
-          // Play reel stop sounds staggered
-          setTimeout(() => playReelStop(0), 600)
-          setTimeout(() => playReelStop(1), 800)
-          setTimeout(() => playReelStop(2), 1000)
-          setTimeout(() => playReelStop(3), 1200)
-          setTimeout(() => { playReelStop(4); stopSynthSpinMech() }, 1400) // Stop spin sound on last reel
-
-          // After spin completes (1.5s), trigger WIN CELEBRATION
+          // Reset state after brief delay
           setTimeout(() => {
-            // Random jackpot chance (20%)
-            isJackpotRef.current = Math.random() < 0.2
-            winMachineRef.current = machineId
+            spinningMachineRef.current = null
             forceUpdate(n => n + 1)
-
-            // Play win sound
-            if (isJackpotRef.current) {
-              audio.play('jackpot', { volume: 0.8 })
-            } else {
-              audio.play('winBig', { volume: 0.7 })
-            }
-
-            // Win celebration is SHORTER (1.0s), then show modal
-            setTimeout(() => {
-              if (onShowModal) {
-                audio.play('modalOpen', { volume: 0.5 })
-                onShowModal(machineId)
-              }
-              winMachineRef.current = null
-              spinningMachineRef.current = null
-              isJackpotRef.current = false
-              forceUpdate(n => n + 1)
-            }, 1000)
-          }, 1500)
+          }, 500)
           return
         }
 
@@ -1673,13 +1636,13 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         </group>
       ))}
 
-      {/* ===== AMBIENT DUST PARTICLES ===== */}
+      {/* ===== AMBIENT DUST PARTICLES (reduced for performance) ===== */}
       <DustParticles
-        count={150}
+        count={50}
         area={[60, 9, 50]}
         color="#8866ff"
-        opacity={0.2}
-        size={0.03}
+        opacity={0.25}
+        size={0.04}
       />
 
       {/* ===== FOG ===== */}
