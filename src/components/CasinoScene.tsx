@@ -234,7 +234,7 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 1024
-    canvas.height = 320
+    canvas.height = 400
     const ctx = canvas.getContext('2d')!
 
     ctx.fillStyle = 'transparent'
@@ -242,9 +242,9 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
 
     // Draw logo if loaded (left side)
     if (logoImg) {
-      const logoSize = 140
-      const logoX = 180
-      const logoY = (canvas.height - logoSize) / 2
+      const logoSize = 130
+      const logoX = 140
+      const logoY = (canvas.height - logoSize) / 2 - 20
       ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
     }
 
@@ -252,17 +252,26 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
     ctx.shadowColor = '#00ffff'
     ctx.shadowBlur = 25
 
-    // Text (right of logo)
-    ctx.font = 'bold 64px "Orbitron", system-ui, sans-serif'
+    // Text (right of logo) - VANVINKL STUDIO on one line
+    ctx.font = 'bold 72px "Orbitron", system-ui, sans-serif'
     ctx.fillStyle = '#00ffff'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    ctx.fillText('VANVINKL', 350, canvas.height / 2 - 35)
+    ctx.fillText('VANVINKL', 300, canvas.height / 2 - 40)
 
-    ctx.font = 'bold 48px "Orbitron", system-ui, sans-serif'
+    // STUDIO right after VANVINKL - with space
+    ctx.font = 'bold 72px "Orbitron", system-ui, sans-serif'
     ctx.fillStyle = '#ff00aa'
     ctx.shadowColor = '#ff00aa'
-    ctx.fillText('STUDIO', 350, canvas.height / 2 + 40)
+    ctx.fillText('STUDIO', 680, canvas.height / 2 - 40)
+
+    // Casino Lounge subtitle - centered
+    ctx.font = 'bold 48px "Orbitron", system-ui, sans-serif'
+    ctx.fillStyle = '#ffd700'
+    ctx.shadowColor = '#ffd700'
+    ctx.shadowBlur = 20
+    ctx.textAlign = 'center'
+    ctx.fillText('CASINO LOUNGE', canvas.width / 2 + 80, canvas.height / 2 + 50)
 
     const tex = new THREE.CanvasTexture(canvas)
     tex.needsUpdate = true
@@ -338,7 +347,7 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
   return (
     <group ref={groupRef} position={position}>
       <mesh material={material}>
-        <planeGeometry args={[8, 2.5]} />
+        <planeGeometry args={[8, 3.2]} />
       </mesh>
     </group>
   )
