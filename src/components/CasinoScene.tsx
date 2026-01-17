@@ -85,107 +85,115 @@ const MACHINES = [
 
 const MACHINE_Z = -3
 
-// GPU-animated neon strip - shader does ALL work, zero JS per-frame
-// Modes: static, pulse, audioReactive, holographic
+// ============================================
+// SHARED NEON SHADER MATERIALS - Pre-compiled ONCE at module load
+// Eliminates shader compilation lag (was ~1.2s for 22 instances)
+// ============================================
+const NEON_VERTEX_SHADER = `
+  varying vec2 vUv;
+  varying vec3 vWorldPosition;
+  void main() {
+    vUv = uv;
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+
+const NEON_SHADERS = {
+  pulse: new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color('#ffffff') }, time: { value: 0 } },
+    vertexShader: NEON_VERTEX_SHADER,
+    fragmentShader: `
+      uniform vec3 color;
+      uniform float time;
+      varying vec2 vUv;
+      void main() {
+        float pulse = 0.7 + 0.3 * sin(time * 3.0 + vUv.x * 10.0);
+        gl_FragColor = vec4(color * pulse * 1.5, 1.0);
+      }
+    `,
+    toneMapped: false
+  }),
+  audioReactive: new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color('#ffffff') }, time: { value: 0 }, bass: { value: 0 } },
+    vertexShader: NEON_VERTEX_SHADER,
+    fragmentShader: `
+      uniform vec3 color;
+      uniform float time;
+      uniform float bass;
+      varying vec2 vUv;
+      void main() {
+        float bassPulse = 0.5 + bass * 1.5;
+        float wave = sin(time * 2.0 + vUv.x * 8.0) * 0.15;
+        float intensity = bassPulse + wave;
+        vec3 boostedColor = color * (1.0 + bass * 0.5);
+        gl_FragColor = vec4(boostedColor * intensity * 2.0, 1.0);
+      }
+    `,
+    toneMapped: false
+  }),
+  holographic: new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color('#ffffff') }, time: { value: 0 }, bass: { value: 0 } },
+    vertexShader: NEON_VERTEX_SHADER,
+    fragmentShader: `
+      uniform vec3 color;
+      uniform float time;
+      uniform float bass;
+      varying vec2 vUv;
+      varying vec3 vWorldPosition;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p); vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i); float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0)); float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+      void main() {
+        float scanline = sin(vWorldPosition.y * 50.0 + time * 3.0) * 0.5 + 0.5;
+        float shimmer = noise(vUv * 20.0 + time * 2.0) * 0.3;
+        float hueShift = vUv.x * 0.5 + time * 0.2 + bass * 0.3;
+        vec3 rainbow = vec3(
+          sin(hueShift * 6.28) * 0.5 + 0.5,
+          sin(hueShift * 6.28 + 2.09) * 0.5 + 0.5,
+          sin(hueShift * 6.28 + 4.18) * 0.5 + 0.5
+        );
+        vec3 holoColor = mix(color, rainbow, 0.3 + shimmer * 0.2);
+        float intensity = (0.8 + scanline * 0.4 + shimmer) * (1.0 + bass * 0.5);
+        gl_FragColor = vec4(holoColor * intensity * 1.8, 1.0);
+      }
+    `,
+    toneMapped: false
+  })
+}
+
+// Cache for static MeshBasicMaterial by color
+const staticNeonMaterials = new Map<string, THREE.MeshBasicMaterial>()
+
+// GPU-animated neon strip - uses SHARED pre-compiled shaders
 function NeonStrip({ color, position, size, pulse = false, audioReactive = false, holographic = false }: {
   color: string, position: [number, number, number], size: [number, number, number], intensity?: number, pulse?: boolean, audioReactive?: boolean, holographic?: boolean
 }) {
+  // Get or create material - static strips use cached BasicMaterial
   const mat = useMemo(() => {
     if (!pulse && !audioReactive && !holographic) {
-      return new THREE.MeshBasicMaterial({ color, toneMapped: false })
+      // Use cached static material
+      let cached = staticNeonMaterials.get(color)
+      if (!cached) {
+        cached = new THREE.MeshBasicMaterial({ color, toneMapped: false })
+        staticNeonMaterials.set(color, cached)
+      }
+      return cached
     }
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        color: { value: new THREE.Color(color) },
-        time: { value: 0 },
-        bass: { value: 0 }
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        varying vec3 vWorldPosition;
-        void main() {
-          vUv = uv;
-          vec4 worldPos = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPos.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: holographic ? `
-        // HOLOGRAPHIC SHIMMER SHADER - Rainbow scanlines + noise
-        uniform vec3 color;
-        uniform float time;
-        uniform float bass;
-        varying vec2 vUv;
-        varying vec3 vWorldPosition;
-
-        // Simplex-like noise
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-        }
-
-        float noise(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          float a = hash(i);
-          float b = hash(i + vec2(1.0, 0.0));
-          float c = hash(i + vec2(0.0, 1.0));
-          float d = hash(i + vec2(1.0, 1.0));
-          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-        }
-
-        void main() {
-          // Holographic rainbow based on view angle
-          float scanline = sin(vWorldPosition.y * 50.0 + time * 3.0) * 0.5 + 0.5;
-          float shimmer = noise(vUv * 20.0 + time * 2.0) * 0.3;
-
-          // Rainbow hue shift
-          float hueShift = vUv.x * 0.5 + time * 0.2 + bass * 0.3;
-          vec3 rainbow = vec3(
-            sin(hueShift * 6.28) * 0.5 + 0.5,
-            sin(hueShift * 6.28 + 2.09) * 0.5 + 0.5,
-            sin(hueShift * 6.28 + 4.18) * 0.5 + 0.5
-          );
-
-          // Mix base color with holographic effect
-          vec3 holoColor = mix(color, rainbow, 0.3 + shimmer * 0.2);
-
-          // Add scanline effect
-          float intensity = 0.8 + scanline * 0.4 + shimmer;
-
-          // Bass boost
-          intensity *= 1.0 + bass * 0.5;
-
-          gl_FragColor = vec4(holoColor * intensity * 1.8, 1.0);
-        }
-      ` : audioReactive ? `
-        uniform vec3 color;
-        uniform float time;
-        uniform float bass;
-        varying vec2 vUv;
-        void main() {
-          // Bass-reactive pulse with wave effect
-          float bassPulse = 0.5 + bass * 1.5;
-          float wave = sin(time * 2.0 + vUv.x * 8.0) * 0.15;
-          float intensity = bassPulse + wave;
-          // Color shift on high bass
-          vec3 boostedColor = color * (1.0 + bass * 0.5);
-          gl_FragColor = vec4(boostedColor * intensity * 2.0, 1.0);
-        }
-      ` : `
-        uniform vec3 color;
-        uniform float time;
-        varying vec2 vUv;
-        void main() {
-          float pulse = 0.7 + 0.3 * sin(time * 3.0 + vUv.x * 10.0);
-          gl_FragColor = vec4(color * pulse * 1.5, 1.0);
-        }
-      `,
-      toneMapped: false
-    })
+    // Clone shared shader material so each instance has own uniforms
+    const shaderType = holographic ? 'holographic' : audioReactive ? 'audioReactive' : 'pulse'
+    const cloned = NEON_SHADERS[shaderType].clone()
+    cloned.uniforms.color.value = new THREE.Color(color)
+    return cloned
   }, [color, pulse, audioReactive, holographic])
 
-  // Update time and bass uniforms
+  // Update shared time/bass uniforms (only for shader materials)
   useFrame((state) => {
     if ((pulse || audioReactive || holographic) && mat instanceof THREE.ShaderMaterial) {
       mat.uniforms.time.value = state.clock.elapsedTime
@@ -931,8 +939,8 @@ function TrophyRoom({ position }: { position: [number, number, number] }) {
     }
     loadAchievements()
 
-    // Poll for updates
-    const interval = setInterval(loadAchievements, 2000)
+    // Poll less frequently - 10s instead of 2s (achievements rarely change)
+    const interval = setInterval(loadAchievements, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -1117,6 +1125,9 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
   const isMovingRef = useRef(false)
+
+  // Reusable Vector3 for camera direction - prevents GC allocation in useFrame
+  const camDirRef = useRef(new THREE.Vector3())
 
   // Audio system
   const audio = useAudio()
@@ -1305,13 +1316,12 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
     // Skip camera control during intro
     if (introActive) return
 
-    // Update audio listener position (follows camera)
+    // Update audio listener position (follows camera) - reuse vector to avoid GC
     const camPos = camera.position
-    const camDir = new THREE.Vector3()
-    camera.getWorldDirection(camDir)
+    camera.getWorldDirection(camDirRef.current)
     audio.updateListener(
       [camPos.x, camPos.y, camPos.z],
-      [camDir.x, camDir.y, camDir.z]
+      [camDirRef.current.x, camDirRef.current.y, camDirRef.current.z]
     )
 
     // Footstep sounds when moving (not during intro)
@@ -1636,9 +1646,9 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         </group>
       ))}
 
-      {/* ===== AMBIENT DUST PARTICLES (reduced for performance) ===== */}
+      {/* ===== AMBIENT DUST PARTICLES (minimal for performance) ===== */}
       <DustParticles
-        count={50}
+        count={30}
         area={[60, 9, 50]}
         color="#8866ff"
         opacity={0.25}

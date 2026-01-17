@@ -149,12 +149,12 @@ function SectionProgressRing() {
     }
     loadVisited()
 
-    // Listen for storage changes
+    // Listen for storage changes (cross-tab)
     const handleStorage = () => loadVisited()
     window.addEventListener('storage', handleStorage)
 
-    // Poll for changes (same tab updates)
-    const interval = setInterval(loadVisited, 1000)
+    // Poll less frequently - 5s instead of 1s (reduces CPU during intro)
+    const interval = setInterval(loadVisited, 5000)
 
     return () => {
       window.removeEventListener('storage', handleStorage)
@@ -1276,16 +1276,72 @@ function KeyboardControlsHint() {
 function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isClicking, setIsClicking] = useState(false)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  // Preload critical assets before allowing entry
+  useEffect(() => {
+    let mounted = true
+    const preloadAssets = async () => {
+      // Simulate progressive loading with real asset preloading
+      const stages = [
+        // Stage 1: Preload fonts (10%)
+        async () => {
+          await document.fonts.ready
+          if (mounted) setLoadProgress(10)
+        },
+        // Stage 2: Preload lounge music (40%)
+        async () => {
+          try {
+            const response = await fetch('/audio/ambient/lounge.mp3')
+            await response.arrayBuffer()
+          } catch {}
+          if (mounted) setLoadProgress(40)
+        },
+        // Stage 3: Preload Three.js core (60%)
+        async () => {
+          // Import Three.js to warm up the module
+          await import('three')
+          if (mounted) setLoadProgress(60)
+        },
+        // Stage 4: Preload React Three Fiber (80%)
+        async () => {
+          await import('@react-three/fiber')
+          if (mounted) setLoadProgress(80)
+        },
+        // Stage 5: Final preparations (100%)
+        async () => {
+          // Small delay for GPU shader compilation to start
+          await new Promise(r => setTimeout(r, 200))
+          if (mounted) {
+            setLoadProgress(100)
+            // Brief pause before showing button
+            setTimeout(() => {
+              if (mounted) setIsLoaded(true)
+            }, 300)
+          }
+        }
+      ]
+
+      for (const stage of stages) {
+        await stage()
+        if (!mounted) break
+      }
+    }
+
+    preloadAssets()
+    return () => { mounted = false }
+  }, [])
 
   const handleEnter = useCallback(() => {
-    if (isClicking) return
+    if (isClicking || !isLoaded) return
     setIsClicking(true)
-    // Immediately call onEnter - no delay needed
     onEnter()
-  }, [isClicking, onEnter])
+  }, [isClicking, isLoaded, onEnter])
 
-  // Listen for any key press
+  // Listen for any key press (only when loaded)
   useEffect(() => {
+    if (!isLoaded) return
     const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault()
       e.stopPropagation()
@@ -1293,7 +1349,7 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleEnter])
+  }, [handleEnter, isLoaded])
 
   return (
     <div
@@ -1393,20 +1449,22 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
         alignItems: 'center',
         gap: '20px'
       }}>
-        {/* Hexagon border effect */}
+        {/* Hexagon border effect - shows loading or enter button */}
         <div style={{
           padding: '24px 64px',
-          background: isHovered
+          background: isLoaded && isHovered
             ? 'rgba(0, 255, 255, 0.15)'
             : 'rgba(0, 255, 255, 0.05)',
-          border: `2px solid ${isHovered ? '#00ffff' : 'rgba(0, 255, 255, 0.4)'}`,
+          border: `2px solid ${isLoaded && isHovered ? '#00ffff' : 'rgba(0, 255, 255, 0.4)'}`,
           borderRadius: '8px',
           position: 'relative',
           transition: 'all 0.3s ease',
-          boxShadow: isHovered
+          boxShadow: isLoaded && isHovered
             ? '0 0 40px rgba(0, 255, 255, 0.4), inset 0 0 40px rgba(0, 255, 255, 0.1)'
             : '0 0 20px rgba(0, 255, 255, 0.2)',
-          transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+          transform: isLoaded && isHovered ? 'scale(1.05)' : 'scale(1)',
+          minWidth: '340px',
+          cursor: isLoaded ? 'pointer' : 'default'
         }}>
           {/* Corner accents */}
           {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => (
@@ -1414,24 +1472,73 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
               position: 'absolute',
               width: '12px',
               height: '12px',
-              borderColor: '#ff00aa',
+              borderColor: isLoaded ? '#ff00aa' : '#8844ff',
               borderStyle: 'solid',
               borderWidth: pos.includes('top') ? '2px 0 0 0' : '0 0 2px 0',
               ...(pos.includes('left') ? { left: '-1px', borderLeftWidth: '2px' } : { right: '-1px', borderRightWidth: '2px' }),
-              ...(pos.includes('top') ? { top: '-1px' } : { bottom: '-1px' })
+              ...(pos.includes('top') ? { top: '-1px' } : { bottom: '-1px' }),
+              transition: 'border-color 0.3s ease'
             }} />
           ))}
 
-          <span style={{
-            color: '#00ffff',
-            fontSize: '20px',
-            fontWeight: 'bold',
-            letterSpacing: '6px',
-            textTransform: 'uppercase',
-            textShadow: isHovered ? '0 0 20px #00ffff' : 'none'
-          }}>
-            PRESS ANY KEY TO ENTER
-          </span>
+          {/* Loading state */}
+          {!isLoaded && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{
+                color: '#8844ff',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                letterSpacing: '4px',
+                textTransform: 'uppercase'
+              }}>
+                LOADING
+              </span>
+              {/* Progress bar */}
+              <div style={{
+                width: '200px',
+                height: '4px',
+                background: 'rgba(136, 68, 255, 0.2)',
+                borderRadius: '2px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${loadProgress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #8844ff, #00ffff)',
+                  borderRadius: '2px',
+                  transition: 'width 0.3s ease-out',
+                  boxShadow: '0 0 10px rgba(136, 68, 255, 0.5)'
+                }} />
+              </div>
+              <span style={{
+                color: 'rgba(136, 68, 255, 0.7)',
+                fontSize: '12px',
+                fontFamily: 'monospace'
+              }}>
+                {loadProgress}%
+              </span>
+            </div>
+          )}
+
+          {/* Ready state */}
+          {isLoaded && (
+            <span style={{
+              color: '#00ffff',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              letterSpacing: '6px',
+              textTransform: 'uppercase',
+              textShadow: isHovered ? '0 0 20px #00ffff' : 'none',
+              animation: 'splashReady 0.5s ease-out'
+            }}>
+              PRESS ANY KEY TO ENTER
+            </span>
+          )}
         </div>
 
         {/* Sound hint */}
@@ -1508,6 +1615,11 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
           25% { transform: translateY(-20px) translateX(10px); }
           50% { transform: translateY(-10px) translateX(-10px); }
           75% { transform: translateY(-30px) translateX(5px); }
+        }
+        @keyframes splashReady {
+          0% { opacity: 0; transform: scale(0.9); }
+          50% { transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>

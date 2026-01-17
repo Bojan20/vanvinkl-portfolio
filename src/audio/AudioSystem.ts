@@ -42,6 +42,9 @@ export const SOUNDS = {
   sit: '/audio/player/sit.wav'
 } as const
 
+// Critical sounds to preload immediately - others lazy load on first use
+const PRELOAD_SOUNDS: (keyof typeof SOUNDS)[] = ['footstep1', 'footstep2', 'footstep3']
+
 export type SoundId = keyof typeof SOUNDS
 
 // Bus configuration
@@ -216,38 +219,55 @@ class AudioSystem {
     convolver.buffer = impulse
   }
 
-  private async loadAllSounds(): Promise<void> {
-    if (!this.context) return
+  // Lazy load a single sound on demand
+  private loadingPromises = new Map<SoundId, Promise<AudioBuffer | null>>()
 
-    const loadPromises = Object.entries(SOUNDS).map(async ([id, path]) => {
+  private async loadSound(id: SoundId): Promise<AudioBuffer | null> {
+    // Already loaded
+    if (this.buffers.has(id)) return this.buffers.get(id)!
+
+    // Already loading
+    if (this.loadingPromises.has(id)) return this.loadingPromises.get(id)!
+
+    // Start loading
+    const path = SOUNDS[id]
+    const promise = (async () => {
       try {
         const response = await fetch(path)
         if (!response.ok) {
           console.warn(`[AudioSystem] Sound not found: ${path}`)
-          return
+          return null
         }
         const arrayBuffer = await response.arrayBuffer()
         const audioBuffer = await this.context!.decodeAudioData(arrayBuffer)
-        this.buffers.set(id as SoundId, audioBuffer)
+        this.buffers.set(id, audioBuffer)
+        return audioBuffer
       } catch (error) {
         console.warn(`[AudioSystem] Failed to load ${path}:`, error)
+        return null
       }
-    })
+    })()
 
+    this.loadingPromises.set(id, promise)
+    return promise
+  }
+
+  // Preload only critical sounds at init - others lazy load on first use
+  private async loadAllSounds(): Promise<void> {
+    if (!this.context) return
+
+    // Only preload critical sounds (footsteps) - rest lazy load
+    const loadPromises = PRELOAD_SOUNDS.map(id => this.loadSound(id))
     await Promise.all(loadPromises)
-    console.log(`[AudioSystem] Loaded ${this.buffers.size}/${Object.keys(SOUNDS).length} sounds`)
+    console.log(`[AudioSystem] Preloaded ${this.buffers.size} critical sounds (others lazy load)`)
   }
 
   private createPools(): void {
     if (!this.context) return
 
-    // Create pools for frequently used sounds
-    const pooledSounds: SoundId[] = [
-      'hover', 'click', 'footstep1', 'footstep2', 'footstep3',
-      'reelStop1', 'reelStop2', 'reelStop3'
-    ]
-
-    for (const soundId of pooledSounds) {
+    // Create pools only for preloaded sounds (footsteps)
+    // Other sounds are lazy loaded and don't need pools
+    for (const soundId of PRELOAD_SOUNDS) {
       const pool: SoundPoolEntry[] = []
       const bus = this.getBusForSound(soundId)
 
@@ -285,7 +305,7 @@ class AudioSystem {
   }
 
   /**
-   * Play a sound immediately (zero latency)
+   * Play a sound immediately (zero latency for preloaded, lazy loads others)
    */
   play(soundId: SoundId, options?: {
     volume?: number
@@ -296,10 +316,23 @@ class AudioSystem {
 
     const buffer = this.buffers.get(soundId)
     if (!buffer) {
-      console.warn(`[AudioSystem] Buffer not loaded: ${soundId}`)
+      // Lazy load and play when ready
+      this.loadSound(soundId).then(loadedBuffer => {
+        if (loadedBuffer) {
+          this.playWithBuffer(soundId, loadedBuffer, options)
+        }
+      })
       return
     }
 
+    this.playWithBuffer(soundId, buffer, options)
+  }
+
+  private playWithBuffer(soundId: SoundId, buffer: AudioBuffer, options?: {
+    volume?: number
+    loop?: boolean
+    playbackRate?: number
+  }): void {
     const pool = this.pools.get(soundId)
 
     if (pool) {
