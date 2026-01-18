@@ -106,12 +106,11 @@ class AudioDSP {
       }
 
       this.ready = true
-      console.log('[AudioDSP] Ready')
 
       // Play any pending sounds
       this.flushPending()
-    } catch (e) {
-      console.warn('[AudioDSP] Init failed:', e)
+    } catch {
+      // Init failed silently - will retry on next user interaction
     }
   }
 
@@ -129,10 +128,7 @@ class AudioDSP {
     }
 
     const config = this.sounds.get(id)
-    if (!config) {
-      console.warn(`[AudioDSP] Unknown sound: ${id}`)
-      return null
-    }
+    if (!config) return null
 
     const promise = this.fetchAndDecode(config.url)
     this.loadingPromises.set(id, promise)
@@ -183,29 +179,13 @@ class AudioDSP {
   }
 
   private async playAsync(id: string, instanceId: string): Promise<void> {
-    if (!this.ctx) {
-      console.warn('[AudioDSP] No context for playback')
-      return
-    }
-    if (this.muted) {
-      console.log('[AudioDSP] Muted, skipping:', id)
-      return
-    }
+    if (!this.ctx || this.muted) return
 
     const config = this.sounds.get(id)
-    if (!config) {
-      console.warn('[AudioDSP] Unknown sound:', id)
-      return
-    }
+    if (!config) return
 
-    console.log('[AudioDSP] Loading:', id, config.url)
     const buffer = await this.load(id)
-    if (!buffer) {
-      console.warn('[AudioDSP] Failed to load buffer:', id)
-      return
-    }
-    if (!this.ctx) return
-    console.log('[AudioDSP] Playing:', id)
+    if (!buffer || !this.ctx) return
 
     // Create nodes
     const source = this.ctx.createBufferSource()

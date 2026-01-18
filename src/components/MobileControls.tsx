@@ -172,17 +172,23 @@ function VirtualJoystick({
     const container = containerRef.current
     if (!container) return
 
+    // Store bound handlers for proper cleanup
+    const touchStartHandler = handleTouchStart
+    const touchMoveHandler = handleTouchMove
+    const touchEndHandler = handleTouchEnd
+
     // Use passive: false to allow preventDefault
-    container.addEventListener('touchstart', handleTouchStart, { passive: false })
-    container.addEventListener('touchmove', handleTouchMove, { passive: false })
-    container.addEventListener('touchend', handleTouchEnd)
-    container.addEventListener('touchcancel', handleTouchEnd)
+    container.addEventListener('touchstart', touchStartHandler, { passive: false })
+    container.addEventListener('touchmove', touchMoveHandler, { passive: false })
+    container.addEventListener('touchend', touchEndHandler, { passive: true })
+    container.addEventListener('touchcancel', touchEndHandler, { passive: true })
 
     return () => {
-      container.removeEventListener('touchstart', handleTouchStart)
-      container.removeEventListener('touchmove', handleTouchMove)
-      container.removeEventListener('touchend', handleTouchEnd)
-      container.removeEventListener('touchcancel', handleTouchEnd)
+      // Remove with same options for proper cleanup
+      container.removeEventListener('touchstart', touchStartHandler)
+      container.removeEventListener('touchmove', touchMoveHandler)
+      container.removeEventListener('touchend', touchEndHandler)
+      container.removeEventListener('touchcancel', touchEndHandler)
     }
   }, [handleTouchStart, handleTouchMove, handleTouchEnd])
 

@@ -36,21 +36,31 @@ class SynthSoundGenerator {
   private masterGain: GainNode | null = null
   private _volumeMultiplier = 1.0  // Controlled by DSP sfx slider
 
+  private initialized = false
+
   /**
    * Initialize audio context - MUST be called on user interaction (click)
    * This ensures AudioContext is not blocked by browser autoplay policy
    */
   init(): void {
-    if (!this.context) {
-      this.context = new AudioContext({ latencyHint: 'interactive' })
-      this.masterGain = this.context.createGain()
-      this.masterGain.gain.value = this._volumeMultiplier
-      this.masterGain.connect(this.context.destination)
-    }
+    if (this.initialized) return
+
+    this.context = new AudioContext({ latencyHint: 'interactive' })
+    this.masterGain = this.context.createGain()
+    this.masterGain.gain.value = this._volumeMultiplier
+    this.masterGain.connect(this.context.destination)
+    this.initialized = true
+
     if (this.context.state === 'suspended') {
       this.context.resume()
     }
-    console.log('[SynthSounds] AudioContext initialized, state:', this.context.state)
+  }
+
+  /**
+   * Check if initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized
   }
 
   /**
@@ -58,7 +68,6 @@ class SynthSoundGenerator {
    */
   setVolumeMultiplier(vol: number): void {
     this._volumeMultiplier = Math.max(0, Math.min(1, vol))
-    // Also update master gain if context exists
     if (this.masterGain && this.context) {
       this.masterGain.gain.setValueAtTime(this._volumeMultiplier, this.context.currentTime)
     }
@@ -68,13 +77,13 @@ class SynthSoundGenerator {
     return this._volumeMultiplier
   }
 
-  private getContext(): AudioContext {
-    if (!this.context) {
-      this.context = new AudioContext({ latencyHint: 'interactive' })
-      // Create master gain for volume control
-      this.masterGain = this.context.createGain()
-      this.masterGain.gain.value = this._volumeMultiplier
-      this.masterGain.connect(this.context.destination)
+  /**
+   * Get context - returns existing or null if not initialized
+   * Never creates new context (prevents race condition)
+   */
+  private getContext(): AudioContext | null {
+    if (!this.context || !this.initialized) {
+      return null
     }
     if (this.context.state === 'suspended') {
       this.context.resume()
@@ -85,8 +94,9 @@ class SynthSoundGenerator {
   /**
    * Get output node - either master gain or destination
    */
-  private getOutput(): AudioNode {
+  private getOutput(): AudioNode | null {
     const ctx = this.getContext()
+    if (!ctx) return null
     return this.masterGain || ctx.destination
   }
 
@@ -94,8 +104,10 @@ class SynthSoundGenerator {
    * Play a synthesized sound
    */
   play(type: SynthSoundType, volume = 0.5): void {
+    const ctx = this.getContext()
+    if (!ctx) return // Not initialized yet - silently skip
+
     try {
-      const ctx = this.getContext()
       const now = ctx.currentTime
 
       switch (type) {
@@ -148,16 +160,10 @@ class SynthSoundGenerator {
           this.playCyberBass(ctx, now, volume)
           break
         case 'cyberWow':
-          console.log('[SynthSounds] Playing cyberWow, ctx state:', ctx.state, 'volume:', volume, 'masterGain:', this.masterGain?.gain.value)
-          // Force resume if suspended
-          if (ctx.state === 'suspended') {
-            console.log('[SynthSounds] Resuming suspended AudioContext...')
-            ctx.resume()
-          }
+          if (ctx.state === 'suspended') ctx.resume()
           this.playCyberWow(ctx, now, volume)
           break
         case 'magicReveal':
-          console.log('[SynthSounds] Playing magicReveal')
           if (ctx.state === 'suspended') ctx.resume()
           this.playMagicReveal(ctx, now, volume)
           break

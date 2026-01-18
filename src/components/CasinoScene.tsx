@@ -175,9 +175,12 @@ const staticNeonMaterials = new Map<string, THREE.MeshBasicMaterial>()
 function NeonStrip({ color, position, size, pulse = false, audioReactive = false, holographic = false }: {
   color: string, position: [number, number, number], size: [number, number, number], intensity?: number, pulse?: boolean, audioReactive?: boolean, holographic?: boolean
 }) {
+  // Track if this is a cloned shader (needs disposal)
+  const isClonedShader = pulse || audioReactive || holographic
+
   // Get or create material - static strips use cached BasicMaterial
   const mat = useMemo(() => {
-    if (!pulse && !audioReactive && !holographic) {
+    if (!isClonedShader) {
       // Use cached static material
       let cached = staticNeonMaterials.get(color)
       if (!cached) {
@@ -191,7 +194,16 @@ function NeonStrip({ color, position, size, pulse = false, audioReactive = false
     const cloned = NEON_SHADERS[shaderType].clone()
     cloned.uniforms.color.value = new THREE.Color(color)
     return cloned
-  }, [color, pulse, audioReactive, holographic])
+  }, [color, isClonedShader, audioReactive, holographic])
+
+  // Cleanup cloned shader materials on unmount
+  useEffect(() => {
+    return () => {
+      if (isClonedShader && mat instanceof THREE.ShaderMaterial) {
+        mat.dispose()
+      }
+    }
+  }, [mat, isClonedShader])
 
   // Update shared time/bass uniforms (only for shader materials)
   useFrame((state) => {
@@ -230,22 +242,33 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
   const time = useRef(Math.random() * 100)
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null)
 
-  // Load logo image
+  // Load logo image (XSS safe - only allows local paths)
   useEffect(() => {
+    const LOGO_PATH = '/logo_van.png'
+    // Security: Only allow relative paths starting with /
+    if (!LOGO_PATH.startsWith('/') || LOGO_PATH.includes('://')) return
+
     const img = new Image()
     img.onload = () => setLogoImg(img)
-    img.src = '/logo_van.png'
+    img.onerror = () => setLogoImg(null)
+    img.src = LOGO_PATH
   }, [])
 
-  // Create canvas texture with logo + text
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 1024
-    canvas.height = 400
-    const ctx = canvas.getContext('2d')!
+  // Create canvas and texture ONCE
+  const { canvas, texture } = useMemo(() => {
+    const cvs = document.createElement('canvas')
+    cvs.width = 1024
+    cvs.height = 400
+    const tex = new THREE.CanvasTexture(cvs)
+    return { canvas: cvs, texture: tex }
+  }, [])
 
-    ctx.fillStyle = 'transparent'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  // Update canvas content when logo loads
+  useEffect(() => {
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     // Draw logo if loaded (left side)
     if (logoImg) {
@@ -280,10 +303,8 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
     ctx.textAlign = 'center'
     ctx.fillText('CASINO LOUNGE', canvas.width / 2 + 80, canvas.height / 2 + 50)
 
-    const tex = new THREE.CanvasTexture(canvas)
-    tex.needsUpdate = true
-    return tex
-  }, [logoImg])
+    texture.needsUpdate = true
+  }, [logoImg, canvas, texture])
 
   // Holographic shader
   const material = useMemo(() => new THREE.ShaderMaterial({
@@ -329,11 +350,6 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
     side: THREE.DoubleSide,
     depthWrite: false
   }), [texture])
-
-  // Update texture when it changes
-  useEffect(() => {
-    material.uniforms.map.value = texture
-  }, [texture, material])
 
   useFrame((_, delta) => {
     if (!groupRef.current) return

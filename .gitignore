@@ -27,6 +27,7 @@ Cargo.lock
 
 # Misc
 .DS_Store
+._*
 *.pem
 Thumbs.db
 

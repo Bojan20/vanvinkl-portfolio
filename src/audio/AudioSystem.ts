@@ -138,9 +138,8 @@ class AudioSystem {
       this.createPools()
 
       this.initialized = true
-      console.log('[AudioSystem] Initialized successfully')
     } catch (error) {
-      console.error('[AudioSystem] Init failed:', error)
+      // Silently fail - audio is not critical
       throw error
     }
   }
@@ -234,16 +233,12 @@ class AudioSystem {
     const promise = (async () => {
       try {
         const response = await fetch(path)
-        if (!response.ok) {
-          console.warn(`[AudioSystem] Sound not found: ${path}`)
-          return null
-        }
+        if (!response.ok) return null
         const arrayBuffer = await response.arrayBuffer()
         const audioBuffer = await this.context!.decodeAudioData(arrayBuffer)
         this.buffers.set(id, audioBuffer)
         return audioBuffer
-      } catch (error) {
-        console.warn(`[AudioSystem] Failed to load ${path}:`, error)
+      } catch {
         return null
       }
     })()
@@ -259,7 +254,6 @@ class AudioSystem {
     // Only preload critical sounds (footsteps) - rest lazy load
     const loadPromises = PRELOAD_SOUNDS.map(id => this.loadSound(id))
     await Promise.all(loadPromises)
-    console.log(`[AudioSystem] Preloaded ${this.buffers.size} critical sounds (others lazy load)`)
   }
 
   private createPools(): void {
@@ -667,7 +661,7 @@ class AudioSystem {
 
     const buffer = this.buffers.get(soundId)
     if (!buffer) {
-      console.warn(`[AudioSystem] Ambient track not loaded: ${soundId}`)
+      // Sound not loaded - will lazy load on next attempt
       return
     }
 
@@ -697,7 +691,6 @@ class AudioSystem {
     this.ambientGain.gain.setValueAtTime(0, now)
     this.ambientGain.gain.linearRampToValueAtTime(volume, now + fadeTime)
 
-    console.log(`[AudioSystem] Starting ambient: ${soundId}`)
   }
 
   /**
@@ -732,7 +725,6 @@ class AudioSystem {
     this.currentAmbientTrack = null
     this.ambientPaused = false
 
-    console.log('[AudioSystem] Stopping ambient music')
   }
 
   /**
@@ -746,7 +738,7 @@ class AudioSystem {
 
     const buffer = this.buffers.get(soundId)
     if (!buffer) {
-      console.warn(`[AudioSystem] Ambient track not loaded: ${soundId}`)
+      // Sound not loaded - will lazy load on next attempt
       return
     }
 
@@ -796,7 +788,6 @@ class AudioSystem {
     this.ambientGain.gain.setValueAtTime(0, now)
     this.ambientGain.gain.linearRampToValueAtTime(volume, now + fadeTime)
 
-    console.log(`[AudioSystem] Crossfading to: ${soundId}`)
   }
 
   /**

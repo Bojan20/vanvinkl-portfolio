@@ -76,7 +76,6 @@ export function useAudio(): UseAudioReturn {
     const handleInteraction = async () => {
       if (!audioSystem.isInitialized()) {
         await init()
-        console.log('[Audio] Initialized on user interaction')
       } else {
         await audioSystem.resume()
       }
