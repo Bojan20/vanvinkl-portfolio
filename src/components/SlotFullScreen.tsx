@@ -2750,6 +2750,18 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
+  // Pause lounge music when portfolio opens
+  React.useEffect(() => {
+    // Stop lounge music completely
+    stopDucking() // Clear any existing ducking
+    startDucking(0, 0.3) // Mute lounge music (0 volume)
+
+    return () => {
+      // Resume lounge music when exiting
+      stopDucking(0.5)
+    }
+  }, [])
+
   // Synchronize audio with video
   React.useEffect(() => {
     const video = videoRef.current
@@ -2886,14 +2898,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '25px',
-      maxWidth: '1000px',
+      gap: '20px',
+      maxWidth: '900px',
       margin: '0 auto',
-      padding: '30px',
+      padding: '20px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      height: '100vh',
-      justifyContent: 'center',
-      overflow: 'hidden'
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      maxHeight: '100vh'
     }}>
       {/* Hint text */}
       <div style={{
@@ -2919,7 +2931,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           style={{
             width: '100%',
             height: 'auto',
-            maxHeight: '400px',
+            maxHeight: '350px',
             display: 'block',
             backgroundColor: '#000'
           }}
@@ -3125,16 +3137,25 @@ function ContentView({ section, focusIndex, selectedProject, onBackFromProject }
   selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[] } | null
   onBackFromProject?: () => void
 }) {
-  // Show portfolio player if project selected
-  if (selectedProject && onBackFromProject) {
-    return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
+  // For PROJECTS section, always show portfolio player (no grid)
+  if (section.type === 'projects') {
+    const proj = (section as ProjectsSection).featured[0] // Use first project as default
+    return <PortfolioPlayer
+      project={{
+        icon: proj.icon,
+        title: proj.title,
+        description: proj.description,
+        year: proj.year,
+        tags: proj.tags
+      }}
+      onBack={onBackFromProject || (() => {})}
+    />
   }
 
   switch (section.type) {
     case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
     case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
     case 'about': return <AboutView section={section} focusIndex={focusIndex} />
-    case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} />
     case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} />
     case 'contact': return <ContactView section={section} focusIndex={focusIndex} />
     default: return null
@@ -3963,7 +3984,6 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
-  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[] } | null>(null)
 
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -4206,21 +4226,8 @@ export function SlotFullScreen({
         break
       }
       case 'projects': {
-        const proj = (section as ProjectsSection).featured[index]
-        if (proj) {
-          // Pause lounge music for portfolio presentation
-          stopDucking() // Stop any ducking first
-          startDucking(0, 0.3) // Mute lounge music (0 volume)
-
-          // Show portfolio video player
-          setSelectedProject({
-            icon: proj.icon,
-            title: proj.title,
-            description: proj.description,
-            year: proj.year,
-            tags: proj.tags
-          })
-        }
+        // Projects section shows video player directly (no card selection)
+        // Do nothing on activate - player is always visible
         break
       }
       case 'experience': {
@@ -4365,25 +4372,21 @@ export function SlotFullScreen({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
 
-  // Block all controls when portfolio player is active (except ESC to go back)
+  // Block all controls when in PROJECTS content phase (keyboard handled by PortfolioPlayer)
   useEffect(() => {
-    if (!selectedProject) return
+    if (phase !== 'content' || section?.type !== 'projects') return
 
     const handlePortfolioKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setSelectedProject(null)
-        stopDucking(0.5) // Resume lounge music
-      } else {
-        // Block all other keyboard controls
-        e.preventDefault()
+      // Let PortfolioPlayer handle all keys (including ESC)
+      // This blocks default slot keyboard handlers
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter', 'Escape'].includes(e.key)) {
         e.stopPropagation()
       }
     }
 
     window.addEventListener('keydown', handlePortfolioKeyDown, true) // Capture phase
     return () => window.removeEventListener('keydown', handlePortfolioKeyDown, true)
-  }, [selectedProject])
+  }, [phase, section])
 
   return (
     <div style={{
@@ -5388,10 +5391,9 @@ export function SlotFullScreen({
               <ContentView
                 section={section}
                 focusIndex={focusIndex}
-                selectedProject={selectedProject}
                 onBackFromProject={() => {
-                  setSelectedProject(null)
-                  stopDucking(0.5) // Resume lounge music
+                  // For projects, back means close slot entirely
+                  onClose()
                 }}
               />
             </div>
