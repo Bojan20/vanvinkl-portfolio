@@ -41,6 +41,7 @@ import {
 } from '../audio'
 import { playReelSpin, playReelStop } from '../audio/SynthSounds'
 import { achievementStore } from '../store/achievements'
+import { useAudioStore } from '../store/audio'
 
 // HAPTIC FEEDBACK - Mobile vibration patterns
 const haptic = {
@@ -2955,6 +2956,70 @@ const DetailModal = memo(function DetailModal({
       }
       case 'project': {
         const proj = item.data as { icon: string, title: string, description: string, year: string, tags: string[] }
+
+        // Global audio volume controls
+        const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
+
+        // Refs for synchronized audio playback
+        const videoRef = React.useRef<HTMLVideoElement>(null)
+        const musicRef = React.useRef<HTMLAudioElement>(null)
+        const sfxRef = React.useRef<HTMLAudioElement>(null)
+
+        // Synchronize audio with video playback
+        React.useEffect(() => {
+          const video = videoRef.current
+          const music = musicRef.current
+          const sfx = sfxRef.current
+
+          if (!video || !music || !sfx) return
+
+          const handlePlay = () => {
+            music.play().catch(e => console.warn('Music play failed:', e))
+            sfx.play().catch(e => console.warn('SFX play failed:', e))
+          }
+
+          const handlePause = () => {
+            music.pause()
+            sfx.pause()
+          }
+
+          const handleSeeked = () => {
+            const time = video.currentTime
+            music.currentTime = time
+            sfx.currentTime = time
+          }
+
+          const handleTimeUpdate = () => {
+            // Sync audio if drift > 0.3s
+            const drift = Math.abs(video.currentTime - music.currentTime)
+            if (drift > 0.3) {
+              music.currentTime = video.currentTime
+              sfx.currentTime = video.currentTime
+            }
+          }
+
+          video.addEventListener('play', handlePlay)
+          video.addEventListener('pause', handlePause)
+          video.addEventListener('seeked', handleSeeked)
+          video.addEventListener('timeupdate', handleTimeUpdate)
+
+          return () => {
+            video.removeEventListener('play', handlePlay)
+            video.removeEventListener('pause', handlePause)
+            video.removeEventListener('seeked', handleSeeked)
+            video.removeEventListener('timeupdate', handleTimeUpdate)
+          }
+        }, [])
+
+        // Update audio volumes
+        React.useEffect(() => {
+          if (musicRef.current) musicRef.current.volume = musicVolume
+        }, [musicVolume])
+
+        React.useEffect(() => {
+          if (sfxRef.current) sfxRef.current.volume = sfxVolume
+        }, [sfxVolume])
+
         return (
           <div>
             {/* Header with icon and year */}
@@ -2999,12 +3064,13 @@ const DetailModal = memo(function DetailModal({
               animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
             }}>{proj.description}</p>
 
-            {/* Portfolio Video Player */}
+            {/* Portfolio Video Player with Synchronized Audio */}
             <div style={{
               marginBottom: '30px',
               animation: showContent ? 'modalTextReveal 0.7s ease-out 0.2s both' : 'none'
             }}>
               <video
+                ref={videoRef}
                 controls
                 style={{
                   width: '100%',
@@ -3019,69 +3085,110 @@ const DetailModal = memo(function DetailModal({
                 <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4" type="video/mp4" />
                 Your browser does not support video playback.
               </video>
+
+              {/* Hidden synchronized audio tracks */}
+              <audio ref={musicRef} style={{ display: 'none' }}>
+                <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
+                <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
+              </audio>
+
+              <audio ref={sfxRef} style={{ display: 'none' }}>
+                <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
+                <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
+              </audio>
             </div>
 
-            {/* Portfolio Audio Players */}
+            {/* Audio Volume Controls */}
             <div style={{
               marginBottom: '30px',
               animation: showContent ? 'modalTextReveal 0.8s ease-out 0.3s both' : 'none'
             }}>
-              {/* Background Music */}
+              {/* Music Volume Slider */}
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{
-                  margin: '0 0 10px 0',
-                  fontSize: '16px',
-                  color: '#ffd700',
-                  fontWeight: '600',
+                <div style={{
                   display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '8px'
+                  marginBottom: '8px'
                 }}>
-                  <span>🎵</span>
-                  Background Music
-                </h4>
-                <audio
-                  controls
+                  <label style={{
+                    fontSize: '14px',
+                    color: '#ffd700',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span>🎵</span>
+                    Music
+                  </label>
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#999',
+                    fontFamily: 'monospace'
+                  }}>{Math.round(musicVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={musicVolume * 100}
+                  onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
                   style={{
                     width: '100%',
-                    height: '40px',
-                    borderRadius: '20px',
-                    filter: 'sepia(0.5) hue-rotate(25deg) saturate(1.2)'
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.2) ${musicVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                    appearance: 'none'
                   }}
-                >
-                  <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
-                  <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
-                  Your browser does not support audio playback.
-                </audio>
+                />
               </div>
 
-              {/* Sound Effects */}
+              {/* SFX Volume Slider */}
               <div>
-                <h4 style={{
-                  margin: '0 0 10px 0',
-                  fontSize: '16px',
-                  color: '#ffd700',
-                  fontWeight: '600',
+                <div style={{
                   display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '8px'
+                  marginBottom: '8px'
                 }}>
-                  <span>🔊</span>
-                  Sound Effects
-                </h4>
-                <audio
-                  controls
+                  <label style={{
+                    fontSize: '14px',
+                    color: '#ffd700',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span>🔊</span>
+                    SFX
+                  </label>
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#999',
+                    fontFamily: 'monospace'
+                  }}>{Math.round(sfxVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={sfxVolume * 100}
+                  onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
                   style={{
                     width: '100%',
-                    height: '40px',
-                    borderRadius: '20px',
-                    filter: 'sepia(0.5) hue-rotate(25deg) saturate(1.2)'
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.2) ${sfxVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                    appearance: 'none'
                   }}
-                >
-                  <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
-                  <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
-                  Your browser does not support audio playback.
-                </audio>
+                />
               </div>
             </div>
 

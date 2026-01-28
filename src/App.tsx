@@ -10,6 +10,7 @@ import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 import { CasinoScene } from './components/CasinoScene'
 import { IntroCamera, IntroOverlay } from './components/IntroSequence'
 import { MobileControls, isMobileDevice } from './components/MobileControls'
+import { AudioVolumeSync } from './components/AudioVolumeSync'
 // MagicCursor removed - particle trail now follows avatar instead
 
 // Lazy load SlotFullScreen for better initial bundle size
@@ -1774,6 +1775,9 @@ export function App() {
 
   return (
     <WebGLErrorBoundary>
+      {/* Global audio volume synchronization */}
+      <AudioVolumeSync />
+
       <Canvas
         shadows={false}
         dpr={[1, 1.5]}
