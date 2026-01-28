@@ -603,8 +603,8 @@ export function IntroOverlay({
         pointerEvents: 'none'
       }} />
 
-      {/* Skip hint - visible after 2s delay */}
-      {showSkipHint && phase !== 'done' && (
+      {/* Skip hint - desktop only (mobile has tap to skip) */}
+      {showSkipHint && phase !== 'done' && !isMobile && (
         <div style={{
           position: 'absolute',
           bottom: '40px',
