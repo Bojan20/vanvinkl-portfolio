@@ -1323,8 +1323,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
     // Footstep sounds when moving (not during intro)
     if (isMovingRef.current && !isSittingRef.current && !introActive) {
       const now = state.clock.elapsedTime
-      if (now - lastFootstepTime.current > 0.35) { // ~2.8 steps per second
-        uaPlaySynth('footstep',0.25)
+      if (now - lastFootstepTime.current > 0.4) { // ~2.5 steps per second
+        uaPlaySynth('footstep', 0.4) // Volume boosted (0.25 → 0.4) za čujnost
         lastFootstepTime.current = now
       }
     }
