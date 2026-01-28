@@ -2989,7 +2989,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           }}
           poster="/logo_van.png"
         >
-          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=3" type="video/mp4" />
+          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=4" type="video/mp4" />
           Your browser does not support video playback.
         </video>
 
@@ -3037,7 +3037,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           }}
           poster="/logo_van.png"
         >
-          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=3" type="video/mp4" />
+          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=4" type="video/mp4" />
           Your browser does not support video playback.
         </video>
 
@@ -3555,7 +3555,7 @@ const DetailModal = memo(function DetailModal({
                 }}
                 poster="/logo_van.png"
               >
-                <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=3" type="video/mp4" />
+                <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=4" type="video/mp4" />
                 Your browser does not support video playback.
               </video>
 
