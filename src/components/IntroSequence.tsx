@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { playSynthSelect, playCyberReveal, playMagicReveal } from '../audio/SynthSounds'
+import { uaPlaySynth } from '../audio'
 
 const COLORS = {
   cyan: '#00ffff',
@@ -333,7 +333,7 @@ export function IntroOverlay({
     if (!active) return
 
     // Play single clean enter confirmation sound
-    playSynthSelect(0.4)
+    uaPlaySynth('select',0.4)
 
     // Timing for 5.5s total intro - user has time to read
     const phases = [
@@ -401,7 +401,7 @@ export function IntroOverlay({
   useEffect(() => {
     if (phase === 'hold') {
       console.log('[Intro] Phase changed to HOLD - playing MagicReveal!')
-      playMagicReveal(0.5)
+      uaPlaySynth('magicReveal',0.5)
       setShowBurst(true)
     }
   }, [phase])
@@ -425,7 +425,7 @@ export function IntroOverlay({
       currentChar++
       // Play cyber reveal sound for each letter (not for spaces)
       if (originalText[currentChar - 1] !== ' ') {
-        playCyberReveal(0.25)
+        uaPlaySynth('cyberReveal',0.25)
       }
       if (currentChar >= originalText.length) {
         setRevealedChars(originalText.length)

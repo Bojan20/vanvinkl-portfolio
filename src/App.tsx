@@ -28,9 +28,15 @@ import {
   isWebGLSupported
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
-import { audioSystem, getFrequencyData, getBassLevel } from './audio'
-import { initAudio, dspPlay, dspMute, dspVolume, dspGetVolume, dspGetFrequencyData } from './audio/AudioDSP'
-import { setSynthVolume, initSynthSounds } from './audio/SynthSounds'
+// Unified Audio System (NEW API)
+import {
+  initUnifiedAudio,
+  uaPlay,
+  uaMute,
+  uaVolume,
+  uaGetVolume,
+  uaGetFrequencyData
+} from './audio'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 import { useQualityStore, initQualitySystem } from './store/quality'
@@ -48,7 +54,7 @@ function SoundToggle() {
   // Apply saved mute state on mount
   useEffect(() => {
     audioSystem.setMuted(isMuted)
-    dspMute(isMuted) // Sync DSP mute state too
+    uaMute(isMuted) // Sync DSP mute state too
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMute = useCallback(() => {
@@ -56,7 +62,7 @@ function SoundToggle() {
       const newVal = !prev
       localStorage.setItem('vanvinkl-muted', String(newVal))
       audioSystem.setMuted(newVal)
-      dspMute(newVal) // Mute new DSP system too
+      uaMute(newVal) // Mute new DSP system too
       return newVal
     })
   }, [])
@@ -70,7 +76,7 @@ function SoundToggle() {
           const newVal = !prev
           localStorage.setItem('vanvinkl-muted', String(newVal))
           audioSystem.setMuted(newVal)
-          dspMute(newVal)
+          uaMute(newVal)
           return newVal
         })
       }
@@ -935,13 +941,11 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
   setIsOpen: (open: boolean) => void
 }) {
   const [selected, setSelected] = useState<'music' | 'sfx'>('music')
-  const [musicVol, setMusicVol] = useState(() => dspGetVolume('music'))
-  const [sfxVol, setSfxVol] = useState(() => dspGetVolume('sfx'))
+  const [musicVol, setMusicVol] = useState(() => uaGetVolume('music'))
+  const [sfxVol, setSfxVol] = useState(() => uaGetVolume('sfx'))
 
-  // Sync SynthSounds volume on mount
-  useEffect(() => {
-    setSynthVolume(sfxVol)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: Unified audio system handles all volumes via uaVolume()
+  // SynthSounds now integrated, no separate setSynthVolume needed
 
   // Keyboard controls
   useEffect(() => {
@@ -974,12 +978,11 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
           if (selected === 'music') {
             const newVal = Math.max(0, musicVol - step)
             setMusicVol(newVal)
-            dspVolume('music', newVal)
+            uaVolume('music', newVal)
           } else {
             const newVal = Math.max(0, sfxVol - step)
             setSfxVol(newVal)
-            dspVolume('sfx', newVal)
-            setSynthVolume(newVal)
+            uaVolume('sfx', newVal) // Now controls both sfx AND ui bus
           }
           break
 
@@ -988,12 +991,11 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
           if (selected === 'music') {
             const newVal = Math.min(1, musicVol + step)
             setMusicVol(newVal)
-            dspVolume('music', newVal)
+            uaVolume('music', newVal)
           } else {
             const newVal = Math.min(1, sfxVol + step)
             setSfxVol(newVal)
-            dspVolume('sfx', newVal)
-            setSynthVolume(newVal)
+            uaVolume('sfx', newVal) // Now controls both sfx AND ui bus
           }
           break
 
@@ -1729,15 +1731,12 @@ export function App() {
     // Initialize audio systems (this click enables audio)
     audioSystem.init()
 
-    // Initialize SynthSounds AudioContext (for intro WOW sound etc)
-    initSynthSounds()
-
-    // Always init DSP audio
-    await initAudio()
-    console.log('[Audio] DSP initialized, starting lounge music...')
+    // Initialize Unified Audio System (single AudioContext - replaces AudioDSP + SynthSounds)
+    await initUnifiedAudio()
+    console.log('[Audio] Unified system initialized, starting lounge music...')
 
     // Always try to play music (mute state is handled by masterGain)
-    dspPlay('lounge')
+    uaPlay('lounge')
 
     // Check if user has permanently skipped intro (v2 key - forces intro reset)
     const introSkipped = localStorage.getItem('vanvinkl-intro-skipped-v2') === 'true'

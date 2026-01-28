@@ -25,24 +25,10 @@ import {
   type ExperienceSection,
   type ContactSection
 } from '../store/slotContent'
-import {
-  playNavTick,
-  playNavSelect,
-  playNavBack,
-  playModalOpen,
-  playModalClose,
-  playContentReveal,
-  playPhaseTransition,
-  playSound,
-  playSynthJackpot,
-  playSynthWin,
-  startDucking,
-  stopDucking
-} from '../audio'
-import { playReelSpin, playReelStop } from '../audio/SynthSounds'
+// Unified Audio System API
+import { uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
 import { achievementStore } from '../store/achievements'
 import { useAudioStore } from '../store/audio'
-import { dspVolume, dspGetVolume } from '../audio/AudioDSP'
 
 // HAPTIC FEEDBACK - Mobile vibration patterns
 const haptic = {
@@ -2920,7 +2906,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             const next = prev - 1
             return next < 1 ? 4 : next
           })
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           break
 
         case 'ArrowRight':
@@ -2930,7 +2916,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             const next = prev + 1
             return next > 4 ? 1 : next
           })
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           break
 
         case 'ArrowUp':
@@ -2939,11 +2925,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (focusIndex === 2) {
             // Music slider
             setMusicVolume(Math.min(1, musicVolume + 0.05))
-            playNavTick(0.2)
+            uaPlaySynth('tick',0.2)
           } else if (focusIndex === 4) {
             // SFX slider
             setSfxVolume(Math.min(1, sfxVolume + 0.05))
-            playNavTick(0.2)
+            uaPlaySynth('tick',0.2)
           }
           break
 
@@ -2953,11 +2939,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (focusIndex === 2) {
             // Music slider
             setMusicVolume(Math.max(0, musicVolume - 0.05))
-            playNavTick(0.2)
+            uaPlaySynth('tick',0.2)
           } else if (focusIndex === 4) {
             // SFX slider
             setSfxVolume(Math.max(0, sfxVolume - 0.05))
-            playNavTick(0.2)
+            uaPlaySynth('tick',0.2)
           }
           break
 
@@ -2968,10 +2954,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (video) {
             if (video.paused) {
               video.play()
-              playNavSelect(0.5)
+              uaPlaySynth('select',0.5)
             } else {
               video.pause()
-              playNavSelect(0.3)
+              uaPlaySynth('select',0.3)
             }
           }
           break
@@ -2981,11 +2967,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (focusIndex === 1) {
             // Music mute toggle
             setMusicMuted(!musicMuted)
-            playNavSelect(0.4)
+            uaPlaySynth('select',0.4)
           } else if (focusIndex === 3) {
             // SFX mute toggle
             setSfxMuted(!sfxMuted)
-            playNavSelect(0.4)
+            uaPlaySynth('select',0.4)
           }
           break
 
@@ -2993,7 +2979,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           e.preventDefault()
           e.stopPropagation()
           console.log('[PortfolioPlayer] ESC pressed, calling onBack()')
-          playNavBack(0.4)
+          uaPlaySynth('back',0.4)
           onBack()
           break
       }
@@ -4192,7 +4178,7 @@ export function SlotFullScreen({
       // User selected a project (video player active)
       // Fade out lounge music (1300ms, cubic ease-out)
       console.log('[SlotFullScreen] Project selected, fading out lounge music (1300ms, RAF)')
-      const startVolume = dspGetVolume('music')
+      const startVolume = uaGetVolume('music')
       const startTime = Date.now()
       const fadeDuration = 1300
 
@@ -4204,7 +4190,7 @@ export function SlotFullScreen({
         const eased = 1 - Math.pow(1 - progress, 3)
         const vol = startVolume * (1 - eased)
 
-        dspVolume('music', Math.max(0, vol))
+        uaVolume('music', Math.max(0, vol))
 
         if (progress < 1) {
           rafId = requestAnimationFrame(fadeOut)
@@ -4222,7 +4208,7 @@ export function SlotFullScreen({
       // User returned to grid (selectedProject null)
       // Fade in lounge music (1000ms, cubic ease-out)
       console.log('[SlotFullScreen] Back to grid, fading in lounge music (1000ms, RAF)')
-      const targetVolume = dspGetVolume('music') || 1.0
+      const targetVolume = uaGetVolume('music') || 1.0
       const startTime = Date.now()
       const fadeDuration = 1000
 
@@ -4234,7 +4220,7 @@ export function SlotFullScreen({
         const eased = 1 - Math.pow(1 - progress, 3)
         const vol = targetVolume * eased
 
-        dspVolume('music', Math.min(targetVolume, vol))
+        uaVolume('music', Math.min(targetVolume, vol))
 
         if (progress < 1) {
           rafId = requestAnimationFrame(fadeIn)
@@ -4259,9 +4245,9 @@ export function SlotFullScreen({
   useEffect(() => {
     if (phase === 'spinning') {
       // Play spin sound repeatedly during spin - reduced volume
-      playReelSpin(0.25)
+      uaPlaySynth('reelSpin',0.25)
       const interval = setInterval(() => {
-        playReelSpin(0.2)
+        uaPlaySynth('reelSpin',0.2)
       }, 380) // Slightly less than duration to overlap smoothly
 
       return () => clearInterval(interval)
@@ -4272,7 +4258,7 @@ export function SlotFullScreen({
   const handleReelStop = useCallback((reelIndex: number) => {
     // Slightly different volume for each reel for realism
     const volumes = [0.5, 0.55, 0.6, 0.55, 0.65]
-    playReelStop(volumes[reelIndex] || 0.6)
+    uaPlaySynth('reelStop',volumes[reelIndex] || 0.6)
   }, [])
 
   // Touch/swipe handlers for mobile navigation
@@ -4516,19 +4502,19 @@ export function SlotFullScreen({
         case 'ArrowRight':
           e.preventDefault()
           haptic.light()
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           setFocusIndex(prev => (prev + 1) % itemCount)
           break
         case 'ArrowLeft':
           e.preventDefault()
           haptic.light()
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           break
         case 'ArrowDown':
           e.preventDefault()
           haptic.light()
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev + columns
@@ -4541,7 +4527,7 @@ export function SlotFullScreen({
         case 'ArrowUp':
           e.preventDefault()
           haptic.light()
-          playNavTick(0.3)
+          uaPlaySynth('tick',0.3)
           if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev - columns

@@ -13,7 +13,7 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
-import { playLeverPull, playLeverRelease } from '../audio/SynthSounds'
+import { uaPlaySynth } from '../audio'
 
 interface CyberpunkSlotMachineProps {
   position: [number, number, number]
@@ -225,7 +225,7 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
       // Pull the lever!
       leverPullRef.current = 1
       // Play lever pull sound (loud)
-      playLeverPull(0.7)
+      uaPlaySynth('leverPull',0.7)
       leverSoundPlayed.current.pull = true
       leverSoundPlayed.current.release = false
     }
@@ -239,7 +239,7 @@ export function CyberpunkSlotMachine({ position, label, machineId, nearMachineRe
 
       // Play release sound when lever starts returning (crosses 0.7 threshold going down)
       if (prevLeverPos > 0.7 && leverPullRef.current <= 0.7 && leverSoundPlayed.current.pull && !leverSoundPlayed.current.release) {
-        playLeverRelease(0.6)
+        uaPlaySynth('leverRelease',0.6)
         leverSoundPlayed.current.release = true
       }
 

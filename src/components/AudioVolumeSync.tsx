@@ -1,34 +1,34 @@
 /**
  * AudioVolumeSync - Global volume controller
  *
- * Synchronizes Zustand audio store with AudioSystem bus volumes
+ * Synchronizes Zustand audio store with UnifiedAudioSystem bus volumes
  * Allows unified volume control for music and SFX across:
  * - Lounge ambient music
  * - Portfolio video audio tracks
- * - All game SFX
+ * - All game SFX (external + synth)
+ * - UI sounds (procedural synth)
  */
 
 import { useEffect } from 'react'
 import { useAudioStore } from '../store/audio'
-import { audioSystem } from '../audio/AudioSystem'
+import { unifiedAudio } from '../audio'
 
 export function AudioVolumeSync() {
   const musicVolume = useAudioStore((state) => state.musicVolume)
   const sfxVolume = useAudioStore((state) => state.sfxVolume)
 
-  // Sync music volume with ambient bus
+  // Sync music volume with music bus
   useEffect(() => {
-    if (audioSystem.isInitialized()) {
-      audioSystem.setBusVolume('ambient', musicVolume)
+    if (unifiedAudio.isInitialized()) {
+      unifiedAudio.setVolume('music', musicVolume)
     }
   }, [musicVolume])
 
-  // Sync SFX volume with sfx/slots/ui buses
+  // Sync SFX volume with sfx AND ui buses
   useEffect(() => {
-    if (audioSystem.isInitialized()) {
-      audioSystem.setBusVolume('sfx', sfxVolume)
-      audioSystem.setBusVolume('slots', sfxVolume)
-      audioSystem.setBusVolume('ui', sfxVolume * 0.8) // UI slightly quieter
+    if (unifiedAudio.isInitialized()) {
+      unifiedAudio.setVolume('sfx', sfxVolume)
+      unifiedAudio.setVolume('ui', sfxVolume) // UI synth sounds use same volume
     }
   }, [sfxVolume])
 

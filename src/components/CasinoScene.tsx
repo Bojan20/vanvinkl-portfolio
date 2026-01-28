@@ -23,16 +23,12 @@ import { WinCelebrationGPU } from './GPUParticles'
 import { DustParticles } from './DustParticles'
 import { PostProcessing } from './PostProcessing'
 import { ContextHandler } from './WebGLErrorBoundary'
-import { useAudio, getBassLevel as getOldBassLevel } from '../audio'
-import { dspGetBassLevel } from '../audio/AudioDSP'
-import { playUiOpen, playUiClose, playSynthFootstep } from '../audio/SynthSounds'
+import { uaGetBassLevel, uaPlaySynth } from '../audio'
 import { getEffectiveQuality } from '../store/quality'
 
-// Combined bass level - tries new DSP first, falls back to old system
+// Unified audio system provides bass level directly
 const getBassLevel = (): number => {
-  const dspBass = dspGetBassLevel()
-  if (dspBass > 0) return dspBass
-  return getOldBassLevel()
+  return uaGetBassLevel()
 }
 import { COLORS as THEME_COLORS, SLOT_CONFIG, TIMING, DISTANCES } from '../store'
 import { achievementStore, type Achievement } from '../store/achievements'
@@ -1345,7 +1341,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
     if (isMovingRef.current && !isSittingRef.current && !introActive) {
       const now = state.clock.elapsedTime
       if (now - lastFootstepTime.current > 0.35) { // ~2.8 steps per second
-        playSynthFootstep(0.25)
+        uaPlaySynth('footstep',0.25)
         lastFootstepTime.current = now
       }
     }
@@ -1421,9 +1417,9 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       if (isNearLogo !== nearLogo) {
         // Play soft UI sounds on state change
         if (isNearLogo) {
-          playUiOpen(0.5) // Soft open sound when approaching
+          uaPlaySynth('uiOpen',0.5) // Soft open sound when approaching
         } else {
-          playUiClose(0.4) // Soft close sound when leaving
+          uaPlaySynth('uiClose',0.4) // Soft close sound when leaving
         }
         setNearLogo(isNearLogo)
       }
