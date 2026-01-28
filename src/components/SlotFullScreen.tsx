@@ -2752,14 +2752,39 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
   // Pause lounge music when portfolio opens
   React.useEffect(() => {
-    // Stop lounge music completely
-    stopDucking() // Clear any existing ducking
-    startDucking(0, 0.3) // Mute lounge music (0 volume)
+    console.log('[PortfolioPlayer] Stopping lounge music with 1300ms fadeout')
+
+    // Smooth fadeout of lounge music (1300ms)
+    stopDucking() // Clear any existing ducking first
+    startDucking(0, 1.3) // Fade lounge music to 0% over 1300ms
 
     return () => {
-      // Resume lounge music when exiting
-      stopDucking(0.5)
+      console.log('[PortfolioPlayer] Resuming lounge music')
+      // Resume lounge music with smooth fadein
+      stopDucking(1.0)
     }
+  }, [])
+
+  // Reset video and audio to beginning when component mounts
+  React.useEffect(() => {
+    const video = videoRef.current
+    const music = musicRef.current
+    const sfx = sfxRef.current
+
+    if (video) {
+      video.currentTime = 0
+      video.pause()
+    }
+    if (music) {
+      music.currentTime = 0
+      music.pause()
+    }
+    if (sfx) {
+      sfx.currentTime = 0
+      sfx.pause()
+    }
+
+    console.log('[PortfolioPlayer] Video and audio reset to start')
   }, [])
 
   // Synchronize audio with video
