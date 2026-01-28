@@ -2726,7 +2726,7 @@ function getGridColumns(section: SlotSection): number {
   }
 }
 
-// Portfolio Video Player - Full screen inline player
+// Portfolio Video Player - Full screen inline player with keyboard nav
 const PortfolioPlayer = memo(function PortfolioPlayer({
   project,
   onBack
@@ -2739,6 +2739,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
+  const [focusIndex, setFocusIndex] = React.useState(0) // 0: play, 1: music slider, 2: sfx slider, 3: back
+
+  // Focus items count
+  const FOCUS_ITEMS = 4
 
   // Staggered reveal
   React.useEffect(() => {
@@ -2800,42 +2804,159 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     if (sfxRef.current) sfxRef.current.volume = sfxVolume
   }, [sfxVolume])
 
+  // Keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          setFocusIndex(prev => (prev - 1 + FOCUS_ITEMS) % FOCUS_ITEMS)
+          playNavTick(0.3)
+          break
+
+        case 'ArrowDown':
+          e.preventDefault()
+          setFocusIndex(prev => (prev + 1) % FOCUS_ITEMS)
+          playNavTick(0.3)
+          break
+
+        case 'ArrowLeft':
+          e.preventDefault()
+          if (focusIndex === 1) {
+            // Music slider
+            setMusicVolume(Math.max(0, musicVolume - 0.05))
+            playNavTick(0.2)
+          } else if (focusIndex === 2) {
+            // SFX slider
+            setSfxVolume(Math.max(0, sfxVolume - 0.05))
+            playNavTick(0.2)
+          }
+          break
+
+        case 'ArrowRight':
+          e.preventDefault()
+          if (focusIndex === 1) {
+            // Music slider
+            setMusicVolume(Math.min(1, musicVolume + 0.05))
+            playNavTick(0.2)
+          } else if (focusIndex === 2) {
+            // SFX slider
+            setSfxVolume(Math.min(1, sfxVolume + 0.05))
+            playNavTick(0.2)
+          }
+          break
+
+        case ' ':
+        case 'Enter':
+          e.preventDefault()
+          if (focusIndex === 0) {
+            // Play/Pause video + audio
+            const video = videoRef.current
+            if (video) {
+              if (video.paused) {
+                video.play()
+                playNavSelect(0.5)
+              } else {
+                video.pause()
+                playNavSelect(0.3)
+              }
+            }
+          } else if (focusIndex === 3) {
+            // Back button
+            playNavBack(0.4)
+            onBack()
+          }
+          break
+
+        case 'Escape':
+          e.preventDefault()
+          playNavBack(0.4)
+          onBack()
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [focusIndex, musicVolume, sfxVolume, setMusicVolume, setSfxVolume, onBack])
+
+  const isFocused = (index: number) => focusIndex === index
+
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '30px',
-      maxWidth: '1200px',
+      gap: '25px',
+      maxWidth: '1000px',
       margin: '0 auto',
-      padding: '40px',
-      animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none'
+      padding: '30px',
+      animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
+      height: '100vh',
+      justifyContent: 'center',
+      overflow: 'hidden'
     }}>
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        style={{
-          alignSelf: 'flex-start',
-          background: 'rgba(255,215,0,0.1)',
-          border: '2px solid #ffd700',
-          borderRadius: '12px',
-          padding: '12px 24px',
-          color: '#ffd700',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease'
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.background = 'rgba(255,215,0,0.2)'
-          e.currentTarget.style.transform = 'translateX(-5px)'
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.background = 'rgba(255,215,0,0.1)'
-          e.currentTarget.style.transform = 'translateX(0)'
-        }}
-      >
-        ← Back to Projects
-      </button>
+      {/* Hint text */}
+      <div style={{
+        textAlign: 'center',
+        color: '#888',
+        fontSize: '13px',
+        marginBottom: '10px'
+      }}>
+        ↑↓ Navigate • ←→ Adjust Volume • SPACE/ENTER Play/Pause • ESC Back
+      </div>
+
+      {/* Video Player with Play/Pause focus */}
+      <div style={{
+        position: 'relative',
+        border: isFocused(0) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: isFocused(0) ? '0 0 30px rgba(255,215,0,0.5)' : '0 8px 40px rgba(255,215,0,0.2)',
+        transition: 'all 0.3s ease'
+      }}>
+        <video
+          ref={videoRef}
+          style={{
+            width: '100%',
+            height: 'auto',
+            maxHeight: '400px',
+            display: 'block',
+            backgroundColor: '#000'
+          }}
+          poster="/logo_van.png"
+        >
+          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4" type="video/mp4" />
+          Your browser does not support video playback.
+        </video>
+
+        {/* Custom Play/Pause indicator */}
+        {isFocused(0) && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: '60px',
+            color: '#ffd700',
+            textShadow: '0 0 20px rgba(255,215,0,0.8)',
+            pointerEvents: 'none',
+            animation: 'pulse 1s ease-in-out infinite'
+          }}>
+            {videoRef.current?.paused ? '▶' : '⏸'}
+          </div>
+        )}
+
+        {/* Hidden audio tracks */}
+        <audio ref={musicRef} style={{ display: 'none' }}>
+          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
+          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
+        </audio>
+
+        <audio ref={sfxRef} style={{ display: 'none' }}>
+          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
+          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
+        </audio>
+      </div>
 
       {/* Video Player */}
       <div>
@@ -2869,14 +2990,35 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       </div>
 
       {/* Volume Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Music Slider */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label style={{ fontSize: '14px', color: '#ffd700', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>🎵</span> Music
+        <div style={{
+          padding: '16px',
+          border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+          borderRadius: '12px',
+          background: isFocused(1) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
+          boxShadow: isFocused(1) ? '0 0 20px rgba(255,215,0,0.3)' : 'none',
+          transition: 'all 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <label style={{
+              fontSize: '15px',
+              color: isFocused(1) ? '#ffd700' : '#ccc',
+              fontWeight: isFocused(1) ? '700' : '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.3s ease'
+            }}>
+              <span style={{ fontSize: '18px' }}>🎵</span> Music
             </label>
-            <span style={{ fontSize: '13px', color: '#999', fontFamily: 'monospace' }}>
+            <span style={{
+              fontSize: '14px',
+              color: isFocused(1) ? '#ffd700' : '#999',
+              fontFamily: 'monospace',
+              fontWeight: isFocused(1) ? '700' : '400',
+              transition: 'all 0.3s ease'
+            }}>
               {Math.round(musicVolume * 100)}%
             </span>
           </div>
@@ -2888,24 +3030,46 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
             style={{
               width: '100%',
-              height: '6px',
-              borderRadius: '3px',
+              height: isFocused(1) ? '8px' : '6px',
+              borderRadius: '4px',
               background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.2) ${musicVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
               outline: 'none',
               cursor: 'pointer',
               WebkitAppearance: 'none',
-              appearance: 'none'
+              appearance: 'none',
+              transition: 'height 0.3s ease'
             }}
           />
         </div>
 
         {/* SFX Slider */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label style={{ fontSize: '14px', color: '#ffd700', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>🔊</span> SFX
+        <div style={{
+          padding: '16px',
+          border: isFocused(2) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+          borderRadius: '12px',
+          background: isFocused(2) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
+          boxShadow: isFocused(2) ? '0 0 20px rgba(255,215,0,0.3)' : 'none',
+          transition: 'all 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <label style={{
+              fontSize: '15px',
+              color: isFocused(2) ? '#ffd700' : '#ccc',
+              fontWeight: isFocused(2) ? '700' : '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.3s ease'
+            }}>
+              <span style={{ fontSize: '18px' }}>🔊</span> SFX
             </label>
-            <span style={{ fontSize: '13px', color: '#999', fontFamily: 'monospace' }}>
+            <span style={{
+              fontSize: '14px',
+              color: isFocused(2) ? '#ffd700' : '#999',
+              fontFamily: 'monospace',
+              fontWeight: isFocused(2) ? '700' : '400',
+              transition: 'all 0.3s ease'
+            }}>
               {Math.round(sfxVolume * 100)}%
             </span>
           </div>
@@ -2917,17 +3081,40 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
             style={{
               width: '100%',
-              height: '6px',
-              borderRadius: '3px',
+              height: isFocused(2) ? '8px' : '6px',
+              borderRadius: '4px',
               background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.2) ${sfxVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
               outline: 'none',
               cursor: 'pointer',
               WebkitAppearance: 'none',
-              appearance: 'none'
+              appearance: 'none',
+              transition: 'height 0.3s ease'
             }}
           />
         </div>
       </div>
+
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        style={{
+          alignSelf: 'center',
+          background: isFocused(3) ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.08)',
+          border: isFocused(3) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
+          borderRadius: '14px',
+          padding: '14px 32px',
+          color: isFocused(3) ? '#ffd700' : '#ccc',
+          fontSize: '15px',
+          fontWeight: isFocused(3) ? '700' : '600',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: isFocused(3) ? '0 0 20px rgba(255,215,0,0.4)' : 'none',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}
+      >
+        ← Back to Projects
+      </button>
     </div>
   )
 })
@@ -5241,8 +5428,8 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* Detail Modal */}
-      {detailItem && (
+      {/* Detail Modal (only for non-projects sections) */}
+      {detailItem && section?.type !== 'projects' && (
         <DetailModal
           item={detailItem}
           primaryColor={primaryColor}
