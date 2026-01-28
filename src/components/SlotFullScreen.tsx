@@ -2744,9 +2744,18 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
   const [isFullscreen, setIsFullscreen] = React.useState(false)
+  const [videoProgress, setVideoProgress] = React.useState(0) // 0-100%
+  const [videoDuration, setVideoDuration] = React.useState(0)
+  const [showHint, setShowHint] = React.useState(true) // Auto-hide after 5s
 
   // Focus items count
   const FOCUS_ITEMS = 4
+
+  // Auto-hide controls hint after 5 seconds
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowHint(false), 5000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Fullscreen change listener - enable controls only in fullscreen
   React.useEffect(() => {
@@ -2824,6 +2833,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
 
     const handleTimeUpdate = () => {
+      // Update progress bar
+      if (video.duration > 0) {
+        const progress = (video.currentTime / video.duration) * 100
+        setVideoProgress(progress)
+      }
+
       // Only sync if video is still playing (not ended)
       if (video.ended) return
 
@@ -2832,6 +2847,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         music.currentTime = video.currentTime
         sfx.currentTime = video.currentTime
       }
+    }
+
+    const handleLoadedMetadata = () => {
+      setVideoDuration(video.duration)
+      console.log('[PortfolioPlayer] Video duration:', video.duration.toFixed(1), 's')
     }
 
     const handleEnded = () => {
@@ -2843,6 +2863,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     video.addEventListener('pause', handlePause)
     video.addEventListener('seeked', handleSeeked)
     video.addEventListener('timeupdate', handleTimeUpdate)
+    video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
 
     return () => {
@@ -2850,6 +2871,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       video.removeEventListener('pause', handlePause)
       video.removeEventListener('seeked', handleSeeked)
       video.removeEventListener('timeupdate', handleTimeUpdate)
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('ended', handleEnded)
     }
   }, [])
@@ -3172,8 +3194,23 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </div>
       </div>
 
-      {/* Controls Hint Overlay - Top Left */}
+      {/* Video Progress Bar - Thin overlay above controls */}
       <div style={{
+        position: 'fixed',
+        bottom: '62px', // Above controls bar
+        left: 0,
+        width: `${videoProgress}%`,
+        height: '3px',
+        background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
+        boxShadow: '0 0 10px rgba(255,215,0,0.6)',
+        transition: 'width 0.1s linear',
+        zIndex: 999,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Controls Hint Overlay - Top Left (auto-hide after 5s) */}
+      {showHint && (
+        <div style={{
         position: 'fixed',
         top: '20px',
         left: '20px',
@@ -3196,6 +3233,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>SPACE</kbd> Play</div>
         <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>2×Click</kbd> FullScreen</div>
       </div>
+      )}
     </div>
   )
 })
