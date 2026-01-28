@@ -42,6 +42,7 @@ import {
 import { playReelSpin, playReelStop } from '../audio/SynthSounds'
 import { achievementStore } from '../store/achievements'
 import { useAudioStore } from '../store/audio'
+import { dspVolume, dspGetVolume } from '../audio/AudioDSP'
 
 // HAPTIC FEEDBACK - Mobile vibration patterns
 const haptic = {
@@ -2754,14 +2755,40 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   React.useEffect(() => {
     console.log('[PortfolioPlayer] Stopping lounge music with 1300ms fadeout')
 
-    // Smooth fadeout of lounge music (1300ms)
-    stopDucking() // Clear any existing ducking first
-    startDucking(0, 1.3) // Fade lounge music to 0% over 1300ms
+    // Save original volume
+    const originalVolume = dspGetVolume('music')
+    console.log('[PortfolioPlayer] Original music volume:', originalVolume)
+
+    // Smooth fadeout to 0 over 1300ms
+    let currentVol = originalVolume
+    const fadeSteps = 26 // 26 steps over 1300ms = 50ms per step
+    const volStep = originalVolume / fadeSteps
+    let stepCount = 0
+
+    const fadeInterval = setInterval(() => {
+      currentVol -= volStep
+      stepCount++
+      if (currentVol <= 0 || stepCount >= fadeSteps) {
+        currentVol = 0
+        clearInterval(fadeInterval)
+      }
+      dspVolume('music', Math.max(0, currentVol))
+    }, 50)
 
     return () => {
+      clearInterval(fadeInterval)
       console.log('[PortfolioPlayer] Resuming lounge music')
-      // Resume lounge music with smooth fadein
-      stopDucking(1.0)
+      // Fade back in over 1000ms
+      let vol = 0
+      const fadeInSteps = 20
+      const fadeInInterval = setInterval(() => {
+        vol += originalVolume / fadeInSteps
+        if (vol >= originalVolume) {
+          vol = originalVolume
+          clearInterval(fadeInInterval)
+        }
+        dspVolume('music', Math.min(originalVolume, vol))
+      }, 50)
     }
   }, [])
 
