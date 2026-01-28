@@ -1258,13 +1258,9 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               borderTop: '1px solid rgba(255, 255, 255, 0.06)',
               textAlign: 'center',
               color: '#666',
-              fontSize: '10px',
-              lineHeight: 1.4
+              fontSize: '10px'
             }}>
-              <div>Tap sliders to adjust</div>
-              <div style={{ marginTop: '4px', fontSize: '9px', color: '#555' }}>
-                Music & sound effects volume
-              </div>
+              Tap sliders to adjust
             </div>
           )}
         </div>
