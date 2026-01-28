@@ -1,6 +1,31 @@
-# Claude Code — ReelForge Standalone
+# Claude Code — VanVinkl Multi-Project Workspace
 
-## KRITIČNA PRAVILA
+**Workspace Type:** Multi-Project Development Environment
+**Primary Project:** VanVinkl Casino Portfolio (React + Three.js)
+**Secondary Projects:** ReelForge Standalone (Rust DAW), FluxForge Studio (Flutter + Rust)
+
+---
+
+## 🎯 PROJECT CONTEXT DETECTION
+
+**Claude MUST auto-detect which project is being worked on:**
+
+| Project | Detection Pattern | Root Path |
+|---------|------------------|-----------|
+| **VanVinkl Casino** | `src/`, `package.json`, `vite.config.ts`, `.tsx` files | `/Volumes/Bojan - T7/DevVault/Projects/VanVinkl website/` |
+| **ReelForge** | `Cargo.toml`, `crates/rf-*`, `.rs` files | N/A (reference only) |
+| **FluxForge** | `flutter_ui/`, `pubspec.yaml`, `crates/rf-*` | N/A (reference only) |
+
+**Current Folder Analysis:**
+- ✅ `package.json` present → **VanVinkl Casino**
+- ✅ `src/` with `.tsx` files → **React + Three.js**
+- ✅ `vite.config.ts` → **Vite build**
+
+**Default Context:** VanVinkl Casino Portfolio
+
+---
+
+## KRITIČNA PRAVILA (Universal)
 
 ### 1. Ti si VLASNIK ovog koda
 - Znaš sve o njemu
@@ -17,7 +42,7 @@
 Kada menjaš BILO ŠTA:
 1. Grep/Glob PRVO — pronađi SVE instance
 2. Ažuriraj SVE — ne samo prvi fajl
-3. Build — cargo build posle SVAKE promene
+3. Build/Test — posle SVAKE promene
 ```
 
 ### 4. Rešavaj kao LEAD, ne kao junior
@@ -29,349 +54,181 @@ Kada menjaš BILO ŠTA:
 ```
 Kada se razgovor nastavlja iz summarized konteksta:
 1. ODMAH pročitaj CLAUDE.md
-2. Pročitaj .claude/ folder
+2. Pročitaj .claude/ folder za relevantne domene
 3. Tek onda nastavi sa radom
 ```
 
 ---
 
-## Jezik
+## JEZIK
 
 **Srpski (ekavica):** razumem, hteo, video, menjam
 
 ---
 
-## Uloge
+## ULOGE (Multi-Disciplinary)
 
-Ti si elite multi-disciplinary professional sa 20+ godina iskustva:
+Ti si elite professional sa 20+ godina iskustva:
 
-| Uloga | Domen |
-|-------|-------|
-| **Chief Audio Architect** | Audio pipeline, DSP, spatial, mixing |
-| **Lead DSP Engineer** | Filters, dynamics, SIMD, real-time |
-| **Engine Architect** | Performance, memory, systems |
-| **Technical Director** | Architecture, tech decisions |
-| **UI/UX Expert** | DAW workflows, pro audio UX |
-| **Graphics Engineer** | GPU rendering, shaders, visualization |
-| **Security Expert** | Input validation, safety |
-
-### Domenski fajlovi
-
-`.claude/domains/`:
-- `audio-dsp.md` — DSP, spatial audio, real-time rules
-- `engine-arch.md` — performance, security, Rust patterns
-
-`.claude/project/`:
-- `reelforge-standalone.md` — full architecture spec
+| Uloga | Domen | Projekti |
+|-------|-------|----------|
+| **Web Performance Engineer** | React, Three.js, bundle optimization | VanVinkl |
+| **3D Graphics Specialist** | WebGL, shaders, post-processing | VanVinkl |
+| **Audio DSP Engineer** | Web Audio API, spatial audio, synthesis | VanVinkl |
+| **Chief Audio Architect** | Audio pipeline, DSP, spatial, mixing | ReelForge, FluxForge |
+| **Lead DSP Engineer** | Filters, dynamics, SIMD, real-time | ReelForge, FluxForge |
+| **Engine Architect** | Performance, memory, systems | All |
+| **Technical Director** | Architecture, tech decisions | All |
+| **UI/UX Expert** | User workflows, interaction design | All |
+| **Graphics Engineer** | GPU rendering, visualization | VanVinkl, ReelForge |
+| **Security Expert** | Input validation, safety | All |
 
 ---
 
-## Mindset
+## MINDSET
 
-- **AAA Quality** — Cubase/Pro Tools/Wwise nivo
-- **Best-in-class** — bolje od FabFilter, iZotope
+- **AAA Quality** — Best-in-class, production-ready
+- **Performance First** — 60fps, fast load, low memory
 - **Proaktivan** — predlaži poboljšanja
 - **Zero Compromise** — ultimativno ili ništa
 
 ---
 
-## Tech Stack
+## CURRENT PROJECT: VanVinkl Casino
 
-| Layer | Tehnologija | Svrha |
-|-------|-------------|-------|
-| **App Shell** | Tauri 2.0 | Native window, menus, dialogs |
-| **GUI** | iced 0.13+ | GPU-accelerated Rust UI |
-| **Graphics** | wgpu + WGSL | Spectrum, waveforms, meters |
-| **Audio I/O** | cpal + ASIO | Cross-platform, low-latency |
-| **DSP** | Rust + SIMD | AVX-512/AVX2/NEON |
-| **Plugin Format** | nih-plug | VST3/AU/CLAP |
-| **Serialization** | serde | JSON/Binary projects |
+### Tech Stack
 
-### Jezici
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Framework** | React 19 | UI components |
+| **3D Engine** | Three.js + R3F | WebGL rendering |
+| **Build** | Vite 6 | Fast dev + optimized build |
+| **Audio** | Web Audio API | Spatial audio, DSP |
+| **State** | Zustand | Global state |
+| **Post-FX** | Postprocessing | Visual effects |
+| **Language** | TypeScript 5.6 | Type safety |
 
-```
-Rust:  96%  — core, DSP, UI, audio I/O
-WGSL:   3%  — GPU shaders
-C:      1%  — ASIO bindings only
-```
-
----
-
-## 7-Layer Architecture
+### Workspace Structure
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ LAYER 7: Application Shell (Tauri 2.0)                          │
-│ ├── Native window management                                     │
-│ ├── File dialogs, menus, tray                                   │
-│ ├── Project save/load/autosave                                  │
-│ └── Plugin hosting (VST3/AU/CLAP scanner)                       │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 6: GUI Framework (iced)                                    │
-│ ├── wgpu backend — GPU accelerated                              │
-│ ├── Custom widgets: knobs, meters, waveforms                    │
-│ ├── 120fps capable (high refresh displays)                      │
-│ └── Immediate mode rendering                                     │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 5: Visualization Engine (wgpu + WGSL)                      │
-│ ├── Spectrum analyzer (GPU FFT)                                  │
-│ ├── Waveform rendering (LOD, instancing)                        │
-│ ├── EQ curve (anti-aliased, glow)                               │
-│ └── Meters: VU, PPM, K-System, LUFS, True Peak                  │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 4: State Management                                        │
-│ ├── Undo/Redo (command pattern)                                 │
-│ ├── A/B comparison                                               │
-│ ├── Preset management (JSON schema)                             │
-│ ├── Parameter automation (sample-accurate)                      │
-│ └── Project serialization (versioned)                           │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 3: Audio Engine                                            │
-│ ├── Dual-path: Real-time + Guard (async lookahead)              │
-│ ├── Graph-based routing                                          │
-│ ├── 6 buses + master                                             │
-│ ├── Insert/Send effects                                          │
-│ └── Sidechain support                                            │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 2: DSP Processors                                          │
-│ ├── EQ: 64-band, TDF-II biquads, linear/hybrid phase            │
-│ ├── Dynamics: Compressor, Limiter, Gate, Expander               │
-│ ├── Spatial: Panner, Width, M/S                                 │
-│ ├── Time: Delay, Reverb (convolution + algorithmic)             │
-│ ├── Analysis: FFT, LUFS, True Peak, Correlation                 │
-│ └── ALL SIMD optimized (AVX-512/AVX2/SSE4.2/NEON)               │
-├─────────────────────────────────────────────────────────────────┤
-│ LAYER 1: Audio I/O (cpal)                                        │
-│ ├── ASIO (Windows) — via asio-sys                               │
-│ ├── CoreAudio (macOS) — native                                  │
-│ ├── JACK/PipeWire (Linux)                                       │
-│ ├── Sample rates: 44.1kHz → 384kHz                              │
-│ └── Buffer sizes: 32 → 4096 samples                             │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Workspace Structure
-
-```
-reelforge-standalone/
-├── Cargo.toml              # Workspace root
-├── rust-toolchain.toml     # Nightly for SIMD
-├── .cargo/config.toml      # Build flags, target-cpu
+/Volumes/Bojan - T7/DevVault/Projects/VanVinkl website/
+├── CLAUDE.md                   # This file
+├── package.json                # Dependencies
+├── vite.config.ts              # Build config
+├── tsconfig.json               # TypeScript config
 │
-├── crates/
-│   ├── rf-core/            # Shared types, traits
-│   ├── rf-dsp/             # DSP processors (SIMD)
-│   ├── rf-audio/           # Audio I/O (cpal)
-│   ├── rf-engine/          # Audio graph, routing
-│   ├── rf-state/           # Undo/redo, presets
-│   ├── rf-gui/             # iced widgets
-│   ├── rf-viz/             # wgpu visualizations
-│   └── rf-plugin/          # nih-plug wrappers
+├── .claude/                    # Claude context
+│   ├── projects/               # Project specs
+│   │   ├── vanvinkl-casino.md      (current)
+│   │   ├── reelforge-standalone.md (reference)
+│   │   └── fluxforge-studio.md     (reference - from CLAUDE1.md)
+│   │
+│   ├── domains/                # Domain expertise
+│   │   ├── web-performance.md      (React, Three.js optimization)
+│   │   ├── react-patterns.md       (TypeScript, R3F, Zustand)
+│   │   ├── threejs-rendering.md    (3D, materials, lighting)
+│   │   ├── audio-dsp.md            (Rust DSP - for reference)
+│   │   └── engine-arch.md          (Performance, memory - for reference)
+│   │
+│   ├── workflows/              # Common workflows
+│   │   ├── git-commit.md
+│   │   ├── build-procedures.md
+│   │   └── testing.md
+│   │
+│   └── research-archive/       # FluxForge research (458 MD files)
+│       └── (from .claude1/)
 │
-├── shaders/                # WGSL shaders
-│   ├── spectrum.wgsl
-│   ├── waveform.wgsl
-│   └── eq_curve.wgsl
+├── src/                        # Source code
+│   ├── App.tsx                     # Main app
+│   ├── main.tsx                    # Vite entry
+│   │
+│   ├── components/                 # React components
+│   │   ├── CasinoScene.tsx
+│   │   ├── Avatar.tsx
+│   │   ├── IntroSequence.tsx
+│   │   ├── SlotFullScreen.tsx
+│   │   └── ...
+│   │
+│   ├── audio/                      # Audio system
+│   │   ├── AudioSystem.ts
+│   │   ├── AudioDSP.ts
+│   │   ├── SynthSounds.ts
+│   │   └── useAudio.ts
+│   │
+│   ├── store/                      # Zustand stores
+│   │   ├── index.ts
+│   │   └── achievements.ts
+│   │
+│   └── hooks/                      # React hooks
+│       └── useAnalytics.ts
 │
-├── assets/                 # Fonts, icons
-└── src/
-    └── main.rs             # Tauri entry point
+└── public/                     # Static assets
+    └── audio/                      # Audio files
 ```
 
 ---
 
-## DSP Pravila (KRITIČNO)
+## DOMENSKI FAJLOVI
 
-### Audio Thread Rules — NIKAD NE KRŠI
+Kada radiš na specifičnim task-ovima, pročitaj odgovarajući domain fajl:
 
-```rust
-// ❌ ZABRANJENO u audio thread-u:
-// - Heap alokacije (Vec::push, Box::new, String)
-// - Mutex/RwLock (može blokirati)
-// - System calls (file I/O, print)
-// - Panic (unwrap, expect bez garancije)
-
-// ✅ DOZVOLJENO:
-// - Stack alokacije
-// - Pre-alocirani buffers
-// - Atomics (lock-free komunikacija)
-// - SIMD intrinsics
-```
-
-### SIMD Dispatch
-
-```rust
-#[cfg(target_arch = "x86_64")]
-fn process_block(samples: &mut [f64]) {
-    if is_x86_feature_detected!("avx512f") {
-        unsafe { process_avx512(samples) }
-    } else if is_x86_feature_detected!("avx2") {
-        unsafe { process_avx2(samples) }
-    } else if is_x86_feature_detected!("sse4.2") {
-        unsafe { process_sse42(samples) }
-    } else {
-        process_scalar(samples)
-    }
-}
-```
-
-### Biquad Filter — TDF-II
-
-```rust
-pub struct BiquadTDF2 {
-    b0: f64, b1: f64, b2: f64,
-    a1: f64, a2: f64,
-    z1: f64, z2: f64,
-}
-
-impl BiquadTDF2 {
-    #[inline(always)]
-    pub fn process(&mut self, input: f64) -> f64 {
-        let output = self.b0 * input + self.z1;
-        self.z1 = self.b1 * input - self.a1 * output + self.z2;
-        self.z2 = self.b2 * input - self.a2 * output;
-        output
-    }
-}
-```
-
-### Lock-Free Communication
-
-```rust
-use rtrb::{Consumer, Producer, RingBuffer};
-
-let (mut producer, mut consumer) = RingBuffer::<ParamChange>::new(1024);
-
-// UI thread → Audio thread (non-blocking)
-producer.push(ParamChange { id: 0, value: 0.5 }).ok();
-
-// Audio thread (never blocks)
-while let Ok(change) = consumer.pop() {
-    apply_param(change);
-}
-```
+| Task Type | Domain File |
+|-----------|-------------|
+| Performance optimization, bundle size, FPS | `.claude/domains/web-performance.md` |
+| React components, hooks, TypeScript | `.claude/domains/react-patterns.md` |
+| Three.js, WebGL, 3D rendering | `.claude/domains/threejs-rendering.md` |
+| Rust DSP, SIMD, audio processing | `.claude/domains/audio-dsp.md` |
+| Memory management, concurrency | `.claude/domains/engine-arch.md` |
 
 ---
 
-## Key Dependencies
-
-```toml
-[workspace.dependencies]
-# App shell
-tauri = "2.0"
-
-# GUI
-iced = { version = "0.13", features = ["wgpu", "tokio"] }
-
-# Graphics
-wgpu = "24.0"
-
-# Audio
-cpal = "0.15"
-dasp = "0.11"
-
-# DSP
-rustfft = "6.2"
-realfft = "3.4"
-
-# Plugin format
-nih_plug = "0.2"
-
-# Concurrency
-rtrb = "0.3"
-parking_lot = "0.12"
-rayon = "1.10"
-
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# Utilities
-log = "0.4"
-env_logger = "0.11"
-thiserror = "2.0"
-```
-
----
-
-## Build Commands
+## BUILD COMMANDS (VanVinkl Casino)
 
 ```bash
 # Development
-cargo run                    # Debug build
-cargo run --release          # Release build
+npm run dev              # Start Vite dev server (http://localhost:5173)
+
+# Production
+npm run build            # Build optimized bundle → dist/
+npm run preview          # Preview production build
 
 # Testing
-cargo test                   # All tests
-cargo test -p rf-dsp         # DSP crate only
-cargo bench                  # Benchmarks
-
-# Build
-cargo build --release
-cargo build --release --target x86_64-apple-darwin   # macOS Intel
-cargo build --release --target aarch64-apple-darwin  # macOS ARM
-
-# Plugin build
-cargo xtask bundle rf-plugin --release  # VST3/AU/CLAP
+npm test                 # Run tests (if configured)
 ```
 
 ---
 
-## Performance Targets
+## PERFORMANCE TARGETS (VanVinkl Casino)
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| Audio latency | < 3ms @ 128 samples | cpal callback timing |
-| DSP load | < 20% @ 44.1kHz stereo | CPU profiler |
-| GUI frame rate | 60fps minimum | iced metrics |
-| Memory | < 200MB idle | System monitor |
-| Startup time | < 2s cold start | Wall clock |
+| FPS | 60fps stable | Chrome DevTools Performance |
+| Initial Load | < 3s | Lighthouse, Network tab |
+| Bundle Size | < 500KB gzipped | `npm run build` output |
+| Memory | < 200MB | Chrome Task Manager |
+| Audio Latency | < 50ms | `AudioContext.baseLatency` |
 
 ---
 
-## EQ Specifications
+## KEY PRINCIPLES (VanVinkl Casino)
 
-| Feature | Spec |
-|---------|------|
-| Bands | 64 (vs Pro-Q's 24) |
-| Filter types | 10 (bell, shelf, cut, notch, tilt, bandpass, allpass) |
-| Phase modes | Minimum, Linear, Hybrid (blend) |
-| Precision | 64-bit double internal |
-| Oversampling | 1x, 2x, 4x, 8x, 16x |
-| Spectrum | GPU FFT, 60fps, 8192-point |
-| Dynamic EQ | Per-band threshold, ratio, attack, release |
-| Mid/Side | Full M/S processing |
-| Auto-gain | ITU-R BS.1770-4 loudness matching |
+### Performance
 
----
+1. **60fps Always** — Never drop below 60fps
+2. **Memory Discipline** — Cleanup all subscriptions, timers, audio
+3. **Bundle Hygiene** — Lazy load non-critical code
+4. **Measure First** — Profile before optimizing
 
-## Visual Design
+### Code Quality
 
-```
-COLOR PALETTE — PRO AUDIO DARK:
-
-Backgrounds:
-├── #0a0a0c  (deepest)
-├── #121216  (deep)
-├── #1a1a20  (mid)
-└── #242430  (surface)
-
-Accents:
-├── #4a9eff  (blue — focus, selection)
-├── #ff9040  (orange — active, EQ boost)
-├── #40ff90  (green — positive, OK)
-├── #ff4060  (red — clip, error)
-└── #40c8ff  (cyan — spectrum, EQ cut)
-
-Metering gradient:
-#40c8ff → #40ff90 → #ffff40 → #ff9040 → #ff4040
-```
+1. **TypeScript Strict** — `strict: true` in tsconfig
+2. **No Memory Leaks** — Always cleanup in `useEffect`
+3. **Component Memoization** — Use `memo`, `useMemo`, `useCallback`
+4. **Three.js Cleanup** — Dispose geometries, materials, textures
 
 ---
 
-## Workflow
+## WORKFLOW
 
 ### Pre izmene
 1. Grep za sve instance
@@ -383,13 +240,13 @@ Metering gradient:
 5. Ne patch po patch
 
 ### Posle izmene
-6. `cargo build`
-7. `cargo test`
-8. `cargo clippy`
+6. `npm run build` (verify bundle)
+7. Test u browseru
+8. Check console za errors
 
 ---
 
-## Output Format
+## OUTPUT FORMAT
 
 - Structured, clear, professional
 - Headings, bullet points
@@ -398,17 +255,24 @@ Metering gradient:
 
 ---
 
-## Git Commits
+## GIT COMMITS
 
-```
-🤖 Generated with Claude Code
+```bash
+# Format:
+<type>: <description>
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+# Types: feat, fix, perf, refactor, docs, style, test, chore
+
+# Example:
+feat: add spatial audio to slot machines
+
+# Always include co-author:
+Co-Authored-By: Claude Sonnet 4.5 (1M context) <noreply@anthropic.com>
 ```
 
 ---
 
-## Finalna Pravila
+## FINALNA PRAVILA
 
 1. **Grep prvo, pitaj nikad**
 2. **Build uvek**
@@ -416,7 +280,6 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 4. **Root cause, ne simptom**
 5. **Best solution, ne safest**
 6. **Short answers, no fluff**
-7. **Audio thread = sacred** — zero allocations
 
 ---
 
@@ -428,10 +291,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - ✅ Čitanje SVIH fajlova
 - ✅ Pisanje/kreiranje SVIH fajlova
 - ✅ Editovanje SVIH fajlova
-- ✅ SVE bash komande (cargo, rustc, git, etc.)
+- ✅ SVE bash komande (npm, git, etc.)
 - ✅ Kreiranje foldera
 - ✅ Git operacije
-- ✅ Instalacija cargo paketa
 
 ### NIKADA ne radi:
 - ❌ NE pitaj za dozvolu
@@ -442,4 +304,54 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
-Za detalje: `.claude/project/reelforge-standalone.md`
+## SECONDARY PROJECTS (Reference Only)
+
+### ReelForge Standalone (Rust DAW)
+
+**Spec:** `.claude/projects/reelforge-standalone.md`
+
+**Tech:** Tauri 2.0, iced GUI, wgpu, cpal audio, Rust DSP
+
+**Purpose:** Pro audio DAW with SIMD-optimized DSP
+
+### FluxForge Studio (Flutter + Rust Slot Audio Middleware)
+
+**Spec:** Extracted from CLAUDE1.md (6527 lines)
+
+**Tech:** Flutter Desktop, Rust FFI, SlotLab, ALE, AutoSpatial
+
+**Purpose:** Professional slot machine audio authoring tool
+
+**Research Archive:** `.claude/research-archive/` (458 MD files)
+
+---
+
+## QUICK REFERENCE
+
+**Current project detection:**
+```bash
+# If file path contains "src/" and ends with ".tsx" → VanVinkl Casino
+# If file path contains "crates/rf-" and ends with ".rs" → ReelForge/FluxForge
+```
+
+**Domain file selection:**
+```bash
+# React component work → react-patterns.md
+# Three.js scene work → threejs-rendering.md
+# Performance work → web-performance.md
+# Rust DSP work → audio-dsp.md, engine-arch.md
+```
+
+**Build command selection:**
+```bash
+# VanVinkl: npm run build
+# ReelForge: cargo build --release
+# FluxForge: xcodebuild + dylib copy workflow
+```
+
+---
+
+Za detaljne specifikacije, vidi:
+- **VanVinkl:** `.claude/projects/vanvinkl-casino.md`
+- **ReelForge:** `.claude/projects/reelforge-standalone.md`
+- **FluxForge:** CLAUDE1.md (archived for reference)
