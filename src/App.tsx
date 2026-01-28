@@ -95,8 +95,9 @@ function SoundToggle() {
       tabIndex={0}
       style={{
         position: 'fixed',
-        bottom: isMobile ? '220px' : '20px',
+        top: isMobile ? '20px' : 'auto',
         left: isMobile ? '20px' : '100px',
+        bottom: isMobile ? 'auto' : '20px',
         width: '48px',
         height: '48px',
         borderRadius: '50%',
@@ -950,6 +951,7 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
 }) {
+  const isMobile = isMobileDevice()
   const [selected, setSelected] = useState<'music' | 'sfx'>('music')
   const [musicVol, setMusicVol] = useState(() => uaGetVolume('music'))
   const [sfxVol, setSfxVol] = useState(() => uaGetVolume('sfx'))
@@ -1025,7 +1027,8 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
       {/* Hint in controls bar - always visible */}
       <div style={{
         position: 'fixed',
-        bottom: '20px',
+        top: isMobile ? '20px' : 'auto',
+        bottom: isMobile ? 'auto' : '20px',
         right: '20px',
         display: 'flex',
         alignItems: 'center',
@@ -1060,7 +1063,8 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
       {isOpen && !disabled && (
         <div style={{
           position: 'fixed',
-          bottom: '70px',
+          top: isMobile ? '80px' : 'auto',
+          bottom: isMobile ? 'auto' : '70px',
           right: '20px',
           background: 'rgba(5, 5, 15, 0.95)',
           border: '1px solid rgba(136, 68, 255, 0.4)',
@@ -1102,7 +1106,7 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               fontSize: '9px',
               letterSpacing: '1px'
             }}>
-              ESC TO CLOSE
+              {isMobile ? 'TAP TO CLOSE' : 'ESC TO CLOSE'}
             </span>
           </div>
 
@@ -1211,38 +1215,58 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
             </div>
           </div>
 
-          {/* Controls hint */}
-          <div style={{
-            marginTop: '14px',
-            paddingTop: '10px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{
-                padding: '2px 6px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '3px',
-                color: '#666',
-                fontSize: '10px',
-                fontFamily: 'monospace'
-              }}>↑↓</span>
-              <span style={{ color: '#555', fontSize: '9px' }}>SELECT</span>
+          {/* Controls hint - mobile aware */}
+          {!isMobile && (
+            <div style={{
+              marginTop: '14px',
+              paddingTop: '10px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{
+                  padding: '2px 6px',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '3px',
+                  color: '#666',
+                  fontSize: '10px',
+                  fontFamily: 'monospace'
+                }}>↑↓</span>
+                <span style={{ color: '#555', fontSize: '9px' }}>SELECT</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{
+                  padding: '2px 6px',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '3px',
+                  color: '#666',
+                  fontSize: '10px',
+                  fontFamily: 'monospace'
+                }}>←→</span>
+                <span style={{ color: '#555', fontSize: '9px' }}>ADJUST</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{
-                padding: '2px 6px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '3px',
-                color: '#666',
-                fontSize: '10px',
-                fontFamily: 'monospace'
-              }}>←→</span>
-              <span style={{ color: '#555', fontSize: '9px' }}>ADJUST</span>
+          )}
+
+          {/* Mobile instructions */}
+          {isMobile && (
+            <div style={{
+              marginTop: '12px',
+              paddingTop: '10px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '10px',
+              lineHeight: 1.4
+            }}>
+              <div>Tap sliders to adjust</div>
+              <div style={{ marginTop: '4px', fontSize: '9px', color: '#555' }}>
+                Music & sound effects volume
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
