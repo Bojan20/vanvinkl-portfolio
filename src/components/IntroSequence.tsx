@@ -294,16 +294,16 @@ export function IntroOverlay({
   onComplete: () => void
 }) {
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'hold' | 'fade' | 'done'>('glitch')
-  const [glitchText, setGlitchText] = useState('WELCOME TO\nVANVINKL CASINO')
+  // Mobile-aware text: Shorter version za small screens (avoid wrap)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const originalText = isMobile ? 'WELCOME TO\nVANVINKL' : 'WELCOME TO VANVINKL CASINO'
+
+  const [glitchText, setGlitchText] = useState(originalText)
   const [revealedChars, setRevealedChars] = useState(0) // For gradual reveal
   const [opacity, setOpacity] = useState(1)
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
   const [showBurst, setShowBurst] = useState(false) // WOW burst effect when text complete
   const [showSkipHint, setShowSkipHint] = useState(false) // Show skip hint after 2s
-
-  // Mobile-aware text: Split na 2 reda za small screens
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const originalText = isMobile ? 'WELCOME TO\nVANVINKL CASINO' : 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
 
   // Show skip hint after 2 seconds
