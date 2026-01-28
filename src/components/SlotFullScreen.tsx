@@ -3245,8 +3245,11 @@ function ContentView({ section, focusIndex, selectedProject, onBackFromProject, 
 }) {
   // Show portfolio player if project selected
   if (selectedProject && onBackFromProject) {
+    console.log('[ContentView] Rendering PortfolioPlayer with project:', selectedProject.title)
     return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
   }
+
+  console.log('[ContentView] Rendering section view:', section.type)
 
   switch (section.type) {
     case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
