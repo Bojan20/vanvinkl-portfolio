@@ -714,13 +714,16 @@ function FloatingLetters() {
 }
 
 
-// Floating "PRESS SPACE TO SIT" sign above lounge areas
+// Floating sit sign above lounge areas (mobile-aware text)
 function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, number, number], color?: string }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const time = useRef(Math.random() * 100)
 
   // Create canvas texture for text
   const texture = useMemo(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    const text = isMobile ? 'TAP ACTION' : 'PRESS SPACE TO SIT'
+
     const canvas = document.createElement('canvas')
     canvas.width = 512
     canvas.height = 96
@@ -736,13 +739,13 @@ function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, n
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = color
-    ctx.fillText('PRESS SPACE TO SIT', canvas.width / 2, canvas.height / 2)
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2)
 
     // Brighter core
     ctx.shadowBlur = 8
     ctx.shadowColor = '#ffffff'
     ctx.fillStyle = '#ffffff'
-    ctx.fillText('PRESS SPACE TO SIT', canvas.width / 2, canvas.height / 2)
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2)
 
     const tex = new THREE.CanvasTexture(canvas)
     tex.needsUpdate = true
