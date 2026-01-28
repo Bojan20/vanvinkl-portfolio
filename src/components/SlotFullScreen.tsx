@@ -33,7 +33,7 @@ import {
 import { achievementStore } from '../store/achievements'
 
 // Audio system
-import { uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
+import { uaPlay, uaStop, uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
 
 // Feature module imports - ALL extracted components and utilities
 import {
@@ -202,6 +202,9 @@ export function SlotFullScreen({
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Music fade RAF tracking (cancellable)
+  const fadeRafRef = useRef<number | null>(null)
+
   // ========== DERIVED STATE ==========
   const section = SLOT_CONTENT[machineId]
   const theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
@@ -310,10 +313,14 @@ export function SlotFullScreen({
   }, [phase])
 
   // Lounge music fade when entering/exiting portfolio video
-  // ULTIMATIVNO: RAF-based cubic ease-out, 1000ms fade
-  // IMPORTANT: Fade-in ONLY when exiting video (selectedProject: true → false), NOT on mount
+  // ULTIMATIVNO: RAF-based, cancellable, 1000ms fade TO ZERO
   useEffect(() => {
-    let rafId: number | null = null
+    // Cancel any ongoing fade (prevents conflicts when rapidly entering/exiting)
+    if (fadeRafRef.current !== null) {
+      cancelAnimationFrame(fadeRafRef.current)
+      fadeRafRef.current = null
+      console.log('[Music Fade] Cancelled previous fade')
+    }
 
     if (selectedProject) {
       // Video opened → Fade OUT lounge music (1000ms → 0 volume)
@@ -321,60 +328,67 @@ export function SlotFullScreen({
       const startTime = Date.now()
       const fadeDuration = 1000
 
-      console.log('[SlotFullScreen] Video opened - fading OUT lounge music from', startVolume)
+      console.log(`[Music Fade] Video OPENED → OUT from ${startVolume.toFixed(3)} to 0.000`)
 
       const fadeOut = () => {
         const elapsed = Date.now() - startTime
         const progress = Math.min(elapsed / fadeDuration, 1)
         const eased = 1 - Math.pow(1 - progress, 3) // Cubic ease-out
         const vol = startVolume * (1 - eased)
-        uaVolume('music', Math.max(0, vol), 0) // No internal fade, we're animating manually
+        uaVolume('music', Math.max(0, vol), 0)
 
         if (progress < 1) {
-          rafId = requestAnimationFrame(fadeOut)
+          fadeRafRef.current = requestAnimationFrame(fadeOut)
         } else {
-          console.log('[SlotFullScreen] Lounge music faded out COMPLETE (1000ms)')
+          fadeRafRef.current = null
+          // STOP lounge completely after fade (free resources)
+          uaStop('lounge', 0)
+          console.log('[Music] Fade OUT complete → Lounge STOPPED')
         }
       }
-      rafId = requestAnimationFrame(fadeOut)
-    }
-    // NO ELSE - fade-in handled in cleanup function below
+      fadeRafRef.current = requestAnimationFrame(fadeOut)
 
-    // Cleanup: When selectedProject changes from true → false (exiting video)
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId)
-      }
+    } else {
+      // Video closed → Fade IN lounge music (1000ms → 0.5 volume)
+      // ONLY if music is actually muted (< 0.1)
+      const currentVol = uaGetVolume('music')
 
-      // If we're transitioning FROM video (selectedProject was true, now becoming false)
-      // Trigger fade-in in the cleanup phase
-      if (selectedProject) {
-        // Previous state was video mode, now exiting → fade IN
-        console.log('[SlotFullScreen] Video closed - fading IN lounge music')
+      // Always restart lounge when exiting video
+      if (currentVol < 0.1) {
+        console.log('[Music] Video closed → RESTART lounge + Fade IN to 0.5')
 
-        const startVolume = uaGetVolume('music')
-        const targetVolume = 0.5
-        const startTime = Date.now()
-        const fadeDuration = 1000
-        let cleanupRafId: number | null = null
+        // Restart lounge music
+        uaPlay('lounge')
 
-        const fadeIn = () => {
-          const elapsed = Date.now() - startTime
-          const progress = Math.min(elapsed / fadeDuration, 1)
-          const eased = 1 - Math.pow(1 - progress, 3)
-          const vol = startVolume + (targetVolume - startVolume) * eased
-          uaVolume('music', Math.min(targetVolume, vol), 0)
+        // Fade in after short delay (let lounge start)
+        setTimeout(() => {
+          const startTime = Date.now()
+          const fadeDuration = 1000
 
-          if (progress < 1) {
-            cleanupRafId = requestAnimationFrame(fadeIn)
-          } else {
-            console.log('[SlotFullScreen] Lounge music faded in COMPLETE (1000ms)')
+          const fadeIn = () => {
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / fadeDuration, 1)
+            const eased = 1 - Math.pow(1 - progress, 3)
+            const vol = 0.5 * eased // Start from 0 → 0.5
+            uaVolume('music', vol, 0)
+
+            if (progress < 1) {
+              fadeRafRef.current = requestAnimationFrame(fadeIn)
+            } else {
+              fadeRafRef.current = null
+              console.log('[Music] Fade IN complete → Lounge at 0.5')
+            }
           }
-        }
-        cleanupRafId = requestAnimationFrame(fadeIn)
+          fadeRafRef.current = requestAnimationFrame(fadeIn)
+        }, 50)
+      }
+    }
 
-        // Note: This RAF will complete even after component state changes
-        // No need to cancel since it's a finite animation
+    // Cleanup: Cancel ongoing fade if selectedProject changes mid-animation
+    return () => {
+      if (fadeRafRef.current !== null) {
+        cancelAnimationFrame(fadeRafRef.current)
+        fadeRafRef.current = null
       }
     }
   }, [selectedProject])
