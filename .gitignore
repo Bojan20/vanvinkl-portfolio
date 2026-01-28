@@ -58,7 +58,8 @@ next-env.d.ts
 .claude/
 
 # Portfolio media assets (too large for GitHub)
-audioSlotPortfolio/
-videoSlotPortfolio/
-public/videoSlotPortfolio/
+audioSlotPortfolio/           # WAV source files (local backup)
+videoSlotPortfolio/           # Source video files
+public/videoSlotPortfolio/    # Deployed video
+public/audioSlotPortfolio/    # Deployed OPUS/AAC audio
 public/Piggy Portfolio Video.mp4

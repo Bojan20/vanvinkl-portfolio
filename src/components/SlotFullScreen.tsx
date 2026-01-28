@@ -3001,7 +3001,7 @@ const DetailModal = memo(function DetailModal({
 
             {/* Portfolio Video Player */}
             <div style={{
-              marginBottom: '35px',
+              marginBottom: '30px',
               animation: showContent ? 'modalTextReveal 0.7s ease-out 0.2s both' : 'none'
             }}>
               <video
@@ -3019,6 +3019,70 @@ const DetailModal = memo(function DetailModal({
                 <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4" type="video/mp4" />
                 Your browser does not support video playback.
               </video>
+            </div>
+
+            {/* Portfolio Audio Players */}
+            <div style={{
+              marginBottom: '30px',
+              animation: showContent ? 'modalTextReveal 0.8s ease-out 0.3s both' : 'none'
+            }}>
+              {/* Background Music */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  margin: '0 0 10px 0',
+                  fontSize: '16px',
+                  color: '#ffd700',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span>🎵</span>
+                  Background Music
+                </h4>
+                <audio
+                  controls
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    borderRadius: '20px',
+                    filter: 'sepia(0.5) hue-rotate(25deg) saturate(1.2)'
+                  }}
+                >
+                  <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
+                  <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
+
+              {/* Sound Effects */}
+              <div>
+                <h4 style={{
+                  margin: '0 0 10px 0',
+                  fontSize: '16px',
+                  color: '#ffd700',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span>🔊</span>
+                  Sound Effects
+                </h4>
+                <audio
+                  controls
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    borderRadius: '20px',
+                    filter: 'sepia(0.5) hue-rotate(25deg) saturate(1.2)'
+                  }}
+                >
+                  <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
+                  <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
             </div>
 
             {/* Tech tags */}
