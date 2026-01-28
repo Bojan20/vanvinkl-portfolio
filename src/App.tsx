@@ -1938,7 +1938,15 @@ export function App() {
         <Suspense fallback={null}>
           <SlotFullScreen
             machineId={spinningSlot}
-            onClose={() => setSpinningSlot(null)}
+            onClose={() => {
+              setSpinningSlot(null)
+              // Reset quality to AUTO when returning to lounge (remove blur)
+              const qualityStore = useQualityStore.getState()
+              if (qualityStore.resolvedQuality === 'low') {
+                qualityStore.setPreset('auto')
+                console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
+              }
+            }}
             onNavigate={setSpinningSlot}
           />
         </Suspense>
