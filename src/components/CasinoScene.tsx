@@ -26,6 +26,7 @@ import { ContextHandler } from './WebGLErrorBoundary'
 import { useAudio, getBassLevel as getOldBassLevel } from '../audio'
 import { dspGetBassLevel } from '../audio/AudioDSP'
 import { playUiOpen, playUiClose, playSynthFootstep } from '../audio/SynthSounds'
+import { getEffectiveQuality } from '../store/quality'
 
 // Combined bass level - tries new DSP first, falls back to old system
 const getBassLevel = (): number => {
@@ -1674,14 +1675,14 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
 
-      {/* ===== POST-PROCESSING - GPU-driven effects (optimized) ===== */}
+      {/* ===== POST-PROCESSING - Adaptive quality (auto-adjusts based on FPS) ===== */}
       <PostProcessing
-        quality="low"
+        quality={getEffectiveQuality()}
         enableSSAO={false}
         enableBloom={true}
-        enableChromatic={false}  // Disabled for performance
+        enableChromatic={true}  // Enabled on medium+
         enableVignette={true}
-        enableNoise={false}
+        enableNoise={false}     // Optional, minimal visual impact
       />
 
       {/* WebGL context loss handler */}

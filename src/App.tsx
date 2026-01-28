@@ -27,6 +27,8 @@ import { initAudio, dspPlay, dspMute, dspVolume, dspGetVolume, dspGetFrequencyDa
 import { setSynthVolume, initSynthSounds } from './audio/SynthSounds'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
+import { useQualityStore, initQualitySystem } from './store/quality'
+import { FPSMonitor } from './utils/performance'
 
 
 // Sound Toggle Button - persistent mute control
@@ -271,6 +273,42 @@ function SectionProgressRing() {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+// FPS & Quality Indicator - Shows current performance (dev tool)
+function FPSIndicator() {
+  const { currentFPS, averageFPS, resolvedQuality, preset } = useQualityStore()
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '80px',
+      left: '20px',
+      padding: '8px 12px',
+      background: 'rgba(5, 5, 15, 0.85)',
+      border: '1px solid rgba(0, 255, 255, 0.2)',
+      borderRadius: '12px',
+      backdropFilter: 'blur(10px)',
+      zIndex: 100,
+      fontFamily: 'monospace',
+      fontSize: '11px'
+    }}>
+      <div style={{ color: currentFPS < 50 ? '#ff4444' : currentFPS < 55 ? '#ffaa00' : '#00ff88' }}>
+        FPS: {Math.round(currentFPS)}
+      </div>
+      <div style={{ color: '#00ffff', fontSize: '9px', marginTop: '2px' }}>
+        Avg: {Math.round(averageFPS)}
+      </div>
+      <div style={{ color: '#8844ff', fontSize: '9px', marginTop: '2px' }}>
+        Quality: {resolvedQuality.toUpperCase()}
+      </div>
+      {preset === 'auto' && (
+        <div style={{ color: '#666', fontSize: '8px', marginTop: '2px' }}>
+          (AUTO)
+        </div>
+      )}
     </div>
   )
 }
@@ -1656,6 +1694,30 @@ export function App() {
     trackSession()
   }, [])
 
+  // Initialize quality system - detect device tier
+  useEffect(() => {
+    initQualitySystem()
+    console.log('[Quality] System initialized, device tier detected')
+  }, [])
+
+  // FPS Monitoring - adaptive quality adjustment
+  useEffect(() => {
+    const updateFPS = useQualityStore.getState().updateFPS
+    const monitor = new FPSMonitor()
+    monitor.start()
+
+    // Update store every 500ms (balance between responsiveness and overhead)
+    const interval = setInterval(() => {
+      const fps = monitor.getFPS()
+      updateFPS(fps)
+    }, 500)
+
+    return () => {
+      clearInterval(interval)
+      monitor.stop()
+    }
+  }, [])
+
   // Handle splash click - init audio and start intro
   const handleSplashEnter = useCallback(async () => {
     // Initialize audio systems (this click enables audio)
@@ -1853,6 +1915,11 @@ export function App() {
       {/* Spectrum Visualizer - audio reactive bars */}
       {!showIntro && !spinningSlot && !isMobile && (
         <SpectrumVisualizer />
+      )}
+
+      {/* FPS & Quality Indicator - performance monitoring */}
+      {!showIntro && !spinningSlot && !isMobile && (
+        <FPSIndicator />
       )}
 
       {/* Keyboard Controls Hint - arrow keys + space at bottom center */}
