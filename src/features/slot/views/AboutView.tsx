@@ -28,7 +28,7 @@ const AboutView = memo(function AboutView({ section, focusIndex }: { section: Ab
       {/* Stats grid - 4 in a row on desktop, 2 on tablet, 1 on mobile */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${Math.min(section.stats.length, 4)}, 1fr)`,
+        gridTemplateColumns: window.innerWidth < 600 ? 'repeat(2, 1fr)' : `repeat(${Math.min(section.stats.length, 4)}, 1fr)`,
         gap: '24px',
         maxWidth: '1200px',
         margin: '0 auto'

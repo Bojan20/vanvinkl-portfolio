@@ -5,7 +5,8 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
   // Flatten all skills for navigation
   let itemIndex = 0
   const catCount = section.categories.length
-  const columns = catCount <= 2 ? catCount : catCount <= 4 ? 2 : 3
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const columns = isMobile ? 1 : (catCount <= 2 ? catCount : catCount <= 4 ? 2 : 3)
 
   return (
     <div style={{

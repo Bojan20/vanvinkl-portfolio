@@ -3,7 +3,8 @@ import type { ProjectsSection } from '../types'
 
 const ProjectsView = memo(function ProjectsView({ section, focusIndex }: { section: ProjectsSection, focusIndex: number }) {
   const itemCount = section.featured.length
-  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const columns = isMobile ? 1 : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
 
   return (
     <div style={{
