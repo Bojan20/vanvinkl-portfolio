@@ -2,9 +2,14 @@
  * Casino Architecture - Walls, Ceiling, Pillars, Carpet
  *
  * AAA Quality cyberpunk casino environment
- * Performance: Instanced meshes, shared geometries
+ * Performance: Instanced meshes, shared geometries, geometry merging
  *
  * NOTE: No pillars near avatar spawn (z=10-15 area)
+ *
+ * OPTIMIZATIONS:
+ * - Walls: 4 draw calls → 1 (geometry merging)
+ * - Ceiling panels: 15 draw calls → 1 (geometry merging)
+ * - Neon strips: 11 draw calls → 2 (instancing: 7 ceiling + 4 wall)
  */
 
 import { useMemo, useRef } from 'react'
@@ -30,7 +35,9 @@ const sharedGeometries = {
   pillarBase: new THREE.CylinderGeometry(0.4, 0.5, 0.3, 8),
   pillarShaft: new THREE.CylinderGeometry(0.35, 0.35, 6, 8),
   pillarCap: new THREE.CylinderGeometry(0.5, 0.4, 0.3, 8),
-  neonTube: new THREE.CylinderGeometry(0.03, 0.03, 1, 8)
+  neonTube: new THREE.CylinderGeometry(0.03, 0.03, 1, 8),
+  // Neon strip geometries for instancing
+  neonStripBox: new THREE.BoxGeometry(1, 0.06, 0.06) // Unit box, scaled per instance
 }
 
 // ============== MERGED GEOMETRIES (Performance Optimization) ==============
@@ -89,9 +96,28 @@ const ceilingPanelMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.1
 })
 
+// Neon materials (for instancing)
+const neonMagentaMaterial = new THREE.MeshBasicMaterial({
+  color: COLORS.magenta,
+  toneMapped: false
+})
+
+const neonCyanMaterial = new THREE.MeshBasicMaterial({
+  color: COLORS.cyan,
+  toneMapped: false
+})
+
+const neonPurpleMaterial = new THREE.MeshBasicMaterial({
+  color: COLORS.neonPurple,
+  toneMapped: false
+})
+
 export function CasinoArchitecture() {
-  const neonRefs = useRef<THREE.Mesh[]>([])
   const timeRef = useRef(0)
+
+  // InstancedMesh refs for neon animation
+  const ceilingNeonsRef = useRef<THREE.InstancedMesh>(null)
+  const wallNeonsRef = useRef<THREE.InstancedMesh>(null)
 
   // Pillar positions - NO pillars near avatar spawn (z=10-15)
   const pillarPositions = useMemo(() => {
@@ -112,42 +138,131 @@ export function CasinoArchitecture() {
     return positions
   }, [])
 
-  // Ceiling neon strip positions
-  const neonStripPositions = useMemo(() => {
-    const strips: { pos: [number, number, number], rot: number, len: number, color: string }[] = []
+  // Ceiling neon strip data (for instancing)
+  const { ceilingNeonData, wallNeonData } = useMemo(() => {
+    const ceiling: { pos: [number, number, number], rot: number, scale: [number, number, number], colorIndex: number }[] = []
+    const wall: { pos: [number, number, number], rot: number, scale: [number, number, number], colorIndex: number }[] = []
 
-    // Longitudinal strips (along Z)
+    // CEILING STRIPS (7 instances)
+    // Longitudinal strips (along Z) - magenta
     for (let x = -15; x <= 15; x += 10) {
-      strips.push({ pos: [x, 7.9, 5], rot: Math.PI / 2, len: 40, color: COLORS.magenta })
+      ceiling.push({
+        pos: [x, 7.9, 5],
+        rot: Math.PI / 2,
+        scale: [40, 1, 1], // len=40
+        colorIndex: 0 // magenta
+      })
     }
 
-    // Cross strips (along X)
+    // Cross strips (along X) - cyan
     for (let z = -5; z <= 15; z += 10) {
-      strips.push({ pos: [0, 7.9, z], rot: 0, len: 40, color: COLORS.cyan })
+      ceiling.push({
+        pos: [0, 7.9, z],
+        rot: 0,
+        scale: [40, 1, 1], // len=40
+        colorIndex: 1 // cyan
+      })
     }
 
-    return strips
+    // WALL NEONS (4 instances)
+    // Back wall horizontal - magenta
+    wall.push({
+      pos: [0, 1, -9.7],
+      rot: 0,
+      scale: [55, 0.08 / 0.06, 0.08 / 0.06], // original: 55 x 0.08 x 0.08, base geometry: 1 x 0.06 x 0.06
+      colorIndex: 0 // magenta
+    })
+
+    // Back wall horizontal - cyan
+    wall.push({
+      pos: [0, 7, -9.7],
+      rot: 0,
+      scale: [55, 0.08 / 0.06, 0.08 / 0.06],
+      colorIndex: 1 // cyan
+    })
+
+    // Side wall vertical - purple (left)
+    wall.push({
+      pos: [-29.7, 4, 5],
+      rot: 0,
+      scale: [0.08 / 0.06, 6 / 0.06, 0.08 / 0.06], // original: 0.08 x 6 x 0.08
+      colorIndex: 2 // purple
+    })
+
+    // Side wall vertical - purple (right)
+    wall.push({
+      pos: [29.7, 4, 5],
+      rot: 0,
+      scale: [0.08 / 0.06, 6 / 0.06, 0.08 / 0.06],
+      colorIndex: 2 // purple
+    })
+
+    return { ceilingNeonData: ceiling, wallNeonData: wall }
   }, [])
 
-  // Animate neon
+  // Setup instanced meshes on mount
+  useMemo(() => {
+    const dummy = new THREE.Object3D()
+
+    // Ceiling neons (7 instances)
+    if (ceilingNeonsRef.current) {
+      ceilingNeonData.forEach((data, i) => {
+        dummy.position.set(...data.pos)
+        dummy.rotation.set(0, data.rot, 0)
+        dummy.scale.set(...data.scale)
+        dummy.updateMatrix()
+        ceilingNeonsRef.current!.setMatrixAt(i, dummy.matrix)
+      })
+      ceilingNeonsRef.current.instanceMatrix.needsUpdate = true
+    }
+
+    // Wall neons (4 instances)
+    if (wallNeonsRef.current) {
+      wallNeonData.forEach((data, i) => {
+        dummy.position.set(...data.pos)
+        dummy.rotation.set(0, data.rot, 0)
+        dummy.scale.set(...data.scale)
+        dummy.updateMatrix()
+        wallNeonsRef.current!.setMatrixAt(i, dummy.matrix)
+      })
+      wallNeonsRef.current.instanceMatrix.needsUpdate = true
+    }
+  }, [ceilingNeonData, wallNeonData])
+
+  // Animate neon (pulsing effect via color intensity)
   useFrame((_, delta) => {
     timeRef.current += delta
     const t = timeRef.current
 
-    neonRefs.current.forEach((mesh, i) => {
-      if (mesh) {
-        const mat = mesh.material as THREE.MeshBasicMaterial
+    // Ceiling neons
+    if (ceilingNeonsRef.current) {
+      for (let i = 0; i < ceilingNeonData.length; i++) {
         const phase = i * 0.5
         const pulse = 0.7 + Math.sin(t * 3 + phase) * 0.3
-        const baseColor = new THREE.Color(i % 2 === 0 ? COLORS.magenta : COLORS.cyan)
-        mat.color.copy(baseColor).multiplyScalar(pulse)
+        const colorIndex = ceilingNeonData[i].colorIndex
+        const baseColor = new THREE.Color(colorIndex === 0 ? COLORS.magenta : COLORS.cyan)
+        const color = baseColor.clone().multiplyScalar(pulse)
+        ceilingNeonsRef.current.setColorAt(i, color)
       }
-    })
-  })
+      ceilingNeonsRef.current.instanceColor!.needsUpdate = true
+    }
 
-  const addNeonRef = (mesh: THREE.Mesh | null, index: number) => {
-    if (mesh) neonRefs.current[index] = mesh
-  }
+    // Wall neons
+    if (wallNeonsRef.current) {
+      for (let i = 0; i < wallNeonData.length; i++) {
+        const phase = i * 0.5
+        const pulse = 0.7 + Math.sin(t * 3 + phase) * 0.3
+        const colorIndex = wallNeonData[i].colorIndex
+        const baseColor = new THREE.Color(
+          colorIndex === 0 ? COLORS.magenta :
+          colorIndex === 1 ? COLORS.cyan : COLORS.neonPurple
+        )
+        const color = baseColor.clone().multiplyScalar(pulse)
+        wallNeonsRef.current.setColorAt(i, color)
+      }
+      wallNeonsRef.current.instanceColor!.needsUpdate = true
+    }
+  })
 
   return (
     <group>
@@ -176,24 +291,18 @@ export function CasinoArchitecture() {
       {/* ===== WALLS (MERGED - 4 draw calls → 1) ===== */}
       <mesh geometry={mergedWalls} material={wallMaterial} />
 
-      {/* ===== WALL NEON TRIM ===== */}
-      {/* Back wall horizontal neon */}
-      <mesh ref={m => addNeonRef(m, 100)} position={[0, 1, -9.7]}>
-        <boxGeometry args={[55, 0.08, 0.08]} />
-        <meshBasicMaterial color={COLORS.magenta} toneMapped={false} />
-      </mesh>
-      <mesh ref={m => addNeonRef(m, 101)} position={[0, 7, -9.7]}>
-        <boxGeometry args={[55, 0.08, 0.08]} />
-        <meshBasicMaterial color={COLORS.cyan} toneMapped={false} />
-      </mesh>
+      {/* ===== NEON STRIPS (INSTANCED - 11 draw calls → 2) ===== */}
+      {/* Ceiling neons: 7 instances → 1 draw call */}
+      <instancedMesh
+        ref={ceilingNeonsRef}
+        args={[sharedGeometries.neonStripBox, neonMagentaMaterial, ceilingNeonData.length]}
+      />
 
-      {/* Side wall vertical neons */}
-      {[-29.7, 29.7].map((x, i) => (
-        <mesh key={x} ref={m => addNeonRef(m, 102 + i)} position={[x, 4, 5]}>
-          <boxGeometry args={[0.08, 6, 0.08]} />
-          <meshBasicMaterial color={COLORS.neonPurple} toneMapped={false} />
-        </mesh>
-      ))}
+      {/* Wall neons: 4 instances → 1 draw call */}
+      <instancedMesh
+        ref={wallNeonsRef}
+        args={[sharedGeometries.neonStripBox, neonPurpleMaterial, wallNeonData.length]}
+      />
 
       {/* ===== CEILING ===== */}
       <mesh position={[0, 8, 7]}>
@@ -207,19 +316,6 @@ export function CasinoArchitecture() {
 
       {/* Ceiling panels (MERGED - 15 draw calls → 1) */}
       <mesh geometry={mergedCeilingPanels} material={ceilingPanelMaterial} />
-
-      {/* ===== CEILING NEON STRIPS ===== */}
-      {neonStripPositions.map((strip, i) => (
-        <mesh
-          key={i}
-          ref={m => addNeonRef(m, i)}
-          position={strip.pos}
-          rotation={[0, strip.rot, 0]}
-        >
-          <boxGeometry args={[strip.len, 0.06, 0.06]} />
-          <meshBasicMaterial color={strip.color} toneMapped={false} />
-        </mesh>
-      ))}
 
       {/* ===== PILLARS (away from spawn) ===== */}
       {pillarPositions.map((pos, i) => (
