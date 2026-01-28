@@ -54,16 +54,14 @@ function SoundToggle() {
 
   // Apply saved mute state on mount
   useEffect(() => {
-    audioSystem.setMuted(isMuted)
-    uaMute(isMuted) // Sync DSP mute state too
+    uaMute(isMuted) // Unified audio mute state
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const newVal = !prev
       safeSetLocalStorage('vanvinkl-muted', String(newVal))
-      audioSystem.setMuted(newVal)
-      uaMute(newVal) // Mute new DSP system too
+      uaMute(newVal) // Unified audio mute
       return newVal
     })
   }, [])
@@ -76,8 +74,7 @@ function SoundToggle() {
         setIsMuted(prev => {
           const newVal = !prev
           safeSetLocalStorage('vanvinkl-muted', String(newVal))
-          audioSystem.setMuted(newVal)
-          uaMute(newVal)
+          uaMute(newVal) // Unified audio mute
           return newVal
         })
       }
@@ -1733,10 +1730,7 @@ export function App() {
 
   // Handle splash click - init audio and start intro
   const handleSplashEnter = useCallback(async () => {
-    // Initialize audio systems (this click enables audio)
-    audioSystem.init()
-
-    // Initialize Unified Audio System (single AudioContext - replaces AudioDSP + SynthSounds)
+    // Initialize Unified Audio System (single AudioContext - replaces legacy systems)
     await initUnifiedAudio()
     console.log('[Audio] Unified system initialized, starting lounge music...')
 
