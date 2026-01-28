@@ -1240,14 +1240,56 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       orbitDistance.current = Math.max(3, Math.min(12, orbitDistance.current + e.deltaY * 0.01))
     }
 
+    // Two-finger touch for camera control (mobile)
+    const lastTouchPos = { x: 0, y: 0 }
+    let twoFingerActive = false
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        twoFingerActive = true
+        const touch = e.touches[1]
+        lastTouchPos.x = touch.clientX
+        lastTouchPos.y = touch.clientY
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && twoFingerActive) {
+        e.preventDefault()
+        const touch = e.touches[1]
+        const deltaX = touch.clientX - lastTouchPos.x
+        const deltaY = touch.clientY - lastTouchPos.y
+
+        // Apply camera rotation (yaw + pitch)
+        orbitAngle.current -= deltaX * 0.005  // Horizontal rotation
+        orbitPitch.current -= deltaY * 0.003  // Vertical tilt
+        orbitPitch.current = Math.max(0.1, Math.min(1.2, orbitPitch.current))  // Clamp pitch
+
+        lastTouchPos.x = touch.clientX
+        lastTouchPos.y = touch.clientY
+      }
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        twoFingerActive = false
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
     window.addEventListener('wheel', handleWheel)
+    window.addEventListener('touchstart', handleTouchStart, { passive: false })
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
     }
   }, []) // Empty deps - never re-create listeners
 
