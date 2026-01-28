@@ -1922,6 +1922,7 @@ export function App() {
             introActive={showIntro}
             slotOpen={!!spinningSlot}
             audioSettingsOpen={audioSettingsOpen}
+            mobileMovementRef={mobileMovementRef}
           />
         </Suspense>
       </Canvas>

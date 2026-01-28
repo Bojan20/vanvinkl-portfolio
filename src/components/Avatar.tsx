@@ -31,6 +31,7 @@ interface AvatarProps {
   isSittingRef: React.MutableRefObject<boolean>
   sittingRotationRef: React.MutableRefObject<number>
   inputDisabled?: boolean
+  mobileMovementRef?: React.MutableRefObject<{ x: number; y: number }>
 }
 
 // Movement config
@@ -94,7 +95,7 @@ const CYBER = {
   hair: '#1a1a2a'
 }
 
-export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef, inputDisabled = false }: AvatarProps) {
+export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef, inputDisabled = false, mobileMovementRef }: AvatarProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const rotationRef = useRef(0)
   const walkCycle = useRef(0)
@@ -223,7 +224,8 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   useFrame((_, delta) => {
     if (!groupRef.current) return
 
-    const moving = !isSittingRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right)
+    const mobileMoving = mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)
+    const moving = !isSittingRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right || mobileMoving)
     glowTime.current += delta
 
     if (isMovingRef) isMovingRef.current = moving
@@ -417,10 +419,18 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     if (moving) {
       let inputX = 0
       let inputZ = 0
+
+      // Keyboard input
       if (keysRef.current.forward) inputZ -= 1
       if (keysRef.current.backward) inputZ += 1
       if (keysRef.current.left) inputX -= 1
       if (keysRef.current.right) inputX += 1
+
+      // Mobile joystick input (override keyboard if present)
+      if (mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)) {
+        inputX = mobileMovementRef.current.x
+        inputZ = -mobileMovementRef.current.y  // Invert Y (joystick up = forward = negative Z)
+      }
 
       const inputLength = Math.sqrt(inputX * inputX + inputZ * inputZ)
       if (inputLength > 0) {

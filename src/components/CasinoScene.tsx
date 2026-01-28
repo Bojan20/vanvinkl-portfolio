@@ -1156,9 +1156,10 @@ interface CasinoSceneProps {
   introActive?: boolean
   slotOpen?: boolean // When true, avatar input is disabled
   audioSettingsOpen?: boolean // When true, avatar input is disabled
+  mobileMovementRef?: React.MutableRefObject<{ x: number; y: number }>
 }
 
-export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive = false, slotOpen = false, audioSettingsOpen = false }: CasinoSceneProps) {
+export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive = false, slotOpen = false, audioSettingsOpen = false, mobileMovementRef }: CasinoSceneProps) {
   const { camera } = useThree()
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
@@ -1649,6 +1650,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
         isSittingRef={isSittingRef}
         sittingRotationRef={sittingRotationRef}
         inputDisabled={slotOpen || audioSettingsOpen}
+        mobileMovementRef={mobileMovementRef}
       />
 
       {/* ===== AVATAR PARTICLE TRAIL ===== */}
