@@ -393,13 +393,7 @@ export function SlotFullScreen({
     }
   }, [selectedProject])
 
-  // Mark reel stop sound for each reel finish
-  useEffect(() => {
-    if (phase === 'spinning' && !forceStop) {
-      // Play reel spin start sound once
-      uaPlaySynth('reelSpin', 0.4)
-    }
-  }, [phase, forceStop])
+  // Reel spin sound removed - only reel stop sounds remain
 
   // ========== EVENT HANDLERS ==========
 

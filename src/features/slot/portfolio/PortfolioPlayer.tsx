@@ -65,16 +65,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [videoProgress, setVideoProgress] = useState(0) // 0-100%
   const [videoDuration, setVideoDuration] = useState(0)
-  const [showHint, setShowHint] = useState(true) // Auto-hide after 5s
 
   // Focus items count
   const FOCUS_ITEMS = 4
 
-  // Auto-hide controls hint after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => setShowHint(false), 5000)
-    return () => clearTimeout(timer)
-  }, [])
+  // Auto-hide removed - permanent controls hint now displayed
 
   // Fullscreen change listener - enable controls only in fullscreen
   useEffect(() => {
@@ -337,27 +332,27 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       backgroundColor: '#000',
       cursor: 'pointer'
     }}>
-      {/* Permanent Controls Hint - Top Left */}
+      {/* Permanent Controls Hint - Bottom Left (small) */}
       <div style={{
         position: 'fixed',
-        top: '20px',
-        left: '20px',
-        background: 'rgba(0,0,0,0.85)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,215,0,0.3)',
-        borderRadius: '8px',
-        padding: '12px 16px',
+        bottom: '80px',
+        left: '12px',
+        background: 'rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,215,0,0.25)',
+        borderRadius: '6px',
+        padding: '8px 10px',
         zIndex: 999,
         color: '#ffd700',
-        fontSize: '13px',
+        fontSize: '10px',
         fontFamily: 'monospace',
-        lineHeight: '1.6',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+        lineHeight: '1.4',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
       }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#00ffff' }}>CONTROLS</div>
-        <div>←→ Navigate Focus</div>
-        <div>↑↓ Adjust Volume</div>
-        <div>SPACE Play/Pause</div>
+        <div style={{ fontWeight: 'bold', marginBottom: '3px', color: '#00ffff', fontSize: '11px' }}>CONTROLS</div>
+        <div>←→ Focus</div>
+        <div>↑↓ Volume</div>
+        <div>SPACE Play</div>
         <div>ESC Exit</div>
       </div>
 
@@ -591,32 +586,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         pointerEvents: 'none'
       }} />
 
-      {/* Controls Hint Overlay - Top Left (auto-hide after 5s) */}
-      {showHint && (
-        <div style={{
-        position: 'fixed',
-        top: '20px',
-        left: '20px',
-        padding: '8px 12px',
-        background: 'rgba(0,0,0,0.7)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '6px',
-        border: '1px solid rgba(255,215,0,0.2)',
-        color: '#ccc',
-        fontSize: '11px',
-        fontFamily: 'monospace',
-        zIndex: 1001,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        lineHeight: '1.4'
-      }}>
-        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>←→</kbd> Focus</div>
-        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>↑↓</kbd> Volume</div>
-        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>SPACE</kbd> Play</div>
-        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>2×Click</kbd> FullScreen</div>
-      </div>
-      )}
+      {/* Auto-hide hint removed - permanent controls hint now visible */}
     </div>
   )
 })
