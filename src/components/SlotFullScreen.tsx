@@ -931,13 +931,13 @@ export function SlotFullScreen({
                 onClick={() => setPhase('content')}
                 style={{
                   position: 'absolute',
-                  bottom: '200px',
+                  bottom: '140px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '16px',
+                  gap: '12px',
                   animation: 'totalWinReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
                   zIndex: 200,
                   cursor: 'pointer'
@@ -946,8 +946,8 @@ export function SlotFullScreen({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '16px',
-                  padding: '40px 60px',
+                  gap: '12px',
+                  padding: '24px 40px',
                   background: 'linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,10,30,0.95))',
                   borderRadius: '20px',
                   border: `4px solid ${primaryColor}`,
