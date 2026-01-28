@@ -4908,37 +4908,39 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* ESC hint - keyboard navigation indicator */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '24px',
-          right: '24px',
-          padding: '10px 16px',
-          borderRadius: '8px',
-          background: 'rgba(0,0,0,0.6)',
-          backdropFilter: 'blur(10px)',
-          border: `1px solid ${primaryColor}40`,
-          color: primaryColor,
-          fontSize: '13px',
-          fontWeight: 600,
-          letterSpacing: '1px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 1001,
-          opacity: 0.9
-        }}
-      >
-        <span style={{
-          padding: '4px 8px',
-          background: `${primaryColor}20`,
-          borderRadius: '4px',
-          border: `1px solid ${primaryColor}60`,
-          fontSize: '12px'
-        }}>ESC</span>
-        EXIT
-      </div>
+      {/* ESC hint - HIDDEN when video player active */}
+      {!selectedProject && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(10px)',
+            border: `1px solid ${primaryColor}40`,
+            color: primaryColor,
+            fontSize: '13px',
+            fontWeight: 600,
+            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 1001,
+            opacity: 0.9
+          }}
+        >
+          <span style={{
+            padding: '4px 8px',
+            background: `${primaryColor}20`,
+            borderRadius: '4px',
+            border: `1px solid ${primaryColor}60`,
+            fontSize: '12px'
+          }}>ESC</span>
+          EXIT
+        </div>
+      )}
 
       {/* SKILL REEL SLOT MACHINE */}
       {(phase === 'spinning' || phase === 'result') && (
