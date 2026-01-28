@@ -60,3 +60,5 @@ next-env.d.ts
 # Portfolio media assets (too large for GitHub)
 audioSlotPortfolio/
 videoSlotPortfolio/
+public/videoSlotPortfolio/
+public/Piggy Portfolio Video.mp4

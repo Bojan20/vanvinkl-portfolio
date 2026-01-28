@@ -2999,6 +2999,28 @@ const DetailModal = memo(function DetailModal({
               animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
             }}>{proj.description}</p>
 
+            {/* Portfolio Video Player */}
+            <div style={{
+              marginBottom: '35px',
+              animation: showContent ? 'modalTextReveal 0.7s ease-out 0.2s both' : 'none'
+            }}>
+              <video
+                controls
+                style={{
+                  width: '100%',
+                  maxHeight: '500px',
+                  borderRadius: '16px',
+                  border: '2px solid rgba(255,215,0,0.3)',
+                  boxShadow: '0 8px 40px rgba(255,215,0,0.2)',
+                  backgroundColor: '#000'
+                }}
+                poster="/logo_van.png"
+              >
+                <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4" type="video/mp4" />
+                Your browser does not support video playback.
+              </video>
+            </div>
+
             {/* Tech tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
               {proj.tags.map((t, i) => (
