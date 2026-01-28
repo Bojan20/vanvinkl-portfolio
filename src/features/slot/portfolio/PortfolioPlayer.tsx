@@ -50,9 +50,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   onBack
 }: PortfolioPlayerProps) {
   // SECURITY: Validate media paths before use
-  const safeVideoPath = isValidMediaPath(safeVideoPath) ? safeVideoPath : undefined
-  const safeMusicPath = isValidMediaPath(safeMusicPath) ? safeMusicPath : undefined
-  const safeSfxPath = isValidMediaPath(safeSfxPath) ? safeSfxPath : undefined
+  const safeVideoPath = isValidMediaPath(project.videoPath) ? project.videoPath : undefined
+  const safeMusicPath = isValidMediaPath(project.musicPath) ? project.musicPath : undefined
+  const safeSfxPath = isValidMediaPath(project.sfxPath) ? project.sfxPath : undefined
 
   const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
   const videoRef = useRef<HTMLVideoElement>(null)
