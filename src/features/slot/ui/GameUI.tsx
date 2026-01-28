@@ -290,10 +290,14 @@ export const SpinButton = memo(function SpinButton({
   onSpin: () => void
   color: string
 }) {
+  const [isHovered, setIsHovered] = useState(false)
+
   return (
     <button
       onClick={onSpin}
       disabled={spinning}
+      onMouseEnter={() => !spinning && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'absolute',
         bottom: '15%',
@@ -310,9 +314,12 @@ export const SpinButton = memo(function SpinButton({
         justifyContent: 'center',
         boxShadow: spinning
           ? `0 0 30px ${color}40`
-          : `0 0 40px ${color}, 0 0 60px ${color}60, inset 0 0 30px ${color}40`,
+          : isHovered
+            ? `0 0 50px ${color}, 0 0 80px ${color}80, inset 0 0 40px ${color}50`
+            : `0 0 40px ${color}, 0 0 60px ${color}60, inset 0 0 30px ${color}40`,
         animation: spinning ? 'spinButtonPulse 0.5s ease-in-out infinite' : 'none',
         cursor: spinning ? 'not-allowed' : 'pointer',
+        transform: isHovered && !spinning ? 'scale(1.05)' : 'scale(1)',
         transition: 'all 0.3s ease'
       }}
     >
