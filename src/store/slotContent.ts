@@ -38,6 +38,9 @@ export interface ProjectItem {
   tags: string[]
   description: string
   year: string
+  videoPath?: string
+  musicPath?: string
+  sfxPath?: string
 }
 
 export interface TimelineItem {
@@ -265,11 +268,14 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     color: '#ffd700',
     featured: [
       {
-        title: 'IGT Slot Portfolio',
-        icon: '🎰',
-        tags: ['Slots', 'FMOD', 'Production'],
-        description: 'Complete audio production for 50+ slot game titles during my tenure as Lead Sound Designer at IGT. Responsibilities included original music composition, SFX creation, adaptive audio systems, and team leadership. Delivered for European and global markets with full certification compliance.',
-        year: '2020-2024'
+        title: 'Piggy Plunger Game',
+        icon: '🐷',
+        tags: ['Slots', 'Audio', 'Video'],
+        description: 'Interactive slot game portfolio featuring synchronized video and audio presentation. Complete production showcase with background music and sound effects.',
+        year: '2024',
+        videoPath: '/videoSlotPortfolio/Piggy Portfolio Video.mp4',
+        musicPath: '/audioSlotPortfolio/music/Piggy-Plunger-Music',
+        sfxPath: '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'
       },
       {
         title: 'VanVinkl Studio Packages',

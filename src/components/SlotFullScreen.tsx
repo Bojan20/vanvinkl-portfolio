@@ -2732,7 +2732,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   project,
   onBack
 }: {
-  project: { icon: string, title: string, description: string, year: string, tags: string[] }
+  project: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string }
   onBack: () => void
 }) {
   const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
@@ -3017,7 +3017,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             backgroundColor: '#000'
           }}
         >
-          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=5" type="video/mp4" />
+          <source src={`${project.videoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
           Your browser does not support video playback.
         </video>
 
@@ -3040,13 +3040,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         {/* Hidden audio tracks */}
         <audio ref={musicRef} style={{ display: 'none' }}>
-          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
-          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
+          <source src={`${project.musicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.opus`} type="audio/opus" />
+          <source src={`${project.musicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.m4a`} type="audio/mp4" />
         </audio>
 
         <audio ref={sfxRef} style={{ display: 'none' }}>
-          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
-          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
+          <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.opus`} type="audio/opus" />
+          <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
         </audio>
       </div>
 
@@ -3200,31 +3200,23 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   )
 })
 
-function ContentView({ section, focusIndex, selectedProject, onBackFromProject }: {
+function ContentView({ section, focusIndex, selectedProject, onBackFromProject, onSelectProject }: {
   section: SlotSection
   focusIndex: number
   selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[] } | null
   onBackFromProject?: () => void
+  onSelectProject?: (proj: { icon: string, title: string, description: string, year: string, tags: string[] }) => void
 }) {
-  // For PROJECTS section, always show portfolio player (no grid)
-  if (section.type === 'projects') {
-    const proj = (section as ProjectsSection).featured[0] // Use first project as default
-    return <PortfolioPlayer
-      project={{
-        icon: proj.icon,
-        title: proj.title,
-        description: proj.description,
-        year: proj.year,
-        tags: proj.tags
-      }}
-      onBack={onBackFromProject || (() => {})}
-    />
+  // Show portfolio player if project selected
+  if (selectedProject && onBackFromProject) {
+    return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
   }
 
   switch (section.type) {
     case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
     case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
     case 'about': return <AboutView section={section} focusIndex={focusIndex} />
+    case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} />
     case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} />
     case 'contact': return <ContactView section={section} focusIndex={focusIndex} />
     default: return null
@@ -4053,6 +4045,7 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
+  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[] } | null>(null)
 
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -4295,8 +4288,17 @@ export function SlotFullScreen({
         break
       }
       case 'projects': {
-        // Projects section shows video player directly (no card selection)
-        // Do nothing on activate - player is always visible
+        const proj = (section as ProjectsSection).featured[index]
+        if (proj) {
+          // Show video player for selected project
+          setSelectedProject({
+            icon: proj.icon,
+            title: proj.title,
+            description: proj.description,
+            year: proj.year,
+            tags: proj.tags
+          })
+        }
         break
       }
       case 'experience': {
@@ -4471,7 +4473,8 @@ export function SlotFullScreen({
       zIndex: 1000,
       overflow: 'auto',
       transition: 'background 0.5s ease',
-      animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none'
+      animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none',
+      cursor: 'default' // Always show pointer
     }}>
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 
@@ -5460,9 +5463,9 @@ export function SlotFullScreen({
               <ContentView
                 section={section}
                 focusIndex={focusIndex}
+                selectedProject={selectedProject}
                 onBackFromProject={() => {
-                  // For projects, back means close slot entirely
-                  onClose()
+                  setSelectedProject(null)
                 }}
               />
             </div>
