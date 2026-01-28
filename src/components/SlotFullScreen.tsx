@@ -2803,6 +2803,26 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
 
     console.log('[PortfolioPlayer] Video and audio reset to start, video.loop = false')
+
+    // Cleanup on unmount - prevent memory leaks
+    return () => {
+      if (video) {
+        video.pause()
+        video.removeAttribute('src')
+        video.load() // Force release of media resources
+      }
+      if (music) {
+        music.pause()
+        music.removeAttribute('src')
+        music.load()
+      }
+      if (sfx) {
+        sfx.pause()
+        sfx.removeAttribute('src')
+        sfx.load()
+      }
+      console.log('[PortfolioPlayer] Media resources cleaned up on unmount')
+    }
   }, [])
 
   // Synchronize audio with video (audio continues after video ends)
