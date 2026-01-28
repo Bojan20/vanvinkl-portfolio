@@ -1164,10 +1164,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
   // Reusable Vector3 for camera direction - prevents GC allocation in useFrame
   const camDirRef = useRef(new THREE.Vector3())
 
-  // Audio system
-  const audio = useAudio()
+  // Audio - footstep tracking
   const lastFootstepTime = useRef(0)
-  const audioInitialized = useRef(false)
 
   // ALL state as refs to avoid re-renders - ZERO LAG
   const nearMachineRef = useRef<string | null>(null)
@@ -1330,7 +1328,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
         // Couch sitting interaction
         if (nearCouchRef.current && !isSittingRef.current) {
-          audio.play('sit', { volume: 0.5 })
+          uaPlaySynth('uiOpen', 0.5) // Sit sound (UI open)
           isSittingRef.current = true
           sittingRotationRef.current = nearCouchRef.current.rotation
           currentCouch.current = nearCouchRef.current
@@ -1345,19 +1343,14 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onShowModal, onSlotSpin, audio]) // Include audio
+  }, [onShowModal, onSlotSpin]) // Removed audio dependency
 
   useFrame((state) => {
     // Skip camera control during intro
     if (introActive) return
 
-    // Update audio listener position (follows camera) - reuse vector to avoid GC
-    const camPos = camera.position
-    camera.getWorldDirection(camDirRef.current)
-    audio.updateListener(
-      [camPos.x, camPos.y, camPos.z],
-      [camDirRef.current.x, camDirRef.current.y, camDirRef.current.z]
-    )
+    // Audio listener update removed (not implemented in UnifiedAudioSystem yet)
+    // TODO: Add spatial audio listener update if needed for 3D positioning
 
     // Footstep sounds when moving (not during intro)
     if (isMovingRef.current && !isSittingRef.current && !introActive) {
