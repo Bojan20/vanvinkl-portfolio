@@ -309,55 +309,60 @@ export function SlotFullScreen({
     }
   }, [phase])
 
-  // Control lounge music based on selectedProject state
-  // OPTIMIZED: requestAnimationFrame with cubic ease-out (smoother, no jitter)
+  // Lounge music fade when entering/exiting portfolio video
+  // ULTIMATIVNO: RAF-based cubic ease-out, 1000ms fade
   useEffect(() => {
     let rafId: number | null = null
-    let startTime: number | null = null
-    const duration = 1200 // 1.2 seconds for smooth fade
-
-    const initialVolume = 0.18 // Default lounge music volume
 
     if (selectedProject) {
-      // Fade OUT lounge music (to 0.01 minimum)
-      const fadeOut = (timestamp: number) => {
-        if (!startTime) startTime = timestamp
-        const elapsed = timestamp - startTime
-        const progress = Math.min(elapsed / duration, 1)
+      // Fade OUT lounge music (1000ms → 0 volume)
+      const startVolume = uaGetVolume('music')
+      const startTime = Date.now()
+      const fadeDuration = 1000
 
-        // Cubic ease-out: 1 - (1 - progress)^3
-        const eased = 1 - Math.pow(1 - progress, 3)
-        const targetVolume = initialVolume * (1 - eased) + 0.01 * eased
-
-        console.log(`[Music Fade OUT] progress=${progress.toFixed(2)}, volume=${targetVolume.toFixed(3)}`)
+      const fadeOut = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / fadeDuration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3) // Cubic ease-out
+        const vol = startVolume * (1 - eased)
+        uaVolume('music', Math.max(0, vol), 0) // No internal fade, we're animating manually
 
         if (progress < 1) {
           rafId = requestAnimationFrame(fadeOut)
+        } else {
+          console.log('[SlotFullScreen] Lounge music faded out (1000ms)')
         }
       }
       rafId = requestAnimationFrame(fadeOut)
+
+      return () => {
+        if (rafId !== null) cancelAnimationFrame(rafId)
+      }
     } else {
-      // Fade IN lounge music (from current to 0.18)
-      const fadeIn = (timestamp: number) => {
-        if (!startTime) startTime = timestamp
-        const elapsed = timestamp - startTime
-        const progress = Math.min(elapsed / duration, 1)
+      // Fade IN lounge music (1000ms → 0.5 volume)
+      const startVolume = uaGetVolume('music')
+      const targetVolume = 0.5
+      const startTime = Date.now()
+      const fadeDuration = 1000
 
-        // Cubic ease-out: 1 - (1 - progress)^3
+      const fadeIn = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / fadeDuration, 1)
         const eased = 1 - Math.pow(1 - progress, 3)
-        const targetVolume = 0.01 * (1 - eased) + initialVolume * eased
-
-        console.log(`[Music Fade IN] progress=${progress.toFixed(2)}, volume=${targetVolume.toFixed(3)}`)
+        const vol = startVolume + (targetVolume - startVolume) * eased
+        uaVolume('music', Math.min(targetVolume, vol), 0)
 
         if (progress < 1) {
           rafId = requestAnimationFrame(fadeIn)
+        } else {
+          console.log('[SlotFullScreen] Lounge music faded in (1000ms)')
         }
       }
       rafId = requestAnimationFrame(fadeIn)
-    }
 
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId)
+      return () => {
+        if (rafId !== null) cancelAnimationFrame(rafId)
+      }
     }
   }, [selectedProject])
 
