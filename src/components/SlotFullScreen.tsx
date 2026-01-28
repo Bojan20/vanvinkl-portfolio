@@ -3158,6 +3158,31 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </div>
       </div>
 
+      {/* Controls Hint Overlay - Top Left */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        left: '20px',
+        padding: '8px 12px',
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '6px',
+        border: '1px solid rgba(255,215,0,0.2)',
+        color: '#ccc',
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        zIndex: 1001,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        lineHeight: '1.4'
+      }}>
+        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>←→</kbd> Focus</div>
+        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>↑↓</kbd> Volume</div>
+        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>SPACE</kbd> Play</div>
+        <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>2×Click</kbd> FullScreen</div>
+      </div>
+
       {/* Red X Button Overlay - Top Right (focus 5) */}
       <button
         onClick={onBack}
@@ -5496,33 +5521,35 @@ export function SlotFullScreen({
 
           </div>
 
-          {/* Close Button - Fixed position (always visible) */}
-          <button
-            onClick={() => {
-              onClose()
-            }}
-            style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              width: '50px',
-              height: '50px',
-              borderRadius: '50%',
-              background: 'rgba(255,68,68,0.9)',
-              border: '2px solid #ff6666',
-              color: '#fff',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              zIndex: 1001,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-              animation: 'contentHintFade 0.5s ease-out 0.5s both'
-            }}
-          >
-            ✕
-          </button>
+          {/* Close Button - HIDDEN when video player active */}
+          {!selectedProject && (
+            <button
+              onClick={() => {
+                onClose()
+              }}
+              style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                width: '50px',
+                height: '50px',
+                borderRadius: '50%',
+                background: 'rgba(255,68,68,0.9)',
+                border: '2px solid #ff6666',
+                color: '#fff',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                zIndex: 1001,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
+                animation: 'contentHintFade 0.5s ease-out 0.5s both'
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
       )}
 
