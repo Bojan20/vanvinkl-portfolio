@@ -1149,24 +1149,44 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               MUSIC
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Volume bar */}
-              <div style={{
-                width: '80px',
-                height: '6px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '3px',
-                overflow: 'hidden'
-              }}>
+              {/* Mobile: Touch slider */}
+              {isMobile ? (
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={musicVol * 100}
+                  onChange={(e) => {
+                    const vol = Number(e.target.value) / 100
+                    setMusicVol(vol)
+                    uaVolume('music', vol)
+                  }}
+                  style={{
+                    width: '100px',
+                    height: '6px',
+                    cursor: 'pointer'
+                  }}
+                />
+              ) : (
+                /* Desktop: Visual progress bar (keyboard controlled) */
                 <div style={{
-                  width: `${musicVol * 100}%`,
-                  height: '100%',
-                  background: selected === 'music'
-                    ? 'linear-gradient(90deg, #ff00aa, #ff66cc)'
-                    : 'rgba(255, 0, 170, 0.5)',
+                  width: '80px',
+                  height: '6px',
+                  background: 'rgba(255,255,255,0.1)',
                   borderRadius: '3px',
-                  transition: 'width 0.1s ease'
-                }} />
-              </div>
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${musicVol * 100}%`,
+                    height: '100%',
+                    background: selected === 'music'
+                      ? 'linear-gradient(90deg, #ff00aa, #ff66cc)'
+                      : 'rgba(255, 0, 170, 0.5)',
+                    borderRadius: '3px',
+                    transition: 'width 0.1s ease'
+                  }} />
+                </div>
+              )}
               <span style={{
                 color: selected === 'music' ? '#ff00aa' : '#666',
                 fontSize: '11px',
@@ -1201,24 +1221,45 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               SFX
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Volume bar */}
-              <div style={{
-                width: '80px',
-                height: '6px',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '3px',
-                overflow: 'hidden'
-              }}>
+              {/* Mobile: Touch slider */}
+              {isMobile ? (
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={sfxVol * 100}
+                  onChange={(e) => {
+                    const vol = Number(e.target.value) / 100
+                    setSfxVol(vol)
+                    uaVolume('sfx', vol)
+                    uaVolume('ui', vol)
+                  }}
+                  style={{
+                    width: '100px',
+                    height: '6px',
+                    cursor: 'pointer'
+                  }}
+                />
+              ) : (
+                /* Desktop: Visual progress bar (keyboard controlled) */
                 <div style={{
-                  width: `${sfxVol * 100}%`,
-                  height: '100%',
-                  background: selected === 'sfx'
-                    ? 'linear-gradient(90deg, #00ffff, #66ffff)'
-                    : 'rgba(0, 255, 255, 0.5)',
+                  width: '80px',
+                  height: '6px',
+                  background: 'rgba(255,255,255,0.1)',
                   borderRadius: '3px',
-                  transition: 'width 0.1s ease'
-                }} />
-              </div>
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${sfxVol * 100}%`,
+                    height: '100%',
+                    background: selected === 'sfx'
+                      ? 'linear-gradient(90deg, #00ffff, #66ffff)'
+                      : 'rgba(0, 255, 255, 0.5)',
+                    borderRadius: '3px',
+                    transition: 'width 0.1s ease'
+                  }} />
+                </div>
+              )}
               <span style={{
                 color: selected === 'sfx' ? '#00ffff' : '#666',
                 fontSize: '11px',
