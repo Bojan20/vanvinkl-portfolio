@@ -135,7 +135,7 @@ const InfoPanel = memo(function InfoPanel({
         gap: '16px'
       }}>
         <span style={{
-          color: '#666',
+          color: '#999',
           fontSize: '13px',
           letterSpacing: '2px',
           textTransform: 'uppercase'
