@@ -5278,79 +5278,73 @@ export function SlotFullScreen({
               </div>
             )}
 
-            {/* ENTER/TAP prompt in result phase */}
+            {/* ENTER prompt - Centered plaque like TOTAL WIN */}
             {phase === 'result' && (
               <div
                 onClick={() => {
-                  // Tap/click to view details
                   setPhase('content')
                 }}
                 style={{
                   position: 'absolute',
-                  bottom: '20px',
+                  top: '50%',
                   left: '50%',
-                  transform: 'translateX(-50%)',
+                  transform: 'translate(-50%, -50%)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '12px',
-                  animation: 'resultPromptReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
-                  zIndex: 200
+                  gap: '16px',
+                  animation: 'totalWinReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both',
+                  zIndex: 200,
+                  cursor: 'pointer'
                 }}>
-                {/* Pulsing arrow */}
-                <div style={{
-                  fontSize: '24px',
-                  color: primaryColor,
-                  animation: 'resultArrowBounce 1s ease-in-out infinite',
-                  textShadow: `0 0 20px ${primaryColor}`
-                }}>
-                  ▼
-                </div>
-                {/* Instruction box */}
+                {/* Main plaque */}
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 24px',
-                  background: 'rgba(0, 0, 0, 0.8)',
-                  borderRadius: '12px',
-                  border: `2px solid ${primaryColor}50`,
-                  boxShadow: `0 0 30px ${primaryColor}30, inset 0 0 20px ${primaryColor}10`,
-                  animation: 'resultBoxGlow 2s ease-in-out infinite'
+                  gap: '16px',
+                  padding: '40px 60px',
+                  background: 'linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,10,30,0.95))',
+                  borderRadius: '20px',
+                  border: `4px solid ${primaryColor}`,
+                  boxShadow: `
+                    0 0 60px ${primaryColor}80,
+                    0 0 120px ${primaryColor}40,
+                    inset 0 0 40px ${primaryColor}20
+                  `,
+                  animation: 'totalWinPulse 2s ease-in-out infinite'
                 }}>
-                  <span style={{
-                    padding: '8px 16px',
-                    background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}80)`,
-                    borderRadius: '8px',
-                    color: '#000',
-                    fontWeight: 900,
-                    fontSize: '14px',
-                    letterSpacing: '2px',
-                    boxShadow: `0 0 20px ${primaryColor}60`
+                  {/* PRESS ENTER */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
                   }}>
-                    TAP
-                  </span>
-                  <span style={{
+                    <span style={{
+                      padding: '12px 24px',
+                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
+                      borderRadius: '12px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '22px',
+                      letterSpacing: '3px',
+                      boxShadow: `0 0 30px ${primaryColor}80`,
+                      textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }}>
+                      PRESS ENTER
+                    </span>
+                  </div>
+                  {/* FOR PORTFOLIO INFO */}
+                  <div style={{
                     color: '#fff',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                    fontSize: '28px',
+                    fontWeight: 700,
+                    letterSpacing: '4px',
+                    textTransform: 'uppercase',
+                    textShadow: `0 0 20px ${primaryColor}, 0 4px 10px rgba(0,0,0,0.5)`
                   }}>
-                    View Full Details
-                  </span>
-                </div>
-                {/* Secondary hint */}
-                <div style={{
-                  fontSize: '12px',
-                  color: '#666',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase'
-                }}>
-                  <span style={{ color: '#888', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                    X
-                  </span>
-                  {' '}to close
+                    FOR PORTFOLIO INFO
+                  </div>
                 </div>
               </div>
             )}
@@ -5568,6 +5562,29 @@ export function SlotFullScreen({
       {/* CSS */}
       <style>{`
         /* Result Phase ENTER Prompt Animations */
+        @keyframes totalWinReveal {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+          }
+          60% {
+            transform: translate(-50%, -50%) scale(1.1);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+
+        @keyframes totalWinPulse {
+          0%, 100% {
+            box-shadow: 0 0 60px ${primaryColor}80, 0 0 120px ${primaryColor}40, inset 0 0 40px ${primaryColor}20;
+          }
+          50% {
+            box-shadow: 0 0 80px ${primaryColor}ff, 0 0 160px ${primaryColor}60, inset 0 0 60px ${primaryColor}30;
+          }
+        }
+
         @keyframes resultPromptReveal {
           0% {
             opacity: 0;
