@@ -2982,10 +2982,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       margin: '0 auto',
       padding: '15px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      overflowY: 'hidden',
+      overflowY: 'visible',
       overflowX: 'hidden',
-      height: '100vh',
-      justifyContent: 'center',
+      minHeight: '100%',
       cursor: 'default' // Show pointer
     }}>
       {/* Hint text */}
