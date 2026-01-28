@@ -10,6 +10,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 // ============== COLORS ==============
 const COLORS = {
@@ -31,6 +32,62 @@ const sharedGeometries = {
   pillarCap: new THREE.CylinderGeometry(0.5, 0.4, 0.3, 8),
   neonTube: new THREE.CylinderGeometry(0.03, 0.03, 1, 8)
 }
+
+// ============== MERGED GEOMETRIES (Performance Optimization) ==============
+// Merge all static walls into single geometry - 4 draw calls → 1
+const mergedWalls = (() => {
+  const geometries: THREE.BoxGeometry[] = []
+
+  // Back wall
+  const backWall = new THREE.BoxGeometry(60, 10, 0.5)
+  backWall.translate(0, 4, -10)
+  geometries.push(backWall)
+
+  // Front wall
+  const frontWall = new THREE.BoxGeometry(60, 10, 0.5)
+  frontWall.translate(0, 4, 25)
+  geometries.push(frontWall)
+
+  // Left wall
+  const leftWall = new THREE.BoxGeometry(0.5, 10, 50)
+  leftWall.translate(-30, 4, 7)
+  geometries.push(leftWall)
+
+  // Right wall
+  const rightWall = new THREE.BoxGeometry(0.5, 10, 50)
+  rightWall.translate(30, 4, 7)
+  geometries.push(rightWall)
+
+  return mergeGeometries(geometries)
+})()
+
+// Merge ceiling panels into single geometry - 15 draw calls → 1
+const mergedCeilingPanels = (() => {
+  const geometries: THREE.BoxGeometry[] = []
+
+  for (const x of [-20, -10, 0, 10, 20]) {
+    for (const z of [-3, 5, 13]) {
+      const panel = new THREE.BoxGeometry(8, 0.1, 6)
+      panel.translate(x, 7.7, z)
+      geometries.push(panel)
+    }
+  }
+
+  return mergeGeometries(geometries)
+})()
+
+// Shared materials (created once, reused)
+const wallMaterial = new THREE.MeshStandardMaterial({
+  color: COLORS.wall,
+  metalness: 0.7,
+  roughness: 0.3
+})
+
+const ceilingPanelMaterial = new THREE.MeshStandardMaterial({
+  color: '#0a0a14',
+  metalness: 0.9,
+  roughness: 0.1
+})
 
 export function CasinoArchitecture() {
   const neonRefs = useRef<THREE.Mesh[]>([])
@@ -116,46 +173,8 @@ export function CasinoArchitecture() {
         />
       </mesh>
 
-      {/* ===== WALLS ===== */}
-      {/* Back wall */}
-      <mesh position={[0, 4, -10]}>
-        <boxGeometry args={[60, 10, 0.5]} />
-        <meshStandardMaterial
-          color={COLORS.wall}
-          metalness={0.7}
-          roughness={0.3}
-        />
-      </mesh>
-
-      {/* Front wall (behind player spawn) */}
-      <mesh position={[0, 4, 25]}>
-        <boxGeometry args={[60, 10, 0.5]} />
-        <meshStandardMaterial
-          color={COLORS.wall}
-          metalness={0.7}
-          roughness={0.3}
-        />
-      </mesh>
-
-      {/* Left wall */}
-      <mesh position={[-30, 4, 7]}>
-        <boxGeometry args={[0.5, 10, 50]} />
-        <meshStandardMaterial
-          color={COLORS.wall}
-          metalness={0.7}
-          roughness={0.3}
-        />
-      </mesh>
-
-      {/* Right wall */}
-      <mesh position={[30, 4, 7]}>
-        <boxGeometry args={[0.5, 10, 50]} />
-        <meshStandardMaterial
-          color={COLORS.wall}
-          metalness={0.7}
-          roughness={0.3}
-        />
-      </mesh>
+      {/* ===== WALLS (MERGED - 4 draw calls → 1) ===== */}
+      <mesh geometry={mergedWalls} material={wallMaterial} />
 
       {/* ===== WALL NEON TRIM ===== */}
       {/* Back wall horizontal neon */}
@@ -186,19 +205,8 @@ export function CasinoArchitecture() {
         />
       </mesh>
 
-      {/* Ceiling panels (decorative) */}
-      {[-20, -10, 0, 10, 20].map(x => (
-        [-3, 5, 13].map(z => (
-          <mesh key={`${x}-${z}`} position={[x, 7.7, z]}>
-            <boxGeometry args={[8, 0.1, 6]} />
-            <meshStandardMaterial
-              color="#0a0a14"
-              metalness={0.9}
-              roughness={0.1}
-            />
-          </mesh>
-        ))
-      ))}
+      {/* Ceiling panels (MERGED - 15 draw calls → 1) */}
+      <mesh geometry={mergedCeilingPanels} material={ceilingPanelMaterial} />
 
       {/* ===== CEILING NEON STRIPS ===== */}
       {neonStripPositions.map((strip, i) => (
