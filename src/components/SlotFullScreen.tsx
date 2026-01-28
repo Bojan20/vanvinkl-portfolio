@@ -2740,13 +2740,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
-  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider, 5: red X
+  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
   const [isFullscreen, setIsFullscreen] = React.useState(false)
 
   // Focus items count
-  const FOCUS_ITEMS = 5
+  const FOCUS_ITEMS = 4
 
   // Fullscreen change listener - enable controls only in fullscreen
   React.useEffect(() => {
@@ -2873,20 +2873,20 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault()
-          // Navigate focus left (1 → 5 → 4 → 3 → 2 → 1)
+          // Navigate focus left (1 → 4 → 3 → 2 → 1)
           setFocusIndex(prev => {
             const next = prev - 1
-            return next < 1 ? 5 : next
+            return next < 1 ? 4 : next
           })
           playNavTick(0.3)
           break
 
         case 'ArrowRight':
           e.preventDefault()
-          // Navigate focus right (1 → 2 → 3 → 4 → 5 → 1)
+          // Navigate focus right (1 → 2 → 3 → 4 → 1)
           setFocusIndex(prev => {
             const next = prev + 1
-            return next > 5 ? 1 : next
+            return next > 4 ? 1 : next
           })
           playNavTick(0.3)
           break
@@ -2944,10 +2944,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             // SFX mute toggle
             setSfxMuted(!sfxMuted)
             playNavSelect(0.4)
-          } else if (focusIndex === 5) {
-            // Red X button - back to grid
-            playNavBack(0.4)
-            onBack()
           }
           break
 
@@ -3200,38 +3196,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>SPACE</kbd> Play</div>
         <div><kbd style={{background: 'rgba(255,215,0,0.2)', padding: '2px 6px', borderRadius: '3px', color: '#ffd700'}}>2×Click</kbd> FullScreen</div>
       </div>
-
-      {/* Red X Button Overlay - Top Right (focus 5) */}
-      <button
-        onClick={() => {
-          console.log('[PortfolioPlayer] Red X clicked, calling onBack()')
-          onBack()
-        }}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          width: '50px',
-          height: '50px',
-          borderRadius: '50%',
-          background: isFocused(5) ? 'rgba(255,68,68,1)' : 'rgba(255,68,68,0.9)',
-          border: isFocused(5) ? '3px solid #ffd700' : '2px solid #ff6666',
-          color: '#fff',
-          fontSize: '24px',
-          fontWeight: 'bold',
-          zIndex: 1002,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: isFocused(5)
-            ? '0 0 30px rgba(255,215,0,0.8), 0 4px 20px rgba(255,68,68,0.6)'
-            : '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-          transition: 'all 0.2s ease'
-        }}
-      >
-        ✕
-      </button>
     </div>
   )
 })
@@ -5546,37 +5510,40 @@ export function SlotFullScreen({
 
           </div>
 
-          {/* Close Button - HIDDEN when video player active */}
-          {!selectedProject && (
-            <button
-              onClick={() => {
-                console.log('[SlotFullScreen] Close Button (X) clicked - closing entire slot')
+          {/* X Button - Dynamic behavior: video→grid, grid→lounge */}
+          <button
+            onClick={() => {
+              if (selectedProject) {
+                console.log('[SlotFullScreen] X clicked in video mode - returning to grid')
+                setSelectedProject(null)
+              } else {
+                console.log('[SlotFullScreen] X clicked in grid mode - closing slot')
                 onClose()
-              }}
-              style={{
-                position: 'fixed',
-                top: '20px',
-                right: '20px',
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                background: 'rgba(255,68,68,0.9)',
-                border: '2px solid #ff6666',
-                color: '#fff',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                zIndex: 1001,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-                animation: 'contentHintFade 0.5s ease-out 0.5s both',
-                cursor: 'pointer'
-              }}
-            >
-              ✕
-            </button>
-          )}
+              }
+            }}
+            style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              width: '50px',
+              height: '50px',
+              borderRadius: '50%',
+              background: 'rgba(255,68,68,0.9)',
+              border: '2px solid #ff6666',
+              color: '#fff',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
+              animation: 'contentHintFade 0.5s ease-out 0.5s both',
+              cursor: 'pointer'
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
