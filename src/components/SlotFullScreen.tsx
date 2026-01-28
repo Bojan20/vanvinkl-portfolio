@@ -2726,10 +2726,223 @@ function getGridColumns(section: SlotSection): number {
   }
 }
 
-function ContentView({ section, focusIndex }: {
+// Portfolio Video Player - Full screen inline player
+const PortfolioPlayer = memo(function PortfolioPlayer({
+  project,
+  onBack
+}: {
+  project: { icon: string, title: string, description: string, year: string, tags: string[] }
+  onBack: () => void
+}) {
+  const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+  const musicRef = React.useRef<HTMLAudioElement>(null)
+  const sfxRef = React.useRef<HTMLAudioElement>(null)
+  const [showContent, setShowContent] = React.useState(false)
+
+  // Staggered reveal
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowContent(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Synchronize audio with video
+  React.useEffect(() => {
+    const video = videoRef.current
+    const music = musicRef.current
+    const sfx = sfxRef.current
+
+    if (!video || !music || !sfx) return
+
+    const handlePlay = () => {
+      music.play().catch(e => console.warn('Music play failed:', e))
+      sfx.play().catch(e => console.warn('SFX play failed:', e))
+    }
+
+    const handlePause = () => {
+      music.pause()
+      sfx.pause()
+    }
+
+    const handleSeeked = () => {
+      const time = video.currentTime
+      music.currentTime = time
+      sfx.currentTime = time
+    }
+
+    const handleTimeUpdate = () => {
+      const drift = Math.abs(video.currentTime - music.currentTime)
+      if (drift > 0.3) {
+        music.currentTime = video.currentTime
+        sfx.currentTime = video.currentTime
+      }
+    }
+
+    video.addEventListener('play', handlePlay)
+    video.addEventListener('pause', handlePause)
+    video.addEventListener('seeked', handleSeeked)
+    video.addEventListener('timeupdate', handleTimeUpdate)
+
+    return () => {
+      video.removeEventListener('play', handlePlay)
+      video.removeEventListener('pause', handlePause)
+      video.removeEventListener('seeked', handleSeeked)
+      video.removeEventListener('timeupdate', handleTimeUpdate)
+    }
+  }, [])
+
+  // Update audio volumes
+  React.useEffect(() => {
+    if (musicRef.current) musicRef.current.volume = musicVolume
+  }, [musicVolume])
+
+  React.useEffect(() => {
+    if (sfxRef.current) sfxRef.current.volume = sfxVolume
+  }, [sfxVolume])
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '30px',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '40px',
+      animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none'
+    }}>
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        style={{
+          alignSelf: 'flex-start',
+          background: 'rgba(255,215,0,0.1)',
+          border: '2px solid #ffd700',
+          borderRadius: '12px',
+          padding: '12px 24px',
+          color: '#ffd700',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.background = 'rgba(255,215,0,0.2)'
+          e.currentTarget.style.transform = 'translateX(-5px)'
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.background = 'rgba(255,215,0,0.1)'
+          e.currentTarget.style.transform = 'translateX(0)'
+        }}
+      >
+        ← Back to Projects
+      </button>
+
+      {/* Video Player */}
+      <div>
+        <video
+          ref={videoRef}
+          controls
+          style={{
+            width: '100%',
+            maxHeight: '600px',
+            borderRadius: '16px',
+            border: '2px solid rgba(255,215,0,0.3)',
+            boxShadow: '0 8px 40px rgba(255,215,0,0.2)',
+            backgroundColor: '#000'
+          }}
+          poster="/logo_van.png"
+        >
+          <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4" type="video/mp4" />
+          Your browser does not support video playback.
+        </video>
+
+        {/* Hidden audio tracks */}
+        <audio ref={musicRef} style={{ display: 'none' }}>
+          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.opus" type="audio/opus" />
+          <source src="/audioSlotPortfolio/music/Piggy-Plunger-Music.m4a" type="audio/mp4" />
+        </audio>
+
+        <audio ref={sfxRef} style={{ display: 'none' }}>
+          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.opus" type="audio/opus" />
+          <source src="/audioSlotPortfolio/sfx/Piggy-Plunger-SFX.m4a" type="audio/mp4" />
+        </audio>
+      </div>
+
+      {/* Volume Controls */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Music Slider */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <label style={{ fontSize: '14px', color: '#ffd700', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🎵</span> Music
+            </label>
+            <span style={{ fontSize: '13px', color: '#999', fontFamily: 'monospace' }}>
+              {Math.round(musicVolume * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={musicVolume * 100}
+            onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+            style={{
+              width: '100%',
+              height: '6px',
+              borderRadius: '3px',
+              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.2) ${musicVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+              outline: 'none',
+              cursor: 'pointer',
+              WebkitAppearance: 'none',
+              appearance: 'none'
+            }}
+          />
+        </div>
+
+        {/* SFX Slider */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <label style={{ fontSize: '14px', color: '#ffd700', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔊</span> SFX
+            </label>
+            <span style={{ fontSize: '13px', color: '#999', fontFamily: 'monospace' }}>
+              {Math.round(sfxVolume * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sfxVolume * 100}
+            onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+            style={{
+              width: '100%',
+              height: '6px',
+              borderRadius: '3px',
+              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.2) ${sfxVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+              outline: 'none',
+              cursor: 'pointer',
+              WebkitAppearance: 'none',
+              appearance: 'none'
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+})
+
+function ContentView({ section, focusIndex, selectedProject, onBackFromProject }: {
   section: SlotSection
   focusIndex: number
+  selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[] } | null
+  onBackFromProject?: () => void
 }) {
+  // Show portfolio player if project selected
+  if (selectedProject && onBackFromProject) {
+    return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
+  }
+
   switch (section.type) {
     case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
     case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
@@ -3563,6 +3776,7 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
+  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[] } | null>(null)
 
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -3806,7 +4020,20 @@ export function SlotFullScreen({
       }
       case 'projects': {
         const proj = (section as ProjectsSection).featured[index]
-        if (proj) setDetailItem({ type: 'project', index, data: proj })
+        if (proj) {
+          // Pause lounge music for portfolio presentation
+          stopDucking() // Stop any ducking first
+          startDucking(0, 0.3) // Mute lounge music (0 volume)
+
+          // Show portfolio video player
+          setSelectedProject({
+            icon: proj.icon,
+            title: proj.title,
+            description: proj.description,
+            year: proj.year,
+            tags: proj.tags
+          })
+        }
         break
       }
       case 'experience': {
@@ -3950,6 +4177,26 @@ export function SlotFullScreen({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
+
+  // Block all controls when portfolio player is active (except ESC to go back)
+  useEffect(() => {
+    if (!selectedProject) return
+
+    const handlePortfolioKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSelectedProject(null)
+        stopDucking(0.5) // Resume lounge music
+      } else {
+        // Block all other keyboard controls
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
+    window.addEventListener('keydown', handlePortfolioKeyDown, true) // Capture phase
+    return () => window.removeEventListener('keydown', handlePortfolioKeyDown, true)
+  }, [selectedProject])
 
   return (
     <div style={{
@@ -4951,7 +5198,15 @@ export function SlotFullScreen({
 
             {/* Content - full width utilization */}
             <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both' }}>
-              <ContentView section={section} focusIndex={focusIndex} />
+              <ContentView
+                section={section}
+                focusIndex={focusIndex}
+                selectedProject={selectedProject}
+                onBackFromProject={() => {
+                  setSelectedProject(null)
+                  stopDucking(0.5) // Resume lounge music
+                }}
+              />
             </div>
 
           </div>
