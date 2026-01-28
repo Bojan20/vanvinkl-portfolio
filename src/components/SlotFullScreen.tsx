@@ -2740,12 +2740,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
-  const [focusIndex, setFocusIndex] = React.useState(0) // 0: play, 1: fullscreen, 2: music mute, 3: music slider, 4: sfx mute, 5: sfx slider, 6: back
+  const [focusIndex, setFocusIndex] = React.useState(1) // 1: fullscreen, 2: music mute, 3: music slider, 4: sfx mute, 5: sfx slider, 6: back
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
 
   // Focus items count
-  const FOCUS_ITEMS = 7
+  const FOCUS_ITEMS = 6
 
   // Staggered reveal
   React.useEffect(() => {
@@ -2893,13 +2893,19 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
-          setFocusIndex(prev => (prev - 1 + FOCUS_ITEMS) % FOCUS_ITEMS)
+          setFocusIndex(prev => {
+            const next = prev - 1
+            return next < 1 ? 6 : next
+          })
           playNavTick(0.3)
           break
 
         case 'ArrowDown':
           e.preventDefault()
-          setFocusIndex(prev => (prev + 1) % FOCUS_ITEMS)
+          setFocusIndex(prev => {
+            const next = prev + 1
+            return next > 6 ? 1 : next
+          })
           playNavTick(0.3)
           break
 
@@ -2946,19 +2952,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         case 'Enter':
           e.preventDefault()
-          if (focusIndex === 0) {
-            // Play/Pause video + audio
-            const vid = videoRef.current
-            if (vid) {
-              if (vid.paused) {
-                vid.play()
-                playNavSelect(0.5)
-              } else {
-                vid.pause()
-                playNavSelect(0.3)
-              }
-            }
-          } else if (focusIndex === 1) {
+          if (focusIndex === 1) {
             // Fullscreen toggle
             const video = videoRef.current
             if (video) {
@@ -2986,6 +2980,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         case 'Escape':
           e.preventDefault()
+          e.stopPropagation()
+          console.log('[PortfolioPlayer] ESC pressed, calling onBack()')
           playNavBack(0.4)
           onBack()
           break
@@ -3002,35 +2998,36 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '6px',
+      gap: '4px',
       maxWidth: '98%',
       width: '100%',
       margin: '0 auto',
-      padding: '8px',
+      padding: '6px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
       overflow: 'hidden',
       height: '100vh',
       justifyContent: 'center',
-      cursor: 'pointer' // Show pointer
+      cursor: 'pointer'
     }}>
-      {/* Hint text - minimal */}
+      {/* Hint text - minimal, 3% height */}
       <div style={{
         textAlign: 'center',
         color: '#777',
         fontSize: '10px',
-        padding: '3px'
+        padding: '3px',
+        height: '3%'
       }}>
         ↑↓ Focus • SPACE Play • ←→ Vol • ESC Back
       </div>
 
-      {/* Video Player - MAXIMIZED */}
+      {/* Video Player - MAXIMIZED, 87% height */}
       <div
         style={{
           position: 'relative',
-          border: isFocused(0) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.25)',
+          border: '2px solid rgba(255,215,0,0.25)',
           borderRadius: '8px',
           overflow: 'hidden',
-          boxShadow: isFocused(0) ? '0 0 25px rgba(255,215,0,0.4)' : '0 2px 15px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 15px rgba(0,0,0,0.3)',
           transition: 'all 0.3s ease',
           flex: 1,
           display: 'flex',
@@ -3061,23 +3058,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           Your browser does not support video playback.
         </video>
 
-        {/* Custom Play/Pause indicator */}
-        {isFocused(0) && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '50px',
-            color: '#ffd700',
-            textShadow: '0 0 20px rgba(255,215,0,0.8)',
-            pointerEvents: 'none',
-            animation: 'pulse 1s ease-in-out infinite'
-          }}>
-            {videoRef.current?.paused ? '▶' : '⏸'}
-          </div>
-        )}
-
         {/* Hidden audio tracks */}
         <audio ref={musicRef} style={{ display: 'none' }}>
           <source src={`${project.musicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.opus`} type="audio/opus" />
@@ -3090,9 +3070,16 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </audio>
       </div>
 
-      {/* Controls Row - Ultra Compact */}
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-        {/* Fullscreen Button - Minimal */}
+      {/* Controls Row - Single Line, Ultra Minimal, 5% height */}
+      <div style={{
+        display: 'flex',
+        gap: '4px',
+        alignItems: 'center',
+        padding: '5px',
+        height: '5%',
+        minHeight: '30px'
+      }}>
+        {/* FS Button (focus 1) */}
         <button
           onClick={() => {
             const video = videoRef.current
@@ -3102,168 +3089,172 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             }
           }}
           style={{
-            padding: '8px 12px',
+            width: '28px',
+            padding: '5px',
             border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-            borderRadius: '6px',
-            background: isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)',
+            borderRadius: '4px',
+            background: isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.3)',
             color: isFocused(1) ? '#ffd700' : '#999',
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: '600',
             cursor: 'pointer',
-            boxShadow: isFocused(1) ? '0 0 12px rgba(255,215,0,0.3)' : 'none',
+            boxShadow: isFocused(1) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
             transition: 'all 0.2s ease',
-            whiteSpace: 'nowrap'
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
-          ⛶ FS
+          ⛶
         </button>
 
-        {/* Volume Controls - Ultra Compact Side by Side */}
-        <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
-        {/* Music Section */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Music Mute Button */}
-          <button
-            onClick={() => setMusicMuted(!musicMuted)}
-            style={{
-              padding: '10px',
-              border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-              borderRadius: '8px',
-              background: musicMuted ? 'rgba(255,0,0,0.15)' : (isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
-              color: musicMuted ? '#ff4444' : (isFocused(4) ? '#ffd700' : '#ccc'),
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>{musicMuted ? '🔇' : '🎵'}</span>
-            <span>{musicMuted ? 'MUTED' : 'MUSIC'}</span>
-          </button>
+        {/* Music Mute Button (focus 2) */}
+        <button
+          onClick={() => setMusicMuted(!musicMuted)}
+          style={{
+            width: '28px',
+            padding: '5px',
+            border: isFocused(2) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+            borderRadius: '4px',
+            background: musicMuted ? 'rgba(255,0,0,0.15)' : (isFocused(2) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.3)'),
+            color: musicMuted ? '#ff4444' : (isFocused(2) ? '#ffd700' : '#999'),
+            fontSize: '10px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: isFocused(2) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {musicMuted ? '🔇' : '🎵'}
+        </button>
 
-          {/* Music Slider */}
-          <div style={{
-            padding: '10px',
-            border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-            borderRadius: '8px',
-            background: isFocused(4) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
-            boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
-            transition: 'all 0.3s ease'
+        {/* Music Slider (focus 3) - inline with label */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '3px 6px',
+          border: isFocused(3) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+          borderRadius: '4px',
+          background: isFocused(3) ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)',
+          boxShadow: isFocused(3) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
+          transition: 'all 0.2s ease'
+        }}>
+          <span style={{
+            fontSize: '9px',
+            color: isFocused(3) ? '#ffd700' : '#999',
+            fontFamily: 'monospace',
+            whiteSpace: 'nowrap'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999' }}>Volume</span>
-              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999', fontFamily: 'monospace' }}>
-                {Math.round(musicVolume * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={musicVolume * 100}
-              onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
-              style={{
-                width: '100%',
-                height: '6px',
-                borderRadius: '3px',
-                background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.2) ${musicVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
-                outline: 'none',
-                cursor: 'pointer',
-                WebkitAppearance: 'none',
-                appearance: 'none'
-              }}
-            />
-          </div>
+            🎵 {Math.round(musicVolume * 100)}%
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={musicVolume * 100}
+            onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+            style={{
+              flex: 1,
+              height: '3px',
+              borderRadius: '2px',
+              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.2) ${musicVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+              outline: 'none',
+              cursor: 'pointer',
+              WebkitAppearance: 'none',
+              appearance: 'none'
+            }}
+          />
         </div>
 
-        {/* SFX Section */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* SFX Mute Button */}
-          <button
-            onClick={() => setSfxMuted(!sfxMuted)}
-            style={{
-              padding: '10px',
-              border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-              borderRadius: '8px',
-              background: sfxMuted ? 'rgba(255,0,0,0.15)' : (isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
-              color: sfxMuted ? '#ff4444' : (isFocused(4) ? '#ffd700' : '#ccc'),
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>{sfxMuted ? '🔇' : '🔊'}</span>
-            <span>{sfxMuted ? 'MUTED' : 'SFX'}</span>
-          </button>
-
-          {/* SFX Slider */}
-          <div style={{
-            padding: '10px',
+        {/* SFX Mute Button (focus 4) */}
+        <button
+          onClick={() => setSfxMuted(!sfxMuted)}
+          style={{
+            width: '28px',
+            padding: '5px',
             border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-            borderRadius: '8px',
-            background: isFocused(4) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
-            boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
-            transition: 'all 0.3s ease'
+            borderRadius: '4px',
+            background: sfxMuted ? 'rgba(255,0,0,0.15)' : (isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.3)'),
+            color: sfxMuted ? '#ff4444' : (isFocused(4) ? '#ffd700' : '#999'),
+            fontSize: '10px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: isFocused(4) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {sfxMuted ? '🔇' : '🔊'}
+        </button>
+
+        {/* SFX Slider (focus 5) - inline with label */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '3px 6px',
+          border: isFocused(5) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+          borderRadius: '4px',
+          background: isFocused(5) ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)',
+          boxShadow: isFocused(5) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
+          transition: 'all 0.2s ease'
+        }}>
+          <span style={{
+            fontSize: '9px',
+            color: isFocused(5) ? '#ffd700' : '#999',
+            fontFamily: 'monospace',
+            whiteSpace: 'nowrap'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999' }}>Volume</span>
-              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999', fontFamily: 'monospace' }}>
-                {Math.round(sfxVolume * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={sfxVolume * 100}
-              onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
-              style={{
-                width: '100%',
-                height: '6px',
-                borderRadius: '3px',
-                background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.2) ${sfxVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
-                outline: 'none',
-                cursor: 'pointer',
-                WebkitAppearance: 'none',
-                appearance: 'none'
-              }}
-            />
-          </div>
+            🔊 {Math.round(sfxVolume * 100)}%
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sfxVolume * 100}
+            onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+            style={{
+              flex: 1,
+              height: '3px',
+              borderRadius: '2px',
+              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.2) ${sfxVolume * 100}%, rgba(255,215,0,0.2) 100%)`,
+              outline: 'none',
+              cursor: 'pointer',
+              WebkitAppearance: 'none',
+              appearance: 'none'
+            }}
+          />
         </div>
+
+        {/* ESC Button (focus 6) */}
+        <button
+          onClick={onBack}
+          style={{
+            padding: '5px 10px',
+            border: isFocused(6) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+            borderRadius: '4px',
+            background: isFocused(6) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.3)',
+            color: isFocused(6) ? '#ffd700' : '#999',
+            fontSize: '9px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: isFocused(6) ? '0 0 10px rgba(255,215,0,0.3)' : 'none',
+            transition: 'all 0.2s ease',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}
+        >
+          ESC
+        </button>
       </div>
-
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        style={{
-          alignSelf: 'center',
-          background: isFocused(6) ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.08)',
-          border: isFocused(6) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
-          borderRadius: '12px',
-          padding: '12px 28px',
-          color: isFocused(6) ? '#ffd700' : '#ccc',
-          fontSize: '14px',
-          fontWeight: isFocused(6) ? '700' : '600',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          boxShadow: isFocused(6) ? '0 0 15px rgba(255,215,0,0.4)' : 'none',
-          textTransform: 'uppercase',
-          letterSpacing: '1px'
-        }}
-      >
-        ← BACK
-      </button>
     </div>
   )
 })
