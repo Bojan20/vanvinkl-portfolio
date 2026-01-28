@@ -892,7 +892,7 @@ export function SlotFullScreen({
             {phase === 'result' && isJackpot && jackpotStory && (
               <div style={{
                 position: 'absolute',
-                bottom: '140px',
+                bottom: '250px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 maxWidth: '600px',
