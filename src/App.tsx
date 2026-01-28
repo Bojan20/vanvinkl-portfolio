@@ -91,6 +91,10 @@ function SoundToggle() {
       onClick={toggleMute}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
+      aria-pressed={isMuted}
+      role="button"
+      tabIndex={0}
       style={{
         position: 'fixed',
         top: '20px',

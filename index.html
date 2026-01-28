@@ -83,10 +83,49 @@
       .portfolio-video-player::-webkit-media-controls-fullscreen-button {
         display: none !important;
       }
+
+      /* Accessibility - Visible focus indicators (WCAG 2.1 AA) */
+      button:focus-visible,
+      input:focus-visible,
+      a:focus-visible,
+      [role="button"]:focus-visible,
+      [role="slider"]:focus-visible {
+        outline: 2px solid #ffd700 !important;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.3) !important;
+      }
+
+      /* High contrast focus for accessibility */
+      @media (prefers-contrast: high) {
+        button:focus-visible,
+        input:focus-visible {
+          outline: 3px solid #ffd700 !important;
+          outline-offset: 3px;
+        }
+      }
+
+      /* Skip to main content link (screen readers) */
+      .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #000;
+        color: #ffd700;
+        padding: 8px 16px;
+        text-decoration: none;
+        z-index: 9999;
+      }
+
+      .skip-link:focus {
+        top: 0;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Skip to main content (screen reader accessibility) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div id="root" role="application" aria-label="VanVinkl Casino Interactive Portfolio"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

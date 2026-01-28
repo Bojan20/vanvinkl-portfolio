@@ -407,6 +407,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         {/* Music Mute Button (focus 1) */}
         <button
           onClick={() => setMusicMuted(!musicMuted)}
+          aria-label={musicMuted ? 'Unmute music track' : 'Mute music track'}
+          aria-pressed={musicMuted}
+          role="button"
+          tabIndex={0}
           style={{
             width: '32px',
             height: '32px',
@@ -455,6 +459,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             max="100"
             value={musicVolume * 100}
             onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+            aria-label="Music volume"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(musicVolume * 100)}
+            role="slider"
+            tabIndex={0}
             style={{
               flex: 1,
               height: '4px',
@@ -471,6 +481,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         {/* SFX Mute Button (focus 3) */}
         <button
           onClick={() => setSfxMuted(!sfxMuted)}
+          aria-label={sfxMuted ? 'Unmute sound effects track' : 'Mute sound effects track'}
+          aria-pressed={sfxMuted}
+          role="button"
+          tabIndex={0}
           style={{
             width: '32px',
             height: '32px',
@@ -519,6 +533,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             max="100"
             value={sfxVolume * 100}
             onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+            aria-label="Sound effects volume"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(sfxVolume * 100)}
+            role="slider"
+            tabIndex={0}
             style={{
               flex: 1,
               height: '4px',

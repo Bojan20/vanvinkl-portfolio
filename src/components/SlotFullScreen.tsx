@@ -578,7 +578,13 @@ export function SlotFullScreen({
 
   // ========== RENDER ==========
   return (
-    <div style={{
+    <div
+      id="main-content"
+      role="main"
+      aria-label={`${segmentConfig.title} slot machine`}
+      aria-live={phase === 'spinning' ? 'polite' : 'off'}
+      aria-busy={phase === 'spinning'}
+      style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
       background: phase === 'intro' && introStep === 0
@@ -1103,6 +1109,9 @@ export function SlotFullScreen({
               onClose()
             }
           }}
+          aria-label={selectedProject ? 'Exit video and return to projects' : 'Close slot machine and return to casino'}
+          role="button"
+          tabIndex={0}
           style={{
             position: 'fixed',
             top: '20px',
