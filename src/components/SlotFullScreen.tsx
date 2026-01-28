@@ -2740,12 +2740,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
-  const [focusIndex, setFocusIndex] = React.useState(0) // 0: play, 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider, 5: back
+  const [focusIndex, setFocusIndex] = React.useState(0) // 0: play, 1: fullscreen, 2: music mute, 3: music slider, 4: sfx mute, 5: sfx slider, 6: back
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
 
   // Focus items count
-  const FOCUS_ITEMS = 6
+  const FOCUS_ITEMS = 7
 
   // Staggered reveal
   React.useEffect(() => {
@@ -2905,11 +2905,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         case 'ArrowLeft':
           e.preventDefault()
-          if (focusIndex === 2) {
+          if (focusIndex === 3) {
             // Music slider
             setMusicVolume(Math.max(0, musicVolume - 0.05))
             playNavTick(0.2)
-          } else if (focusIndex === 4) {
+          } else if (focusIndex === 5) {
             // SFX slider
             setSfxVolume(Math.max(0, sfxVolume - 0.05))
             playNavTick(0.2)
@@ -2918,11 +2918,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         case 'ArrowRight':
           e.preventDefault()
-          if (focusIndex === 2) {
+          if (focusIndex === 3) {
             // Music slider
             setMusicVolume(Math.min(1, musicVolume + 0.05))
             playNavTick(0.2)
-          } else if (focusIndex === 4) {
+          } else if (focusIndex === 5) {
             // SFX slider
             setSfxVolume(Math.min(1, sfxVolume + 0.05))
             playNavTick(0.2)
@@ -2945,14 +2945,25 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
               }
             }
           } else if (focusIndex === 1) {
+            // Fullscreen toggle
+            const video = videoRef.current
+            if (video) {
+              if (document.fullscreenElement) {
+                document.exitFullscreen()
+              } else {
+                video.requestFullscreen().catch(e => console.warn('Fullscreen failed:', e))
+              }
+              playNavSelect(0.4)
+            }
+          } else if (focusIndex === 2) {
             // Music mute toggle
             setMusicMuted(!musicMuted)
             playNavSelect(0.4)
-          } else if (focusIndex === 3) {
+          } else if (focusIndex === 4) {
             // SFX mute toggle
             setSfxMuted(!sfxMuted)
             playNavSelect(0.4)
-          } else if (focusIndex === 5) {
+          } else if (focusIndex === 6) {
             // Back button
             playNavBack(0.4)
             onBack()
@@ -2982,9 +2993,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       margin: '0 auto',
       padding: '15px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      overflowY: 'visible',
-      overflowX: 'hidden',
-      minHeight: '100%',
+      overflow: 'hidden',
+      height: '100vh',
+      justifyContent: 'center',
       cursor: 'default' // Show pointer
     }}>
       {/* Hint text */}
@@ -3049,6 +3060,39 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </audio>
       </div>
 
+      {/* Fullscreen Button */}
+      <button
+        onClick={() => {
+          const video = videoRef.current
+          if (video) {
+            if (document.fullscreenElement) {
+              document.exitFullscreen()
+            } else {
+              video.requestFullscreen().catch(e => console.warn('Fullscreen failed:', e))
+            }
+          }
+        }}
+        style={{
+          padding: '12px',
+          border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+          borderRadius: '8px',
+          background: isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)',
+          color: isFocused(1) ? '#ffd700' : '#ccc',
+          fontSize: '13px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          boxShadow: isFocused(1) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px'
+        }}
+      >
+        <span>⛶</span>
+        <span>FULLSCREEN</span>
+      </button>
+
       {/* Volume Controls - Compact with Mute Buttons */}
       <div style={{ display: 'flex', gap: '12px' }}>
         {/* Music Section */}
@@ -3058,14 +3102,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             onClick={() => setMusicMuted(!musicMuted)}
             style={{
               padding: '10px',
-              border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+              border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
               borderRadius: '8px',
-              background: musicMuted ? 'rgba(255,0,0,0.15)' : (isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
-              color: musicMuted ? '#ff4444' : (isFocused(1) ? '#ffd700' : '#ccc'),
+              background: musicMuted ? 'rgba(255,0,0,0.15)' : (isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
+              color: musicMuted ? '#ff4444' : (isFocused(4) ? '#ffd700' : '#ccc'),
               fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: isFocused(1) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
+              boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
               transition: 'all 0.3s ease',
               display: 'flex',
               alignItems: 'center',
@@ -3080,15 +3124,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           {/* Music Slider */}
           <div style={{
             padding: '10px',
-            border: isFocused(2) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+            border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
             borderRadius: '8px',
-            background: isFocused(2) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
-            boxShadow: isFocused(2) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
+            background: isFocused(4) ? 'rgba(255,215,0,0.1)' : 'rgba(255,215,0,0.03)',
+            boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
             transition: 'all 0.3s ease'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', color: isFocused(2) ? '#ffd700' : '#999' }}>Volume</span>
-              <span style={{ fontSize: '12px', color: isFocused(2) ? '#ffd700' : '#999', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999' }}>Volume</span>
+              <span style={{ fontSize: '12px', color: isFocused(4) ? '#ffd700' : '#999', fontFamily: 'monospace' }}>
                 {Math.round(musicVolume * 100)}%
               </span>
             </div>
@@ -3119,14 +3163,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             onClick={() => setSfxMuted(!sfxMuted)}
             style={{
               padding: '10px',
-              border: isFocused(3) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+              border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
               borderRadius: '8px',
-              background: sfxMuted ? 'rgba(255,0,0,0.15)' : (isFocused(3) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
-              color: sfxMuted ? '#ff4444' : (isFocused(3) ? '#ffd700' : '#ccc'),
+              background: sfxMuted ? 'rgba(255,0,0,0.15)' : (isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)'),
+              color: sfxMuted ? '#ff4444' : (isFocused(4) ? '#ffd700' : '#ccc'),
               fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: isFocused(3) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
+              boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
               transition: 'all 0.3s ease',
               display: 'flex',
               alignItems: 'center',
@@ -3179,16 +3223,16 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         onClick={onBack}
         style={{
           alignSelf: 'center',
-          background: isFocused(5) ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.08)',
-          border: isFocused(5) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
+          background: isFocused(6) ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.08)',
+          border: isFocused(6) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
           borderRadius: '12px',
           padding: '12px 28px',
-          color: isFocused(5) ? '#ffd700' : '#ccc',
+          color: isFocused(6) ? '#ffd700' : '#ccc',
           fontSize: '14px',
-          fontWeight: isFocused(5) ? '700' : '600',
+          fontWeight: isFocused(6) ? '700' : '600',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
-          boxShadow: isFocused(5) ? '0 0 15px rgba(255,215,0,0.4)' : 'none',
+          boxShadow: isFocused(6) ? '0 0 15px rgba(255,215,0,0.4)' : 'none',
           textTransform: 'uppercase',
           letterSpacing: '1px'
         }}
@@ -4295,7 +4339,10 @@ export function SlotFullScreen({
             title: proj.title,
             description: proj.description,
             year: proj.year,
-            tags: proj.tags
+            tags: proj.tags,
+            videoPath: proj.videoPath,
+            musicPath: proj.musicPath,
+            sfxPath: proj.sfxPath
           })
         }
         break
