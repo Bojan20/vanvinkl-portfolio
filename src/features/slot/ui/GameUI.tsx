@@ -70,7 +70,7 @@ export const GameMarquee = memo(function GameMarquee({
       <h1 style={{
         margin: 0,
         textAlign: 'center',
-        fontSize: 'clamp(28px, 5vw, 48px)',
+        fontSize: 'clamp(32px, 5vw, 48px)',
         fontWeight: 900,
         color: '#fff',
         textShadow: `
@@ -93,7 +93,7 @@ export const GameMarquee = memo(function GameMarquee({
         <p style={{
           margin: '8px 0 0 0',
           textAlign: 'center',
-          fontSize: 'clamp(12px, 2vw, 16px)',
+          fontSize: 'clamp(13px, 2vw, 16px)',
           color: color,
           letterSpacing: '4px',
           textTransform: 'uppercase',

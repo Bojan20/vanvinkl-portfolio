@@ -431,8 +431,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           role="button"
           tabIndex={0}
           style={{
-            width: '32px',
-            height: '32px',
+            width: '48px',
+            height: '48px',
             padding: '0',
             border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
             borderRadius: '6px',
@@ -505,8 +505,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           role="button"
           tabIndex={0}
           style={{
-            width: '32px',
-            height: '32px',
+            width: '48px',
+            height: '48px',
             padding: '0',
             border: isFocused(3) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
             borderRadius: '6px',
