@@ -4430,27 +4430,20 @@ export function SlotFullScreen({
         case 'ArrowRight':
           e.preventDefault()
           haptic.light()
-          if (focusIndex === -1) {
-            setFocusIndex(0)
-          } else {
-            setFocusIndex(prev => (prev + 1) % itemCount)
-          }
+          playNavTick(0.3)
+          setFocusIndex(prev => (prev + 1) % itemCount)
           break
         case 'ArrowLeft':
           e.preventDefault()
           haptic.light()
-          if (focusIndex === -1) {
-            setFocusIndex(0)
-          } else {
-            setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
-          }
+          playNavTick(0.3)
+          setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           break
         case 'ArrowDown':
           e.preventDefault()
           haptic.light()
-          if (focusIndex === -1) {
-            setFocusIndex(0)
-          } else if (columns > 1) {
+          playNavTick(0.3)
+          if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev + columns
               return next < itemCount ? next : prev
@@ -4462,9 +4455,8 @@ export function SlotFullScreen({
         case 'ArrowUp':
           e.preventDefault()
           haptic.light()
-          if (focusIndex === -1) {
-            setFocusIndex(0)
-          } else if (columns > 1) {
+          playNavTick(0.3)
+          if (columns > 1) {
             setFocusIndex(prev => {
               const next = prev - columns
               return next >= 0 ? next : prev
@@ -4489,9 +4481,9 @@ export function SlotFullScreen({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
 
-  // Block all controls when in PROJECTS content phase (keyboard handled by PortfolioPlayer)
+  // Block all controls when video player is active (keyboard handled by PortfolioPlayer)
   useEffect(() => {
-    if (phase !== 'content' || section?.type !== 'projects') return
+    if (!selectedProject) return
 
     const handlePortfolioKeyDown = (e: KeyboardEvent) => {
       // Let PortfolioPlayer handle all keys (including ESC)
@@ -4503,7 +4495,7 @@ export function SlotFullScreen({
 
     window.addEventListener('keydown', handlePortfolioKeyDown, true) // Capture phase
     return () => window.removeEventListener('keydown', handlePortfolioKeyDown, true)
-  }, [phase, section])
+  }, [selectedProject])
 
   return (
     <div style={{
