@@ -258,6 +258,9 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
     cvs.width = 1024
     cvs.height = 400
     const tex = new THREE.CanvasTexture(cvs)
+    tex.minFilter = THREE.LinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.anisotropy = 4  // Sharper at oblique angles
     return { canvas: cvs, texture: tex }
   }, [])
 
@@ -599,6 +602,9 @@ function FloatingLetter({
     ctx.fillText(letter, canvas.width / 2, canvas.height / 2)
 
     const tex = new THREE.CanvasTexture(canvas)
+    tex.minFilter = THREE.LinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.anisotropy = 4
     tex.needsUpdate = true
     return tex
   }, [letter, color])
@@ -750,6 +756,9 @@ function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, n
     ctx.fillText(text, canvas.width / 2, canvas.height / 2)
 
     const tex = new THREE.CanvasTexture(canvas)
+    tex.minFilter = THREE.LinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.anisotropy = 4
     tex.needsUpdate = true
     return tex
   }, [color])

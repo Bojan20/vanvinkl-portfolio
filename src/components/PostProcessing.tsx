@@ -73,7 +73,7 @@ const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     ssaoRings: 3,
     ssaoRadius: 0.08,
     bloomIntensity: 0.8,
-    bloomLevels: 4,
+    bloomLevels: 3,
     chromaticOffset: 0.0015,
     noiseIntensity: 0.025,
     multisampling: 2,
