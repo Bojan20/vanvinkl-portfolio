@@ -2740,12 +2740,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
-  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider
+  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider, 5: red X
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
 
   // Focus items count
-  const FOCUS_ITEMS = 4
+  const FOCUS_ITEMS = 5
 
   // Staggered reveal
   React.useEffect(() => {
@@ -2855,20 +2855,20 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault()
-          // Navigate focus left (1 → 4 → 3 → 2 → 1)
+          // Navigate focus left (1 → 5 → 4 → 3 → 2 → 1)
           setFocusIndex(prev => {
             const next = prev - 1
-            return next < 1 ? 4 : next
+            return next < 1 ? 5 : next
           })
           playNavTick(0.3)
           break
 
         case 'ArrowRight':
           e.preventDefault()
-          // Navigate focus right (1 → 2 → 3 → 4 → 1)
+          // Navigate focus right (1 → 2 → 3 → 4 → 5 → 1)
           setFocusIndex(prev => {
             const next = prev + 1
-            return next > 4 ? 1 : next
+            return next > 5 ? 1 : next
           })
           playNavTick(0.3)
           break
@@ -2926,6 +2926,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             // SFX mute toggle
             setSfxMuted(!sfxMuted)
             playNavSelect(0.4)
+          } else if (focusIndex === 5) {
+            // Red X button - back to grid
+            playNavBack(0.4)
+            onBack()
           }
           break
 
@@ -2965,6 +2969,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
         onContextMenu={(e) => e.preventDefault()}
+        className="portfolio-video-player"
         style={{
           position: 'absolute',
           top: 0,
@@ -3152,6 +3157,35 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           />
         </div>
       </div>
+
+      {/* Red X Button Overlay - Top Right (focus 5) */}
+      <button
+        onClick={onBack}
+        style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          background: isFocused(5) ? 'rgba(255,68,68,1)' : 'rgba(255,68,68,0.9)',
+          border: isFocused(5) ? '3px solid #ffd700' : '2px solid #ff6666',
+          color: '#fff',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          zIndex: 1002,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: isFocused(5)
+            ? '0 0 30px rgba(255,215,0,0.8), 0 4px 20px rgba(255,68,68,0.6)'
+            : '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        ✕
+      </button>
     </div>
   )
 })
