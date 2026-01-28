@@ -1457,11 +1457,11 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
         alignItems: 'center',
         marginBottom: '60px'
       }}>
-        {/* VANVINKL - main title */}
+        {/* VANVINKL - main title (responsive) */}
         <div style={{
-          fontSize: '48px',
+          fontSize: 'clamp(2rem, 10vw, 4rem)',
           fontWeight: 900,
-          letterSpacing: '12px',
+          letterSpacing: 'clamp(4px, 2vw, 12px)',
           background: 'linear-gradient(90deg, #00ffff, #ff00aa, #00ffff)',
           backgroundSize: '200% 100%',
           WebkitBackgroundClip: 'text',
@@ -1487,11 +1487,11 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
           </div>
         </div>
 
-        {/* STUDIO - below main title */}
+        {/* STUDIO - below main title (responsive) */}
         <div style={{
-          fontSize: '28px',
+          fontSize: 'clamp(1.2rem, 6vw, 2rem)',
           fontWeight: 700,
-          letterSpacing: '16px',
+          letterSpacing: 'clamp(6px, 3vw, 16px)',
           marginTop: '8px',
           color: '#00ffff',
           textShadow: '0 0 30px rgba(0, 255, 255, 0.8), 0 0 60px rgba(136, 68, 255, 0.5)'
@@ -1587,9 +1587,9 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
           {isLoaded && (
             <span style={{
               color: '#00ffff',
-              fontSize: '20px',
+              fontSize: 'clamp(1rem, 4vw, 1.5rem)',
               fontWeight: 'bold',
-              letterSpacing: '6px',
+              letterSpacing: 'clamp(2px, 1vw, 6px)',
               textTransform: 'uppercase',
               textShadow: isHovered ? '0 0 20px #00ffff' : 'none',
               animation: 'splashReady 0.5s ease-out'

@@ -331,27 +331,32 @@ export function MobileControls({
   // Don't render on desktop
   if (!isMobile || !visible) return null
 
-  // Responsive sizing for landscape
+  // Responsive sizing for landscape + screen width
   const controlsHeight = isLandscape ? 100 : 200
-  const finalJoystickSize = isLandscape ? 90 : joystickSize
-  const finalActionButtonSize = isLandscape ? 60 : actionButtonSize
+  const maxJoystick = Math.min(joystickSize, window.innerWidth * 0.35)  // Max 35% width
+  const maxAction = Math.min(actionButtonSize, window.innerWidth * 0.23)  // Max 23% width
+  const finalJoystickSize = isLandscape ? Math.min(90, maxJoystick) : maxJoystick
+  const finalActionButtonSize = isLandscape ? Math.min(60, maxAction) : maxAction
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: `${controlsHeight}px`,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '0 30px 30px 30px',
-      pointerEvents: 'none',
-      zIndex: 500
-    }}>
+    <div
+      role="toolbar"
+      aria-label="Game controls"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: `${controlsHeight}px`,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0 max(30px, env(safe-area-inset-left, 0px)) max(30px, env(safe-area-inset-bottom, 0px)) max(30px, env(safe-area-inset-right, 0px))',
+        pointerEvents: 'none',
+        zIndex: 500
+      }}>
       {/* Left: Movement joystick */}
-      <div style={{ pointerEvents: 'auto' }}>
+      <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Movement joystick">
         <VirtualJoystick
           size={finalJoystickSize}
           onMove={onMove}
@@ -359,7 +364,7 @@ export function MobileControls({
       </div>
 
       {/* Right: Action button */}
-      <div style={{ pointerEvents: 'auto' }}>
+      <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Action button">
         <ActionButton
           size={finalActionButtonSize}
           onPress={onAction}
