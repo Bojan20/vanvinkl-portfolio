@@ -41,9 +41,9 @@ interface QualityState {
 
 // FPS thresholds for auto-adjustment
 const FPS_THRESHOLDS = {
-  downgrade: 48,   // Ako FPS < 48, downgrade quality
-  upgrade: 58,     // Ako FPS > 58 stabilno, upgrade quality
-  stable: 55       // Target FPS za stable performance
+  downgrade: 35,   // Ako FPS < 35, downgrade quality (relaxed - prefer visual quality)
+  upgrade: 50,     // Ako FPS > 50 stabilno, upgrade quality
+  stable: 45       // Target FPS za stable performance (relaxed)
 }
 
 // FPS history za averaging (ring buffer)
