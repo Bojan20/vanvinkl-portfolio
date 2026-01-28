@@ -2961,12 +2961,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '6px',
-      maxWidth: '100%',
+      gap: '4px',
       width: '100%',
-      height: '100vh',
+      height: '100%',
       margin: '0',
-      padding: '8px',
+      padding: '4px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
       overflow: 'hidden',
       boxSizing: 'border-box',
@@ -5372,7 +5371,7 @@ export function SlotFullScreen({
             width: '100%',
             height: '100%',
             overflow: selectedProject ? 'hidden' : 'auto', // No scroll in video player
-            padding: '60px 40px',
+            padding: selectedProject ? '0' : '60px 40px', // No padding in video mode
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             position: 'relative',
             touchAction: selectedProject ? 'none' : 'pan-y', // Block touch scroll in video
@@ -5458,55 +5457,64 @@ export function SlotFullScreen({
             zIndex: 50
           }} />
 
-          <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
-            {/* Header - compact and left-aligned for desktop */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '40px',
-              paddingBottom: '24px',
-              borderBottom: `1px solid ${primaryColor}30`,
-              animation: 'contentTitleDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
-            }}>
-              <div>
-                <h1 style={{
-                  margin: 0,
-                  fontSize: 'clamp(32px, 5vw, 56px)',
-                  fontWeight: 900,
-                  color: primaryColor,
-                  textShadow: `
-                    0 0 20px ${primaryColor}60,
-                    0 0 40px ${primaryColor}40
-                  `,
-                  letterSpacing: '4px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif'
-                }}>
-                  {section.title}
-                </h1>
-                <p style={{
-                  margin: '8px 0 0 0',
-                  color: '#666688',
-                  fontSize: '16px',
-                  fontStyle: 'italic'
-                }}>
-                  {section.tagline}
-                </p>
-              </div>
-              {/* Section icon */}
+          <div style={{
+            maxWidth: selectedProject ? 'none' : '1400px',
+            margin: selectedProject ? '0' : '0 auto',
+            position: 'relative',
+            zIndex: 10,
+            height: selectedProject ? '100%' : 'auto',
+            width: selectedProject ? '100%' : 'auto'
+          }}>
+            {/* Header - HIDDEN when video player active */}
+            {!selectedProject && (
               <div style={{
-                fontSize: '48px',
-                filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
-                opacity: 0.8
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '40px',
+                paddingBottom: '24px',
+                borderBottom: `1px solid ${primaryColor}30`,
+                animation: 'contentTitleDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
               }}>
-                {section.type === 'skills' ? '⚡' :
-                 section.type === 'services' ? '🎯' :
-                 section.type === 'about' ? '👤' :
-                 section.type === 'projects' ? '🚀' :
-                 section.type === 'experience' ? '📈' :
-                 section.type === 'contact' ? '💬' : '✨'}
+                <div>
+                  <h1 style={{
+                    margin: 0,
+                    fontSize: 'clamp(32px, 5vw, 56px)',
+                    fontWeight: 900,
+                    color: primaryColor,
+                    textShadow: `
+                      0 0 20px ${primaryColor}60,
+                      0 0 40px ${primaryColor}40
+                    `,
+                    letterSpacing: '4px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif'
+                  }}>
+                    {section.title}
+                  </h1>
+                  <p style={{
+                    margin: '8px 0 0 0',
+                    color: '#666688',
+                    fontSize: '16px',
+                    fontStyle: 'italic'
+                  }}>
+                    {section.tagline}
+                  </p>
+                </div>
+                {/* Section icon */}
+                <div style={{
+                  fontSize: '48px',
+                  filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
+                  opacity: 0.8
+                }}>
+                  {section.type === 'skills' ? '⚡' :
+                   section.type === 'services' ? '🎯' :
+                   section.type === 'about' ? '👤' :
+                   section.type === 'projects' ? '🚀' :
+                   section.type === 'experience' ? '📈' :
+                   section.type === 'contact' ? '💬' : '✨'}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Content - full width utilization */}
             <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both' }}>
