@@ -1122,7 +1122,7 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               fontSize: '9px',
               letterSpacing: '1px'
             }}>
-              {isMobile ? 'TAP TO CLOSE' : 'ESC TO CLOSE'}
+              {isMobile ? 'TAP ANYWHERE TO CLOSE' : 'ESC TO CLOSE'}
             </span>
           </div>
 

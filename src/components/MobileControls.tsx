@@ -246,7 +246,7 @@ interface ActionButtonProps {
   label?: string
 }
 
-function ActionButton({ size, onPress, label = 'ACTION' }: ActionButtonProps) {
+function ActionButton({ size, onPress, label = 'SPIN' }: ActionButtonProps) {
   const [pressed, setPressed] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 

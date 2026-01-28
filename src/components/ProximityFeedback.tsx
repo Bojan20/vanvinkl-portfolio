@@ -269,7 +269,7 @@ export function ProximityIndicator({
     const machine = machinePositions.find(m => m.id === nearMachine)
     if (machine) {
       hintPosition = [machine.x, 3.5, machine.z + 1.5]
-      hintText = 'PRESS SPACE TO SPIN'
+      const isMobile = window.innerWidth < 768; hintText = isMobile ? 'TAP TO SPIN' : 'PRESS SPACE TO SPIN'
       hintColor = COLORS.magenta
     }
   }
