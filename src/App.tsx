@@ -1313,7 +1313,7 @@ function KeyboardControlsHint() {
         letterSpacing: '1px'
       }}>SPACE</div>
 
-      <span style={{ color: '#888899', fontSize: '11px' }}>ACTION</span>
+      <span style={{ color: '#888899', fontSize: '11px' }}>SLOT SPIN</span>
     </div>
   )
 }
