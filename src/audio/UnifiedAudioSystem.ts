@@ -467,7 +467,8 @@ class UnifiedAudioSystem {
     }
   }
 
-  private getOutput(): AudioNode | null {
+  private getOutput(): AudioNode {
+    if (!this.uiGain) throw new Error('[UnifiedAudio] uiGain not initialized')
     return this.uiGain
   }
 
@@ -1098,8 +1099,8 @@ export function uaStop(id: string, fadeTime = 0.3): void {
 /**
  * Set volume
  */
-export function uaVolume(bus: 'master' | 'music' | 'sfx' | 'ui' | 'spatial', volume: number): void {
-  unifiedAudio.setVolume(bus, volume)
+export function uaVolume(bus: 'master' | 'music' | 'sfx' | 'ui' | 'spatial', volume: number, fadeTime = 0.1): void {
+  unifiedAudio.setVolume(bus, volume, fadeTime)
 }
 
 export function uaGetVolume(bus: 'master' | 'music' | 'sfx' | 'ui' | 'spatial'): number {

@@ -33,7 +33,7 @@ import {
 import { achievementStore } from '../store/achievements'
 
 // Audio system
-import { uaPlaySynth } from '../audio'
+import { uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
 
 // Feature module imports - ALL extracted components and utilities
 import {
