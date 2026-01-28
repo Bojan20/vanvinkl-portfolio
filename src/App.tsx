@@ -1324,6 +1324,7 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
   const [isClicking, setIsClicking] = useState(false)
   const [loadProgress, setLoadProgress] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
+  const isMobile = isMobileDevice() // Detect mobile for splash text
 
   // Preload critical assets before allowing entry
   useEffect(() => {
