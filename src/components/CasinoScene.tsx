@@ -260,6 +260,14 @@ function LogoHint({ active, position }: { active: boolean, position: [number, nu
     return { canvas: cvs, texture: tex }
   }, [])
 
+  // Cleanup texture on unmount (prevent memory leak)
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+      console.log('[LogoHint] CanvasTexture disposed')
+    }
+  }, [texture])
+
   // Update canvas content when logo loads
   useEffect(() => {
     const ctx = canvas.getContext('2d')
@@ -594,6 +602,13 @@ function FloatingLetter({
     return tex
   }, [letter, color])
 
+  // Cleanup texture on unmount (prevent memory leak)
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
+
   // Holographic shader material
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -733,6 +748,13 @@ function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, n
     tex.needsUpdate = true
     return tex
   }, [color])
+
+  // Cleanup texture on unmount (prevent memory leak)
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
 
   // Holographic shader
   const material = useMemo(() => new THREE.ShaderMaterial({

@@ -16,6 +16,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { uaPlaySynth } from '../audio'
+import { safeGetLocalStorage, safeSetLocalStorage } from '../utils/security'
 
 const COLORS = {
   cyan: '#00ffff',
@@ -320,7 +321,7 @@ export function IntroOverlay({
         e.preventDefault()
         console.log('[Intro] User skipped intro - setting permanent skip flag')
         // Set permanent skip flag so intro never shows again
-        localStorage.setItem('vanvinkl-intro-skipped-v2', 'true')
+        safeSetLocalStorage('vanvinkl-intro-skipped-v2', 'true')
         setPhase('done')
         onComplete()
       }

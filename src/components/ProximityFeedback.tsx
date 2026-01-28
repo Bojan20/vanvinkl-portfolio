@@ -6,7 +6,7 @@
  * - Animated, cyberpunk style
  */
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -57,6 +57,13 @@ export function FloatingHint({
     tex.needsUpdate = true
     return tex
   }, [text, color])
+
+  // Cleanup texture on unmount (prevent memory leak)
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
 
   useFrame((_, delta) => {
     if (!groupRef.current || !active) return

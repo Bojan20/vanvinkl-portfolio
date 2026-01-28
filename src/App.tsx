@@ -41,12 +41,13 @@ import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 import { useQualityStore, initQualitySystem } from './store/quality'
 import { FPSMonitor } from './utils/performance'
+import { safeGetLocalStorage, safeSetLocalStorage } from './utils/security'
 
 
 // Sound Toggle Button - persistent mute control
 function SoundToggle() {
   const [isMuted, setIsMuted] = useState(() => {
-    const saved = localStorage.getItem('vanvinkl-muted')
+    const saved = safeGetLocalStorage('vanvinkl-muted')
     return saved === 'true'
   })
   const [isHovered, setIsHovered] = useState(false)
@@ -60,7 +61,7 @@ function SoundToggle() {
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const newVal = !prev
-      localStorage.setItem('vanvinkl-muted', String(newVal))
+      safeSetLocalStorage('vanvinkl-muted', String(newVal))
       audioSystem.setMuted(newVal)
       uaMute(newVal) // Mute new DSP system too
       return newVal
@@ -74,7 +75,7 @@ function SoundToggle() {
         // Toggle mute and sync UI
         setIsMuted(prev => {
           const newVal = !prev
-          localStorage.setItem('vanvinkl-muted', String(newVal))
+          safeSetLocalStorage('vanvinkl-muted', String(newVal))
           audioSystem.setMuted(newVal)
           uaMute(newVal)
           return newVal
@@ -153,7 +154,7 @@ function SectionProgressRing() {
   useEffect(() => {
     const loadVisited = () => {
       try {
-        const saved = localStorage.getItem('vanvinkl-progress')
+        const saved = safeGetLocalStorage('vanvinkl-progress')
         if (saved) {
           const progress = JSON.parse(saved)
           if (progress.visited && Array.isArray(progress.visited)) {
@@ -1689,12 +1690,12 @@ export function App() {
 
   // Onboarding - show only for first-time visitors
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem('vanvinkl-onboarded') !== 'true'
+    return safeGetLocalStorage('vanvinkl-onboarded') !== 'true'
   })
 
   const handleOnboardingDismiss = useCallback(() => {
     setShowOnboarding(false)
-    localStorage.setItem('vanvinkl-onboarded', 'true')
+    safeSetLocalStorage('vanvinkl-onboarded', 'true')
   }, [])
 
   // Track session on mount
@@ -1739,7 +1740,7 @@ export function App() {
     uaPlay('lounge')
 
     // Check if user has permanently skipped intro (v2 key - forces intro reset)
-    const introSkipped = localStorage.getItem('vanvinkl-intro-skipped-v2') === 'true'
+    const introSkipped = safeGetLocalStorage('vanvinkl-intro-skipped-v2') === 'true'
 
     // Hide splash
     setShowSplash(false)

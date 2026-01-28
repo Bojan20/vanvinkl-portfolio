@@ -29,6 +29,7 @@
 import React, { useState, useEffect, useRef, memo } from 'react'
 import { useAudioStore } from '../../../store/audio'
 import { uaPlaySynth } from '../../../audio'
+import { isValidMediaPath } from '../../../utils/security'
 
 interface PortfolioPlayerProps {
   project: {
@@ -48,6 +49,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   project,
   onBack
 }: PortfolioPlayerProps) {
+  // SECURITY: Validate media paths before use
+  const safeVideoPath = isValidMediaPath(safeVideoPath) ? safeVideoPath : undefined
+  const safeMusicPath = isValidMediaPath(safeMusicPath) ? safeMusicPath : undefined
+  const safeSfxPath = isValidMediaPath(safeSfxPath) ? safeSfxPath : undefined
+
   const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
   const videoRef = useRef<HTMLVideoElement>(null)
   const musicRef = useRef<HTMLAudioElement>(null)
@@ -367,19 +373,19 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           }
         }}
       >
-        <source src={`${project.videoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
+        <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
         Your browser does not support video playback.
       </video>
 
       {/* Hidden audio tracks */}
       <audio ref={musicRef} style={{ display: 'none' }}>
-        <source src={`${project.musicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.opus`} type="audio/opus" />
-        <source src={`${project.musicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.m4a`} type="audio/mp4" />
+        <source src={`${safeMusicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.opus`} type="audio/opus" />
+        <source src={`${safeMusicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.m4a`} type="audio/mp4" />
       </audio>
 
       <audio ref={sfxRef} style={{ display: 'none' }}>
-        <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.opus`} type="audio/opus" />
-        <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
+        <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.opus`} type="audio/opus" />
+        <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
       </audio>
 
       {/* Controls Overlay - Bottom */}

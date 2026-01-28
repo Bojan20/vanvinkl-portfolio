@@ -8,7 +8,7 @@
  * - Conditional rendering only when needed
  */
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -176,6 +176,13 @@ function WinText({ x, z, active, isJackpot }: { x: number; z: number; active: bo
     const tex = new THREE.CanvasTexture(canvas)
     return tex
   }, [isJackpot])
+
+  // Cleanup texture on unmount (prevent memory leak)
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+    }
+  }, [texture])
 
   useFrame((_, delta) => {
     if (!active || !meshRef.current) return
