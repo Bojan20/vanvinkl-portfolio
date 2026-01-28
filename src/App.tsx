@@ -8,13 +8,19 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 import { CasinoScene } from './components/CasinoScene'
-import { IntroCamera, IntroOverlay } from './components/IntroSequence'
-import { MobileControls, isMobileDevice } from './components/MobileControls'
-import { AudioVolumeSync } from './components/AudioVolumeSync'
 // MagicCursor removed - particle trail now follows avatar instead
 
-// Lazy load SlotFullScreen for better initial bundle size
+// Inline mobile detection (avoid importing MobileControls module)
+function isMobileDevice(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+}
+
+// Lazy load components (reduce initial bundle - load on demand)
 const SlotFullScreen = lazy(() => import('./components/SlotFullScreen').then(m => ({ default: m.SlotFullScreen })))
+const IntroCamera = lazy(() => import('./components/IntroSequence').then(m => ({ default: m.IntroCamera })))
+const IntroOverlay = lazy(() => import('./components/IntroSequence').then(m => ({ default: m.IntroOverlay })))
+const MobileControls = lazy(() => import('./components/MobileControls').then(m => ({ default: m.MobileControls })))
+const AudioVolumeSync = lazy(() => import('./components/AudioVolumeSync').then(m => ({ default: m.AudioVolumeSync })))
 import {
   WebGLErrorBoundary,
   ContextLostOverlay,
