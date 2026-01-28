@@ -294,14 +294,16 @@ export function IntroOverlay({
   onComplete: () => void
 }) {
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'hold' | 'fade' | 'done'>('glitch')
-  const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
+  const [glitchText, setGlitchText] = useState('WELCOME TO\nVANVINKL CASINO')
   const [revealedChars, setRevealedChars] = useState(0) // For gradual reveal
   const [opacity, setOpacity] = useState(1)
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
   const [showBurst, setShowBurst] = useState(false) // WOW burst effect when text complete
   const [showSkipHint, setShowSkipHint] = useState(false) // Show skip hint after 2s
 
-  const originalText = 'WELCOME TO VANVINKL CASINO'
+  // Mobile-aware text: Split na 2 reda za small screens
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const originalText = isMobile ? 'WELCOME TO\nVANVINKL CASINO' : 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
 
   // Show skip hint after 2 seconds
@@ -514,6 +516,8 @@ export function IntroOverlay({
           letterSpacing: 'clamp(2px, 1vw, 10px)',
           textAlign: 'center',
           maxWidth: '90vw',
+          whiteSpace: 'pre-line',
+          lineHeight: 1.2,
           animation: phase === 'glitch' ? 'glitchShake 0.08s infinite' : 'none',
           filter: phase === 'glitch' ? 'none' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.6))'
         }}>
