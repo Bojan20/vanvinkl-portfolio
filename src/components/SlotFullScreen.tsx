@@ -2753,46 +2753,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Pause lounge music when portfolio opens
-  React.useEffect(() => {
-    console.log('[PortfolioPlayer] Stopping lounge music with 1300ms fadeout')
-
-    // Save original volume
-    const originalVolume = dspGetVolume('music')
-    console.log('[PortfolioPlayer] Original music volume:', originalVolume)
-
-    // Smooth fadeout to 0 over 1300ms
-    let currentVol = originalVolume
-    const fadeSteps = 26 // 26 steps over 1300ms = 50ms per step
-    const volStep = originalVolume / fadeSteps
-    let stepCount = 0
-
-    const fadeInterval = setInterval(() => {
-      currentVol -= volStep
-      stepCount++
-      if (currentVol <= 0 || stepCount >= fadeSteps) {
-        currentVol = 0
-        clearInterval(fadeInterval)
-      }
-      dspVolume('music', Math.max(0, currentVol))
-    }, 50)
-
-    return () => {
-      clearInterval(fadeInterval)
-      console.log('[PortfolioPlayer] Resuming lounge music')
-      // Fade back in over 1000ms
-      let vol = 0
-      const fadeInSteps = 20
-      const fadeInInterval = setInterval(() => {
-        vol += originalVolume / fadeInSteps
-        if (vol >= originalVolume) {
-          vol = originalVolume
-          clearInterval(fadeInInterval)
-        }
-        dspVolume('music', Math.min(originalVolume, vol))
-      }, 50)
-    }
-  }, [])
+  // Lounge music is now handled by parent (selectedProject state change)
 
   // Reset video and audio to beginning when component mounts
   React.useEffect(() => {
@@ -2803,6 +2764,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     if (video) {
       video.currentTime = 0
       video.pause()
+      video.loop = false // Video stops at last frame, doesn't loop
     }
     if (music) {
       music.currentTime = 0
@@ -2813,7 +2775,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.pause()
     }
 
-    console.log('[PortfolioPlayer] Video and audio reset to start')
+    console.log('[PortfolioPlayer] Video and audio reset to start, video.loop = false')
   }, [])
 
   // Synchronize audio with video (audio continues after video ends)
@@ -2988,8 +2950,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Use capture phase to intercept before parent handlers
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, setMusicVolume, setSfxVolume, onBack])
 
   const isFocused = (index: number) => focusIndex === index
@@ -3053,6 +3016,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             objectFit: 'contain',
             cursor: 'pointer'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.cursor = 'pointer'}
         >
           <source src={`${project.videoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
           Your browser does not support video playback.
@@ -4180,6 +4144,53 @@ export function SlotFullScreen({
       setFocusIndex(0) // Start with first item focused
     }
   }, [phase])
+
+  // Control lounge music based on selectedProject state
+  useEffect(() => {
+    if (selectedProject) {
+      // User selected a project (video player active)
+      // Pause lounge music with 1300ms fadeout
+      console.log('[SlotFullScreen] Project selected, fading out lounge music (1300ms)')
+      const originalVolume = dspGetVolume('music')
+
+      let currentVol = originalVolume
+      const fadeSteps = 26
+      const volStep = originalVolume / fadeSteps
+
+      const fadeInterval = setInterval(() => {
+        currentVol -= volStep
+        if (currentVol <= 0) {
+          currentVol = 0
+          clearInterval(fadeInterval)
+        }
+        dspVolume('music', Math.max(0, currentVol))
+      }, 50)
+
+      return () => {
+        clearInterval(fadeInterval)
+      }
+    } else if (phase === 'content' && section?.type === 'projects') {
+      // User returned to grid (selectedProject null)
+      // Resume lounge music with 1000ms fadein
+      console.log('[SlotFullScreen] Back to grid, fading in lounge music (1000ms)')
+      const originalVolume = dspGetVolume('music') || 1.0
+
+      let vol = 0
+      const fadeInSteps = 20
+      const fadeInInterval = setInterval(() => {
+        vol += originalVolume / fadeInSteps
+        if (vol >= originalVolume) {
+          vol = originalVolume
+          clearInterval(fadeInInterval)
+        }
+        dspVolume('music', Math.min(originalVolume, vol))
+      }, 50)
+
+      return () => {
+        clearInterval(fadeInInterval)
+      }
+    }
+  }, [selectedProject, phase, section])
 
   useEffect(() => {
     markVisited(machineId)
@@ -5370,11 +5381,12 @@ export function SlotFullScreen({
           style={{
             width: '100%',
             height: '100%',
-            overflow: 'auto',
+            overflow: selectedProject ? 'hidden' : 'auto', // No scroll in video player
             padding: '60px 40px',
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             position: 'relative',
-            touchAction: 'pan-y'
+            touchAction: selectedProject ? 'none' : 'pan-y', // Block touch scroll in video
+            cursor: 'pointer' // Force pointer visibility
           }}
         >
 
