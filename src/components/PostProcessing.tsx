@@ -139,14 +139,18 @@ export function PostProcessing({
   enableChromatic = true,
   enableVignette = true,
   enableNoise = false,  // Disabled by default
-  enableGodRays = false, // Disabled by default - needs light source
-  enableDOF = false,     // Disabled by default - subtle effect
+  enableGodRays = false, // Auto-enabled based on quality
+  enableDOF = false,     // Auto-enabled based on quality
   godRaysLightRef,
   dofEnabled = false
 }: PostProcessingProps) {
   const settings = QUALITY_PRESETS[quality]
 
   if (!enabled) return null
+
+  // Auto-enable heavy effects based on quality tier
+  const shouldEnableGodRays = enableGodRays || (quality === 'high' || quality === 'ultra')
+  const shouldEnableDOF = enableDOF || dofEnabled || (quality === 'ultra')
 
   // Build effects array to avoid conditional rendering issues
   const effects: React.ReactNode[] = []
@@ -215,8 +219,24 @@ export function PostProcessing({
     )
   }
 
-  // Depth of Field - GPU-only, zero JS overhead
-  if (enableDOF || dofEnabled) {
+  // God Rays - Heavy, only on high/ultra quality
+  if (shouldEnableGodRays && godRaysLightRef?.current) {
+    effects.push(
+      <GodRays
+        key="godrays"
+        sun={godRaysLightRef.current}
+        samples={settings.godRaysSamples}
+        density={settings.godRaysDensity}
+        decay={0.95}
+        weight={0.6}
+        exposure={0.4}
+        clampMax={1}
+      />
+    )
+  }
+
+  // Depth of Field - Ultra heavy, only on ultra quality
+  if (shouldEnableDOF) {
     effects.push(
       <DepthOfField
         key="dof"
