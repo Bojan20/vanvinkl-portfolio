@@ -362,11 +362,8 @@ function SpectrumVisualizer() {
       if (elapsed < frameInterval) return
       lastDrawRef.current = timestamp - (elapsed % frameInterval)
 
-      // Try DSP first, fallback to old audio system
-      let data = dspGetFrequencyData()
-      if (!data) {
-        data = getFrequencyData()
-      }
+      // Get frequency data from unified audio system
+      const data = uaGetFrequencyData()
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.shadowBlur = 0 // Reset shadow for performance

@@ -1284,7 +1284,7 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       //   })
       // })
     }
-  }, [introActive, audio])
+  }, [introActive]) // Removed audio dependency
 
   // Handle SPACE key for spinning OR sitting
   useEffect(() => {
