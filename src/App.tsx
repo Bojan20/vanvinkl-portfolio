@@ -46,6 +46,7 @@ import { safeGetLocalStorage, safeSetLocalStorage } from './utils/security'
 
 // Sound Toggle Button - persistent mute control
 function SoundToggle() {
+  const isMobile = isMobileDevice()
   const [isMuted, setIsMuted] = useState(() => {
     const saved = safeGetLocalStorage('vanvinkl-muted')
     return saved === 'true'
@@ -130,18 +131,20 @@ function SoundToggle() {
           <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
         </svg>
       )}
-      {/* M key hint - left of speaker, red color for visibility */}
-      <span style={{
-        position: 'absolute',
-        left: '-32px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        fontSize: '18px',
-        fontWeight: 700,
-        color: '#ff4444',
-        textShadow: '0 0 10px rgba(255, 68, 68, 0.7)',
-        letterSpacing: '1px'
-      }}>M</span>
+      {/* M key hint - desktop only (no keyboard on mobile) */}
+      {!isMobile && (
+        <span style={{
+          position: 'absolute',
+          left: '-32px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: '18px',
+          fontWeight: 700,
+          color: '#ff4444',
+          textShadow: '0 0 10px rgba(255, 68, 68, 0.7)',
+          letterSpacing: '1px'
+        }}>M</span>
+      )}
     </button>
   )
 }
@@ -810,13 +813,21 @@ function LoadingScreen() {
 function OnboardingTooltip({ onDismiss }: { onDismiss: () => void }) {
   const [step, setStep] = useState(0)
   const [visible, setVisible] = useState(true)
+  const isMobile = isMobileDevice()
 
-  const tips = [
-    { icon: '🎮', title: 'Move Around', text: 'Arrow keys to walk' },
-    { icon: '🎰', title: 'Spin Slots', text: 'Press SPACE near a machine' },
-    { icon: '🛋️', title: 'Sit & Relax', text: 'Press SPACE near a couch' },
-    { icon: '❓', title: 'Need Help?', text: 'Press ? anytime for controls' }
-  ]
+  const tips = isMobile
+    ? [
+        { icon: '🎮', title: 'Move Around', text: 'Use the left joystick to walk' },
+        { icon: '🎰', title: 'Spin Slots', text: 'Tap the action button near a machine' },
+        { icon: '📷', title: 'Look Around', text: 'Use two fingers to rotate camera' },
+        { icon: '🔊', title: 'Sound', text: 'Tap bottom-left button to mute' }
+      ]
+    : [
+        { icon: '🎮', title: 'Move Around', text: 'Arrow keys to walk' },
+        { icon: '🎰', title: 'Spin Slots', text: 'Press SPACE near a machine' },
+        { icon: '🛋️', title: 'Sit & Relax', text: 'Press SPACE near a couch' },
+        { icon: '❓', title: 'Need Help?', text: 'Press ? anytime for controls' }
+      ]
 
   const handleNext = useCallback(() => {
     if (step < tips.length - 1) {
