@@ -931,7 +931,7 @@ export function SlotFullScreen({
                 onClick={() => setPhase('content')}
                 style={{
                   position: 'absolute',
-                  top: '50%',
+                  top: '60%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                   display: 'flex',
