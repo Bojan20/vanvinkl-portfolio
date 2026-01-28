@@ -2853,8 +2853,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp':
+        case 'ArrowLeft':
           e.preventDefault()
+          // Navigate focus left (1 → 4 → 3 → 2 → 1)
           setFocusIndex(prev => {
             const next = prev - 1
             return next < 1 ? 4 : next
@@ -2862,8 +2863,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           playNavTick(0.3)
           break
 
-        case 'ArrowDown':
+        case 'ArrowRight':
           e.preventDefault()
+          // Navigate focus right (1 → 2 → 3 → 4 → 1)
           setFocusIndex(prev => {
             const next = prev + 1
             return next > 4 ? 1 : next
@@ -2871,21 +2873,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           playNavTick(0.3)
           break
 
-        case 'ArrowLeft':
+        case 'ArrowUp':
           e.preventDefault()
-          if (focusIndex === 2) {
-            // Music slider
-            setMusicVolume(Math.max(0, musicVolume - 0.05))
-            playNavTick(0.2)
-          } else if (focusIndex === 4) {
-            // SFX slider
-            setSfxVolume(Math.max(0, sfxVolume - 0.05))
-            playNavTick(0.2)
-          }
-          break
-
-        case 'ArrowRight':
-          e.preventDefault()
+          // Increase volume on slider focus
           if (focusIndex === 2) {
             // Music slider
             setMusicVolume(Math.min(1, musicVolume + 0.05))
@@ -2893,6 +2883,20 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           } else if (focusIndex === 4) {
             // SFX slider
             setSfxVolume(Math.min(1, sfxVolume + 0.05))
+            playNavTick(0.2)
+          }
+          break
+
+        case 'ArrowDown':
+          e.preventDefault()
+          // Decrease volume on slider focus
+          if (focusIndex === 2) {
+            // Music slider
+            setMusicVolume(Math.max(0, musicVolume - 0.05))
+            playNavTick(0.2)
+          } else if (focusIndex === 4) {
+            // SFX slider
+            setSfxVolume(Math.max(0, sfxVolume - 0.05))
             playNavTick(0.2)
           }
           break
