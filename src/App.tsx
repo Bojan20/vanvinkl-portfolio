@@ -1937,7 +1937,7 @@ export function App() {
 
       <Canvas
         shadows={false}
-        dpr={isMobile ? [1, 1] : [1, 1.5]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
         gl={{
           antialias: !isMobile,
           alpha: false,

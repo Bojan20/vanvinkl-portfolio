@@ -13,6 +13,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, MeshReflectorMaterial, MeshTransmissionMaterial } from '@react-three/drei'
+import { EffectComposer, FXAA, Bloom, ChromaticAberration, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 import { CyberpunkSlotMachine } from './CyberpunkSlotMachine'
@@ -1702,17 +1703,29 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
 
-      {/* ===== POST-PROCESSING - Disabled on mobile for instant 60fps ===== */}
-      {!(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) && (
-        <PostProcessing
-          quality={getEffectiveQuality()}
-          enableSSAO={false}
-          enableBloom={true}
-          enableChromatic={true}
-          enableVignette={true}
-          enableNoise={false}
-        />
-      )}
+      {/* ===== POST-PROCESSING - Lightweight mobile vs full desktop ===== */}
+      {(() => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        return isMobile ? (
+          // Lightweight mobile PP (5-8ms cost)
+          <EffectComposer multisampling={0}>
+            <FXAA />
+            <Bloom intensity={0.6} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={3} />
+            <ChromaticAberration offset={[0.001, 0.001]} />
+            <Vignette offset={0.3} darkness={0.5} />
+          </EffectComposer>
+        ) : (
+          // Desktop: Full quality PP
+          <PostProcessing
+            quality={getEffectiveQuality()}
+            enableSSAO={false}
+            enableBloom={true}
+            enableChromatic={true}
+            enableVignette={true}
+            enableNoise={false}
+          />
+        )
+      })()}
 
       {/* WebGL context loss handler */}
       <ContextHandler />
