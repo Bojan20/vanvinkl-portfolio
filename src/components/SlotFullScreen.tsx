@@ -1115,45 +1115,7 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* X Button - Dynamic behavior */}
-      {phase === 'content' && (
-        <button
-          onClick={() => {
-            if (selectedProject) {
-              console.log('[SlotFullScreen] X clicked in video mode - returning to grid')
-              setSelectedProject(null)
-            } else {
-              console.log('[SlotFullScreen] X clicked in grid mode - closing slot')
-              onClose()
-            }
-          }}
-          aria-label={selectedProject ? 'Exit video and return to projects' : 'Close slot machine and return to casino'}
-          role="button"
-          tabIndex={0}
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            width: '50px',
-            height: '50px',
-            borderRadius: '50%',
-            background: 'rgba(255,68,68,0.9)',
-            border: '2px solid #ff6666',
-            color: '#fff',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            zIndex: 1001,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-            animation: 'contentHintFade 0.5s ease-out 0.5s both',
-            cursor: 'pointer'
-          }}
-        >
-          ✕
-        </button>
-      )}
+      {/* X Button removed - ESC key handles all exit scenarios */}
 
       {/* Detail Modal (only for non-projects sections) */}
       {detailItem && section?.type !== 'projects' && (
