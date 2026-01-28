@@ -1996,8 +1996,8 @@ export function App() {
         onClose={() => setUnlockedAchievement(null)}
       />
 
-      {/* Onboarding tooltip - only for first-time visitors, after intro */}
-      {showOnboarding && !showIntro && !spinningSlot && (
+      {/* Onboarding tooltip - desktop only (mobile has intuitive touch controls) */}
+      {showOnboarding && !showIntro && !spinningSlot && !isMobile && (
         <OnboardingTooltip onDismiss={handleOnboardingDismiss} />
       )}
 
