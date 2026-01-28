@@ -94,8 +94,8 @@ function SoundToggle() {
       tabIndex={0}
       style={{
         position: 'fixed',
-        bottom: '20px',
-        left: '20px',
+        bottom: '30px',
+        left: '30px',
         width: '48px',
         height: '48px',
         borderRadius: '50%',
