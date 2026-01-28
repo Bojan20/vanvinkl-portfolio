@@ -197,8 +197,19 @@ export const useQualityStore = create<QualityState>()(
  * Call this once on app mount
  */
 export function initQualitySystem(): void {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   const store = useQualityStore.getState()
+
   store.detectDeviceTier()
+
+  // MOBILE OPTIMIZATION: Pre-set LOW quality to avoid initial frame drops
+  if (isMobile) {
+    store.setPreset('low')
+    console.log('[Quality] Mobile detected - forced LOW quality for instant 60fps')
+  } else if (store.preset === 'auto') {
+    // Desktop remains AUTO (adapts based on FPS)
+    console.log('[Quality] Desktop detected - using AUTO quality')
+  }
 }
 
 /**

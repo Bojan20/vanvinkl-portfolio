@@ -1845,11 +1845,11 @@ export function App() {
 
       <Canvas
         shadows={false}
-        dpr={[1, 1.5]}
+        dpr={isMobile ? [1, 1] : [1, 1.5]}
         gl={{
-          antialias: true,
+          antialias: !isMobile,
           alpha: false,
-          powerPreference: 'high-performance',
+          powerPreference: isMobile ? 'low-power' : 'high-performance',
           stencil: false,
           depth: true,
           logarithmicDepthBuffer: false,

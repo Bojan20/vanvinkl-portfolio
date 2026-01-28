@@ -306,13 +306,35 @@ export function MobileControls({
   actionButtonSize = 90
 }: MobileControlsProps) {
   const [isMobile, setIsMobile] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(
+    window.innerWidth / window.innerHeight > 1.2
+  )
 
   useEffect(() => {
     setIsMobile(isMobileDevice())
+
+    // Track orientation changes
+    const handleResize = () => {
+      const landscape = window.innerWidth / window.innerHeight > 1.2
+      setIsLandscape(landscape)
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
   }, [])
 
   // Don't render on desktop
   if (!isMobile || !visible) return null
+
+  // Responsive sizing for landscape
+  const controlsHeight = isLandscape ? 100 : 200
+  const finalJoystickSize = isLandscape ? 90 : joystickSize
+  const finalActionButtonSize = isLandscape ? 60 : actionButtonSize
 
   return (
     <div style={{
@@ -320,7 +342,7 @@ export function MobileControls({
       bottom: 0,
       left: 0,
       right: 0,
-      height: '200px',
+      height: `${controlsHeight}px`,
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -331,7 +353,7 @@ export function MobileControls({
       {/* Left: Movement joystick */}
       <div style={{ pointerEvents: 'auto' }}>
         <VirtualJoystick
-          size={joystickSize}
+          size={finalJoystickSize}
           onMove={onMove}
         />
       </div>
@@ -339,7 +361,7 @@ export function MobileControls({
       {/* Right: Action button */}
       <div style={{ pointerEvents: 'auto' }}>
         <ActionButton
-          size={actionButtonSize}
+          size={finalActionButtonSize}
           onPress={onAction}
         />
       </div>
