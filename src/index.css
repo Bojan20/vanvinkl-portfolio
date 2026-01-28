@@ -1,0 +1,11 @@
+/* Mobile slider thumb sizing */
+@media (max-width: 600px) {
+  input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
