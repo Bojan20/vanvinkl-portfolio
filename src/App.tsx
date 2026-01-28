@@ -1734,20 +1734,13 @@ export function App() {
     // Always try to play music (mute state is handled by masterGain)
     uaPlay('lounge')
 
-    // Check if user has permanently skipped intro (v2 key - forces intro reset)
-    const introSkipped = safeGetLocalStorage('vanvinkl-intro-skipped-v2') === 'true'
-
     // Hide splash
     setShowSplash(false)
 
-    if (introSkipped) {
-      // User has already skipped intro before → go directly to lounge
-      console.log('[Intro] Permanently skipped - going directly to lounge')
-      setShowIntro(false)
-    } else {
-      // First time or hasn't skipped → show intro
-      setShowIntro(true)
-    }
+    // Always show intro on fresh load (new user, new session)
+    // Intro can be skipped with ESC/ENTER but doesn't persist
+    setShowIntro(true)
+    console.log('[Intro] Starting intro animation')
   }, [])
 
   // Subscribe to achievement unlocks
