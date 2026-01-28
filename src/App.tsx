@@ -1592,7 +1592,9 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
               letterSpacing: 'clamp(2px, 1vw, 6px)',
               textTransform: 'uppercase',
               textShadow: isHovered ? '0 0 20px #00ffff' : 'none',
-              animation: 'splashReady 0.5s ease-out'
+              animation: 'splashReady 0.5s ease-out',
+              textAlign: 'center',
+              display: 'block'
             }}>
               {isMobile ? 'TAP TO ENTER' : 'PRESS ANY KEY TO ENTER'}
             </span>
