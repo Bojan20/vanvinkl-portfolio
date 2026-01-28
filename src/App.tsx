@@ -1582,7 +1582,7 @@ function ClickToEnterSplash({ onEnter }: { onEnter: () => void }) {
               textShadow: isHovered ? '0 0 20px #00ffff' : 'none',
               animation: 'splashReady 0.5s ease-out'
             }}>
-              PRESS ANY KEY TO ENTER
+              {isMobile ? 'TAP TO ENTER' : 'PRESS ANY KEY TO ENTER'}
             </span>
           )}
         </div>
