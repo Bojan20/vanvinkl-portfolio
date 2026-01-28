@@ -302,8 +302,8 @@ export const SpinButton = memo(function SpinButton({
         position: 'absolute',
         bottom: '15%',
         right: '5%',
-        width: 'clamp(60px, 10vw, 100px)',
-        height: 'clamp(60px, 10vw, 100px)',
+        width: 'clamp(64px, 10vw, 100px)',
+        height: 'clamp(64px, 10vw, 100px)',
         borderRadius: '50%',
         background: spinning
           ? `radial-gradient(circle, ${color}40 0%, ${color}20 50%, transparent 70%)`
