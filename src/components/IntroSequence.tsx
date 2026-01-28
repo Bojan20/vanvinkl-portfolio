@@ -508,11 +508,12 @@ export function IntroOverlay({
       }}>
         <h1 style={{
           margin: 0,
-          fontSize: 'clamp(32px, 7vw, 80px)',
+          fontSize: 'clamp(24px, 6vw, 80px)',
           fontFamily: '"Orbitron", "Rajdhani", system-ui, sans-serif',
           fontWeight: 900,
-          letterSpacing: '10px',
-          whiteSpace: 'nowrap',
+          letterSpacing: 'clamp(2px, 1vw, 10px)',
+          textAlign: 'center',
+          maxWidth: '90vw',
           animation: phase === 'glitch' ? 'glitchShake 0.08s infinite' : 'none',
           filter: phase === 'glitch' ? 'none' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.6))'
         }}>
