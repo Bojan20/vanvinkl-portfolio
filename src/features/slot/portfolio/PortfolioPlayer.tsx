@@ -337,6 +337,30 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       backgroundColor: '#000',
       cursor: 'pointer'
     }}>
+      {/* Permanent Controls Hint - Top Left */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        left: '20px',
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255,215,0,0.3)',
+        borderRadius: '8px',
+        padding: '12px 16px',
+        zIndex: 999,
+        color: '#ffd700',
+        fontSize: '13px',
+        fontFamily: 'monospace',
+        lineHeight: '1.6',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#00ffff' }}>CONTROLS</div>
+        <div>←→ Navigate Focus</div>
+        <div>↑↓ Adjust Volume</div>
+        <div>SPACE Play/Pause</div>
+        <div>ESC Exit</div>
+      </div>
+
       {/* Video Player - FULL SCREEN */}
       <video
         ref={videoRef}
