@@ -2961,42 +2961,44 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '4px',
-      maxWidth: '98%',
+      gap: '6px',
+      maxWidth: '100%',
       width: '100%',
-      margin: '0 auto',
-      padding: '6px',
+      height: '100vh',
+      margin: '0',
+      padding: '8px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
       overflow: 'hidden',
-      height: '100vh',
-      justifyContent: 'center',
+      boxSizing: 'border-box',
       cursor: 'pointer'
     }}>
-      {/* Hint text - minimal, 3% height */}
+      {/* Hint text - minimal */}
       <div style={{
         textAlign: 'center',
-        color: '#777',
-        fontSize: '10px',
-        padding: '3px',
-        height: '3%'
+        color: '#888',
+        fontSize: '11px',
+        padding: '4px 0',
+        flexShrink: 0,
+        cursor: 'pointer'
       }}>
         ↑↓ Focus • SPACE Play • ←→ Vol • ESC Back
       </div>
 
-      {/* Video Player - MAXIMIZED, 87% height */}
+      {/* Video Player - MAXIMIZED */}
       <div
         style={{
           position: 'relative',
-          border: '2px solid rgba(255,215,0,0.25)',
+          border: '2px solid rgba(255,215,0,0.3)',
           borderRadius: '8px',
           overflow: 'hidden',
-          boxShadow: '0 2px 15px rgba(0,0,0,0.3)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           transition: 'all 0.3s ease',
           flex: 1,
           display: 'flex',
           alignItems: 'center',
           cursor: 'pointer',
-          minHeight: '0'
+          minHeight: '0',
+          backgroundColor: '#000'
         }}
         onClick={() => {
           const video = videoRef.current
@@ -3005,6 +3007,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             else video.pause()
           }
         }}
+        onMouseMove={(e) => e.currentTarget.style.cursor = 'pointer'}
       >
         <video
           ref={videoRef}
@@ -3034,14 +3037,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </audio>
       </div>
 
-      {/* Controls Row - Single Line, Ultra Minimal, 5% height */}
+      {/* Controls Row - Single Line, Compact */}
       <div style={{
         display: 'flex',
-        gap: '4px',
+        gap: '6px',
         alignItems: 'center',
-        padding: '5px',
-        height: '5%',
-        minHeight: '30px'
+        padding: '6px 4px',
+        flexShrink: 0,
+        minHeight: '40px',
+        cursor: 'pointer'
       }}>
         {/* FS Button (focus 1) */}
         <button
@@ -4508,21 +4512,7 @@ export function SlotFullScreen({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
 
-  // Block all controls when video player is active (keyboard handled by PortfolioPlayer)
-  useEffect(() => {
-    if (!selectedProject) return
-
-    const handlePortfolioKeyDown = (e: KeyboardEvent) => {
-      // Let PortfolioPlayer handle all keys (including ESC)
-      // This blocks default slot keyboard handlers
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter', 'Escape'].includes(e.key)) {
-        e.stopPropagation()
-      }
-    }
-
-    window.addEventListener('keydown', handlePortfolioKeyDown, true) // Capture phase
-    return () => window.removeEventListener('keydown', handlePortfolioKeyDown, true)
-  }, [selectedProject])
+  // PortfolioPlayer handles its own keyboard events (no blocking needed here)
 
   return (
     <div style={{
