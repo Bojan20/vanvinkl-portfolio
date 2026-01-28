@@ -2740,12 +2740,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const musicRef = React.useRef<HTMLAudioElement>(null)
   const sfxRef = React.useRef<HTMLAudioElement>(null)
   const [showContent, setShowContent] = React.useState(false)
-  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider, 5: ESC overlay
+  const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
 
   // Focus items count
-  const FOCUS_ITEMS = 5
+  const FOCUS_ITEMS = 4
 
   // Staggered reveal
   React.useEffect(() => {
@@ -2857,7 +2857,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           e.preventDefault()
           setFocusIndex(prev => {
             const next = prev - 1
-            return next < 1 ? 5 : next
+            return next < 1 ? 4 : next
           })
           playNavTick(0.3)
           break
@@ -2866,7 +2866,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           e.preventDefault()
           setFocusIndex(prev => {
             const next = prev + 1
-            return next > 5 ? 1 : next
+            return next > 4 ? 1 : next
           })
           playNavTick(0.3)
           break
@@ -2922,10 +2922,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             // SFX mute toggle
             setSfxMuted(!sfxMuted)
             playNavSelect(0.4)
-          } else if (focusIndex === 5) {
-            // ESC overlay - back
-            playNavBack(0.4)
-            onBack()
           }
           break
 
@@ -3003,32 +2999,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.opus`} type="audio/opus" />
         <source src={`${project.sfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
       </audio>
-
-      {/* ESC Button Overlay - Top Right (focus 5) */}
-      <button
-        onClick={onBack}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          padding: '12px 24px',
-          border: isFocused(5) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.4)',
-          borderRadius: '8px',
-          background: isFocused(5) ? 'rgba(255,215,0,0.25)' : 'rgba(0,0,0,0.8)',
-          backdropFilter: 'blur(15px)',
-          color: isFocused(5) ? '#ffd700' : '#ccc',
-          fontSize: '16px',
-          fontWeight: '700',
-          cursor: 'pointer',
-          boxShadow: isFocused(5) ? '0 0 25px rgba(255,215,0,0.6)' : '0 4px 20px rgba(0,0,0,0.6)',
-          transition: 'all 0.2s ease',
-          textTransform: 'uppercase',
-          letterSpacing: '3px',
-          zIndex: 1001
-        }}
-      >
-        ESC
-      </button>
 
       {/* Controls Overlay - Bottom */}
       <div style={{
