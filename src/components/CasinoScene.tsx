@@ -1382,10 +1382,17 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       const rotSpeed = 5.0
       const pitchSpeed = 3.0
       const dt = 1/60 // Fixed step for consistent speed
+      // Keyboard orbital control
       if (orbitKeys.current.left) orbitAngle.current += rotSpeed * dt
       if (orbitKeys.current.right) orbitAngle.current -= rotSpeed * dt
       if (orbitKeys.current.up) orbitPitch.current = Math.min(0.8, orbitPitch.current + pitchSpeed * dt)
       if (orbitKeys.current.down) orbitPitch.current = Math.max(0.1, orbitPitch.current - pitchSpeed * dt)
+
+      // Mobile joystick orbital control (when sitting)
+      if (mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)) {
+        orbitAngle.current -= mobileMovementRef.current.x * rotSpeed * 0.05  // Horizontal rotation
+        orbitPitch.current = Math.max(0.1, Math.min(0.8, orbitPitch.current - mobileMovementRef.current.y * pitchSpeed * 0.05))  // Vertical tilt
+      }
 
       const avatarX = avatarPos.current.x
       const avatarZ = avatarPos.current.z
