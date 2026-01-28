@@ -198,7 +198,7 @@ export const WinCounter = memo(function WinCounter({
 })
 
 // ============================================
-// SKILLS DISCOVERED - Progress indicator
+// SKILLS - Progress indicator
 // ============================================
 export const SkillsDiscovered = memo(function SkillsDiscovered({
   count,
@@ -217,7 +217,7 @@ export const SkillsDiscovered = memo(function SkillsDiscovered({
         letterSpacing: '3px',
         marginBottom: '8px',
         textShadow: `0 0 10px ${color}`
-      }}>SKILLS DISCOVERED</div>
+      }}>SKILLS</div>
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
         <span style={{
           fontSize: '28px',

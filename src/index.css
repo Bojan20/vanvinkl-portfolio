@@ -9,3 +9,11 @@
     height: 20px;
   }
 }
+
+/* Touch feedback */
+@media (max-width: 600px) {
+  button:active, [role="button"]:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}

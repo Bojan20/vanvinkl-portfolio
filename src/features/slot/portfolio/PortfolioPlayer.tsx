@@ -344,7 +344,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         padding: '8px 10px',
         zIndex: 999,
         color: '#ffd700',
-        fontSize: '10px',
+        fontSize: "12px",
         fontFamily: 'monospace',
         lineHeight: '1.4',
         boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
@@ -578,7 +578,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         bottom: '62px', // Above controls bar
         left: 0,
         width: `${videoProgress}%`,
-        height: '3px',
+        height: "4px",
         background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
         boxShadow: '0 0 10px rgba(255,215,0,0.6)',
         transition: 'width 0.1s linear',
