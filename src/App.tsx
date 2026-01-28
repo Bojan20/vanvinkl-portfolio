@@ -1671,9 +1671,20 @@ export function App() {
     // Always try to play music (mute state is handled by masterGain)
     dspPlay('lounge')
 
-    // Hide splash and start intro
+    // Check if user has permanently skipped intro
+    const introSkipped = localStorage.getItem('vanvinkl-intro-permanently-skipped') === 'true'
+
+    // Hide splash
     setShowSplash(false)
-    setShowIntro(true)
+
+    if (introSkipped) {
+      // User has already skipped intro before → go directly to lounge
+      console.log('[Intro] Permanently skipped - going directly to lounge')
+      setShowIntro(false)
+    } else {
+      // First time or hasn't skipped → show intro
+      setShowIntro(true)
+    }
   }, [])
 
   // Subscribe to achievement unlocks
@@ -1729,8 +1740,6 @@ export function App() {
 
   const handleIntroOverlayComplete = useCallback(() => {
     setOverlayComplete(true)
-    // Mark as visited for skip intro next time
-    localStorage.setItem('vanvinkl-visited', 'true')
   }, [])
 
   const handleIntroCameraComplete = useCallback(() => {
@@ -1860,11 +1869,10 @@ export function App() {
         />
       )}
 
-      {/* Intro overlay - glitch text, skip button for returning visitors */}
+      {/* Intro overlay - glitch text with ESC/ENTER skip (sets permanent flag) */}
       <IntroOverlay
         active={showIntro}
         onComplete={handleIntroOverlayComplete}
-        canSkip={localStorage.getItem('vanvinkl-visited') === 'true'}
       />
 
       {/* Full screen slot experience - includes content after spin */}

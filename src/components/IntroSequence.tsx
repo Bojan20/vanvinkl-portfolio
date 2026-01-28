@@ -285,14 +285,13 @@ export function IntroCamera({
 
 // HTML Overlay for glitch text - Dark background that fades out smoothly
 // IMPORTANT: Runs on timer - player movement does NOT interrupt
+// ESC/ENTER anytime to skip and never show intro again (localStorage flag)
 export function IntroOverlay({
   active,
-  onComplete,
-  canSkip = false
+  onComplete
 }: {
   active: boolean
   onComplete: () => void
-  canSkip?: boolean
 }) {
   const [phase, setPhase] = useState<'glitch' | 'reveal' | 'hold' | 'fade' | 'done'>('glitch')
   const [glitchText, setGlitchText] = useState('WELCOME TO VANVINKL CASINO')
@@ -304,20 +303,23 @@ export function IntroOverlay({
   const originalText = 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
 
-  // Keyboard skip: ESC or ENTER (only if canSkip)
+  // Keyboard skip: ESC or ENTER - ALWAYS available, sets permanent skip flag
   useEffect(() => {
-    if (!active || !canSkip) return
+    if (!active) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter') {
         e.preventDefault()
+        console.log('[Intro] User skipped intro - setting permanent skip flag')
+        // Set permanent skip flag so intro never shows again
+        localStorage.setItem('vanvinkl-intro-permanently-skipped', 'true')
         setPhase('done')
         onComplete()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [active, canSkip, onComplete])
+  }, [active, onComplete])
 
   useEffect(() => {
     if (!active) return
@@ -589,8 +591,8 @@ export function IntroOverlay({
         pointerEvents: 'none'
       }} />
 
-      {/* Skip hint for returning visitors - keyboard only */}
-      {canSkip && phase !== 'done' && (
+      {/* Skip hint - always visible */}
+      {phase !== 'done' && (
         <div style={{
           position: 'absolute',
           bottom: '40px',
@@ -621,7 +623,7 @@ export function IntroOverlay({
             color: '#00ffff',
             fontFamily: 'monospace'
           }}>ENTER</kbd>
-          to skip
+          to skip (never show again)
         </div>
       )}
 
