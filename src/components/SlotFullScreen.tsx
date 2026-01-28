@@ -3185,7 +3185,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
       {/* Red X Button Overlay - Top Right (focus 5) */}
       <button
-        onClick={onBack}
+        onClick={() => {
+          console.log('[PortfolioPlayer] Red X clicked, calling onBack()')
+          onBack()
+        }}
         style={{
           position: 'fixed',
           top: '20px',
@@ -5514,6 +5517,7 @@ export function SlotFullScreen({
                 focusIndex={focusIndex}
                 selectedProject={selectedProject}
                 onBackFromProject={() => {
+                  console.log('[SlotFullScreen] onBackFromProject called, setting selectedProject to null')
                   setSelectedProject(null)
                 }}
               />
@@ -5525,6 +5529,7 @@ export function SlotFullScreen({
           {!selectedProject && (
             <button
               onClick={() => {
+                console.log('[SlotFullScreen] Close Button (X) clicked - closing entire slot')
                 onClose()
               }}
               style={{
@@ -5544,7 +5549,8 @@ export function SlotFullScreen({
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 4px 20px rgba(255,68,68,0.4), 0 0 30px rgba(255,68,68,0.2)',
-                animation: 'contentHintFade 0.5s ease-out 0.5s both'
+                animation: 'contentHintFade 0.5s ease-out 0.5s both',
+                cursor: 'pointer'
               }}
             >
               ✕

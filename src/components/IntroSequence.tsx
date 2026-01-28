@@ -299,9 +299,17 @@ export function IntroOverlay({
   const [opacity, setOpacity] = useState(1)
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
   const [showBurst, setShowBurst] = useState(false) // WOW burst effect when text complete
+  const [showSkipHint, setShowSkipHint] = useState(false) // Show skip hint after 2s
 
   const originalText = 'WELCOME TO VANVINKL CASINO'
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
+
+  // Show skip hint after 2 seconds
+  useEffect(() => {
+    if (!active) return
+    const timer = setTimeout(() => setShowSkipHint(true), 2000)
+    return () => clearTimeout(timer)
+  }, [active])
 
   // Keyboard skip: ESC or ENTER - ALWAYS available, sets permanent skip flag
   useEffect(() => {
@@ -591,8 +599,8 @@ export function IntroOverlay({
         pointerEvents: 'none'
       }} />
 
-      {/* Skip hint - always visible */}
-      {phase !== 'done' && (
+      {/* Skip hint - visible after 2s delay */}
+      {showSkipHint && phase !== 'done' && (
         <div style={{
           position: 'absolute',
           bottom: '40px',
@@ -603,7 +611,8 @@ export function IntroOverlay({
           padding: '12px 20px',
           borderRadius: '8px',
           fontSize: '14px',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          animation: 'skipHintFadeIn 0.5s ease-out'
         }}>
           <kbd style={{
             background: 'rgba(0,255,255,0.2)',
@@ -755,6 +764,10 @@ export function IntroOverlay({
         @keyframes scanLine {
           0% { top: -4px; }
           100% { top: 100%; }
+        }
+        @keyframes skipHintFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes liquidMetalShimmer {
           0% {
