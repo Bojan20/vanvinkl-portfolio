@@ -428,8 +428,8 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
 
       // Mobile joystick input (override keyboard if present)
       if (mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)) {
-        inputX = -mobileMovementRef.current.x  // Invert X (joystick right = left in world)
-        inputZ = mobileMovementRef.current.y   // Y maps to Z (joystick up = forward = positive Z)
+        inputX = mobileMovementRef.current.x  // Invert X (joystick right = left in world)
+        inputZ = -mobileMovementRef.current.y   // Y maps to Z (joystick up = forward = positive Z)
       }
 
       const inputLength = Math.sqrt(inputX * inputX + inputZ * inputZ)
