@@ -2930,17 +2930,31 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           break
 
         case ' ':
+          e.preventDefault()
+          // SPACE always plays/pauses video (regardless of focus)
+          const video = videoRef.current
+          if (video) {
+            if (video.paused) {
+              video.play()
+              playNavSelect(0.5)
+            } else {
+              video.pause()
+              playNavSelect(0.3)
+            }
+          }
+          break
+
         case 'Enter':
           e.preventDefault()
           if (focusIndex === 0) {
             // Play/Pause video + audio
-            const video = videoRef.current
-            if (video) {
-              if (video.paused) {
-                video.play()
+            const vid = videoRef.current
+            if (vid) {
+              if (vid.paused) {
+                vid.play()
                 playNavSelect(0.5)
               } else {
-                video.pause()
+                vid.pause()
                 playNavSelect(0.3)
               }
             }
@@ -2988,43 +3002,59 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '15px',
-      maxWidth: '850px',
+      gap: '6px',
+      maxWidth: '98%',
+      width: '100%',
       margin: '0 auto',
-      padding: '15px',
+      padding: '8px',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
       overflow: 'hidden',
       height: '100vh',
       justifyContent: 'center',
-      cursor: 'default' // Show pointer
+      cursor: 'pointer' // Show pointer
     }}>
-      {/* Hint text */}
+      {/* Hint text - minimal */}
       <div style={{
         textAlign: 'center',
-        color: '#888',
-        fontSize: '12px',
-        marginBottom: '5px'
+        color: '#777',
+        fontSize: '10px',
+        padding: '3px'
       }}>
-        ↑↓ Navigate • ←→ Volume • ENTER Toggle • ESC Back
+        ↑↓ Focus • SPACE Play • ←→ Vol • ESC Back
       </div>
 
-      {/* Video Player with Play/Pause focus */}
-      <div style={{
-        position: 'relative',
-        border: isFocused(0) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.3)',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: isFocused(0) ? '0 0 30px rgba(255,215,0,0.5)' : '0 4px 20px rgba(255,215,0,0.15)',
-        transition: 'all 0.3s ease'
-      }}>
+      {/* Video Player - MAXIMIZED */}
+      <div
+        style={{
+          position: 'relative',
+          border: isFocused(0) ? '3px solid #ffd700' : '2px solid rgba(255,215,0,0.25)',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: isFocused(0) ? '0 0 25px rgba(255,215,0,0.4)' : '0 2px 15px rgba(0,0,0,0.3)',
+          transition: 'all 0.3s ease',
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          cursor: 'pointer',
+          minHeight: '0'
+        }}
+        onClick={() => {
+          const video = videoRef.current
+          if (video) {
+            if (video.paused) video.play()
+            else video.pause()
+          }
+        }}
+      >
         <video
           ref={videoRef}
           style={{
             width: '100%',
-            height: 'auto',
-            maxHeight: '280px',
+            height: '100%',
             display: 'block',
-            backgroundColor: '#000'
+            backgroundColor: '#000',
+            objectFit: 'contain',
+            cursor: 'pointer'
           }}
         >
           <source src={`${project.videoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
@@ -3060,41 +3090,36 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </audio>
       </div>
 
-      {/* Fullscreen Button */}
-      <button
-        onClick={() => {
-          const video = videoRef.current
-          if (video) {
-            if (document.fullscreenElement) {
-              document.exitFullscreen()
-            } else {
-              video.requestFullscreen().catch(e => console.warn('Fullscreen failed:', e))
+      {/* Controls Row - Ultra Compact */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {/* Fullscreen Button - Minimal */}
+        <button
+          onClick={() => {
+            const video = videoRef.current
+            if (video) {
+              if (document.fullscreenElement) document.exitFullscreen()
+              else video.requestFullscreen().catch(e => console.warn('Fullscreen failed:', e))
             }
-          }
-        }}
-        style={{
-          padding: '12px',
-          border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
-          borderRadius: '8px',
-          background: isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)',
-          color: isFocused(1) ? '#ffd700' : '#ccc',
-          fontSize: '13px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          boxShadow: isFocused(1) ? '0 0 15px rgba(255,215,0,0.3)' : 'none',
-          transition: 'all 0.3s ease',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px'
-        }}
-      >
-        <span>⛶</span>
-        <span>FULLSCREEN</span>
-      </button>
+          }}
+          style={{
+            padding: '8px 12px',
+            border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.2)',
+            borderRadius: '6px',
+            background: isFocused(1) ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.05)',
+            color: isFocused(1) ? '#ffd700' : '#999',
+            fontSize: '11px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: isFocused(1) ? '0 0 12px rgba(255,215,0,0.3)' : 'none',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          ⛶ FS
+        </button>
 
-      {/* Volume Controls - Compact with Mute Buttons */}
-      <div style={{ display: 'flex', gap: '12px' }}>
+        {/* Volume Controls - Ultra Compact Side by Side */}
+        <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
         {/* Music Section */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Music Mute Button */}
