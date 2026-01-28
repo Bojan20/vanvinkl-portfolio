@@ -1061,7 +1061,23 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
 
       {/* Audio Settings Panel */}
       {isOpen && !disabled && (
-        <div style={{
+        <>
+          {/* Backdrop - tap to close */}
+          {isMobile && (
+            <div
+              onClick={() => setIsOpen(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.3)',
+                zIndex: 199
+              }}
+            />
+          )}
+
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
           position: 'fixed',
           top: isMobile ? '80px' : 'auto',
           bottom: isMobile ? 'auto' : '70px',
@@ -1264,6 +1280,7 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
             </div>
           )}
         </div>
+        </>
       )}
 
       <style>{`
