@@ -1696,15 +1696,17 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, 55]} />
 
-      {/* ===== POST-PROCESSING - Adaptive quality (auto-adjusts based on FPS) ===== */}
-      <PostProcessing
-        quality={getEffectiveQuality()}
-        enableSSAO={false}
-        enableBloom={true}
-        enableChromatic={true}  // Enabled on medium+
-        enableVignette={true}
-        enableNoise={false}     // Optional, minimal visual impact
-      />
+      {/* ===== POST-PROCESSING - Disabled on mobile for instant 60fps ===== */}
+      {!(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) && (
+        <PostProcessing
+          quality={getEffectiveQuality()}
+          enableSSAO={false}
+          enableBloom={true}
+          enableChromatic={true}
+          enableVignette={true}
+          enableNoise={false}
+        />
+      )}
 
       {/* WebGL context loss handler */}
       <ContextHandler />
