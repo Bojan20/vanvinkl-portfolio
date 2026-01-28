@@ -2961,6 +2961,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       {/* Video Player - FULL SCREEN */}
       <video
         ref={videoRef}
+        controls={false}
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture={true}
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           position: 'absolute',
           top: 0,
