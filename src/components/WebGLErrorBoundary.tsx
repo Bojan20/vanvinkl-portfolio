@@ -63,9 +63,8 @@ export function ContextLostOverlay({ onRetry }: ContextLostOverlayProps) {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
       return () => clearTimeout(timer)
-    } else {
-      window.location.reload()
     }
+    // Auto-reload disabled - manual retry only
   }, [countdown])
 
   return (
