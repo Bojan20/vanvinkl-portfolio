@@ -4117,7 +4117,7 @@ export function SlotFullScreen({
   // Reset focus when entering content phase
   useEffect(() => {
     if (phase === 'content') {
-      setFocusIndex(-1) // Start with nothing focused
+      setFocusIndex(0) // Start with first item focused
     }
   }, [phase])
 
