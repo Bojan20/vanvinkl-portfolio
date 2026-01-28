@@ -1390,8 +1390,8 @@ export function CasinoScene({ onShowModal, onSlotSpin, onSitChange, introActive 
 
       // Mobile joystick orbital control (when sitting)
       if (mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)) {
-        orbitAngle.current -= mobileMovementRef.current.x * rotSpeed * 0.05  // Horizontal rotation
-        orbitPitch.current = Math.max(0.1, Math.min(0.8, orbitPitch.current - mobileMovementRef.current.y * pitchSpeed * 0.05))  // Vertical tilt
+        orbitAngle.current -= mobileMovementRef.current.x * 0.02  // Horizontal rotation
+        orbitPitch.current = Math.max(0.1, Math.min(0.8, orbitPitch.current - mobileMovementRef.current.y * 0.015))  // Vertical tilt
       }
 
       const avatarX = avatarPos.current.x
