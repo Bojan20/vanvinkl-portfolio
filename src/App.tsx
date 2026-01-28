@@ -1671,8 +1671,8 @@ export function App() {
     // Always try to play music (mute state is handled by masterGain)
     dspPlay('lounge')
 
-    // Check if user has permanently skipped intro
-    const introSkipped = localStorage.getItem('vanvinkl-intro-permanently-skipped') === 'true'
+    // Check if user has permanently skipped intro (v2 key - forces intro reset)
+    const introSkipped = localStorage.getItem('vanvinkl-intro-skipped-v2') === 'true'
 
     // Hide splash
     setShowSplash(false)

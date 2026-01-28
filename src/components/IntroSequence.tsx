@@ -320,7 +320,7 @@ export function IntroOverlay({
         e.preventDefault()
         console.log('[Intro] User skipped intro - setting permanent skip flag')
         // Set permanent skip flag so intro never shows again
-        localStorage.setItem('vanvinkl-intro-permanently-skipped', 'true')
+        localStorage.setItem('vanvinkl-intro-skipped-v2', 'true')
         setPhase('done')
         onComplete()
       }
