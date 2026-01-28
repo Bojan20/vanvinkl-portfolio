@@ -32,8 +32,8 @@ export function useWebGLContextHandler() {
     const handleContextRestored = () => {
       console.log('[WebGL] Context restored')
       setContextLost(false)
-      // Force re-render by reloading after short delay
-      setTimeout(() => window.location.reload(), 500)
+      // Context restored — Three.js handles recovery automatically
+      // No need for full page reload
     }
 
     canvas.addEventListener('webglcontextlost', handleContextLost as EventListener)
