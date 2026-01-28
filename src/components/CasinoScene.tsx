@@ -721,7 +721,8 @@ function FloatingSitSign({ position, color = '#8844ff' }: { position: [number, n
 
   // Create canvas texture for text
   const texture = useMemo(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    // Use screen width instead of userAgent (more reliable for desktop vs mobile)
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
     const text = isMobile ? 'TAP TO SIT' : 'PRESS SPACE TO SIT'
 
     const canvas = document.createElement('canvas')
