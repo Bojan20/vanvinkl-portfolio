@@ -1901,10 +1901,7 @@ export function App() {
       {!showIntro && <AudioSettings disabled={!!spinningSlot} isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}
 
 
-      {/* Section Progress Ring - shows exploration progress */}
-      {!showIntro && !spinningSlot && !isMobile && (
-        <SectionProgressRing />
-      )}
+      {/* Section Progress Ring removed - not needed for end user */}
 
       {/* Spectrum Visualizer - audio reactive bars */}
       {!showIntro && !spinningSlot && !isMobile && (
