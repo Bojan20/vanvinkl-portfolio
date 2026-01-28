@@ -27,7 +27,7 @@ type PlayingSound = {
 }
 
 type SynthSoundType =
-  | 'tick' | 'select' | 'back'
+  | 'tick' | 'select' | 'back' | 'click'
   | 'whoosh' | 'swoosh' | 'reveal' | 'transition'
   | 'win' | 'jackpot' | 'spinMech'
   | 'introWhoosh' | 'footstep'
@@ -439,6 +439,27 @@ class UnifiedAudioSystem {
           break
         case 'reelStop':
           this.playReelStop(ctx, now, volume)
+          break
+        case 'reelSpin':
+          this.playReelSpin(ctx, now, volume)
+          break
+        case 'click':
+          this.playTick(ctx, now, volume) // Click = tick sound
+          break
+        case 'footstep':
+          this.playFootstep(ctx, now, volume)
+          break
+        case 'cyberReveal':
+          this.playCyberReveal(ctx, now, volume)
+          break
+        case 'cyberGlitch':
+          this.playCyberGlitch(ctx, now, volume)
+          break
+        case 'cyberSweep':
+          this.playCyberSweep(ctx, now, volume)
+          break
+        case 'cyberBass':
+          this.playCyberBass(ctx, now, volume)
           break
       }
     } catch (e) {
@@ -879,6 +900,138 @@ class UnifiedAudioSystem {
     impactGain.connect(this.getOutput())
     impactOsc.start(now)
     impactOsc.stop(now + 0.18)
+  }
+
+  private playReelSpin(ctx: AudioContext, now: number, vol: number): void {
+    // Continuous reel spinning sound (mechanical whir)
+    const noiseSize = ctx.sampleRate * 0.3
+    const buffer = ctx.createBuffer(1, noiseSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+
+    for (let i = 0; i < noiseSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.3
+    }
+
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.loop = true
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 400
+    filter.Q.value = 2
+
+    const gain = ctx.createGain()
+    gain.gain.value = vol * 0.3
+
+    source.connect(filter)
+    filter.connect(gain)
+    gain.connect(this.getOutput())
+
+    source.start(now)
+    // Note: Loop continues, caller should stop it
+  }
+
+  private playFootstep(ctx: AudioContext, now: number, vol: number): void {
+    // Short low thud (footstep on carpet)
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(120, now)
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.05)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(vol * 0.4, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+
+    osc.connect(gain)
+    gain.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.1)
+  }
+
+  private playCyberReveal(ctx: AudioContext, now: number, vol: number): void {
+    // Digital reveal sound (letter-by-letter)
+    const osc1 = ctx.createOscillator()
+    osc1.type = 'square'
+    osc1.frequency.setValueAtTime(1200, now)
+    osc1.frequency.exponentialRampToValueAtTime(1800, now + 0.05)
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.setValueAtTime(2000, now)
+    filter.frequency.exponentialRampToValueAtTime(3500, now + 0.05)
+    filter.Q.value = 1
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(vol * 0.2, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+
+    osc1.connect(filter)
+    filter.connect(gain)
+    gain.connect(this.getOutput())
+
+    osc1.start(now)
+    osc1.stop(now + 0.1)
+  }
+
+  private playCyberGlitch(ctx: AudioContext, now: number, vol: number): void {
+    // Short digital glitch
+    const osc = ctx.createOscillator()
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(800 + Math.random() * 400, now)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(vol * 0.3, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03)
+
+    osc.connect(gain)
+    gain.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.04)
+  }
+
+  private playCyberSweep(ctx: AudioContext, now: number, vol: number): void {
+    // Ascending digital sweep
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(400, now)
+    osc.frequency.exponentialRampToValueAtTime(2000, now + 0.2)
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'highpass'
+    filter.frequency.setValueAtTime(300, now)
+    filter.frequency.exponentialRampToValueAtTime(1500, now + 0.2)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(vol * 0.3, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+
+    osc.connect(filter)
+    filter.connect(gain)
+    gain.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.3)
+  }
+
+  private playCyberBass(ctx: AudioContext, now: number, vol: number): void {
+    // Deep sub bass hit
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(60, now)
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.3)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(vol * 0.7, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4)
+
+    osc.connect(gain)
+    gain.connect(this.getOutput())
+
+    osc.start(now)
+    osc.stop(now + 0.5)
   }
 
   /**
