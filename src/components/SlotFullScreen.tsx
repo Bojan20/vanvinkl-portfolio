@@ -4126,48 +4126,69 @@ export function SlotFullScreen({
   }, [phase])
 
   // Control lounge music based on selectedProject state
+  // OPTIMIZED: requestAnimationFrame with cubic ease-out (smoother, no jitter)
   useEffect(() => {
+    let rafId: number | null = null
+
     if (selectedProject) {
       // User selected a project (video player active)
-      // Pause lounge music with 1300ms fadeout
-      console.log('[SlotFullScreen] Project selected, fading out lounge music (1300ms)')
-      const originalVolume = dspGetVolume('music')
+      // Fade out lounge music (1300ms, cubic ease-out)
+      console.log('[SlotFullScreen] Project selected, fading out lounge music (1300ms, RAF)')
+      const startVolume = dspGetVolume('music')
+      const startTime = Date.now()
+      const fadeDuration = 1300
 
-      let currentVol = originalVolume
-      const fadeSteps = 26
-      const volStep = originalVolume / fadeSteps
+      const fadeOut = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / fadeDuration, 1)
 
-      const fadeInterval = setInterval(() => {
-        currentVol -= volStep
-        if (currentVol <= 0) {
-          currentVol = 0
-          clearInterval(fadeInterval)
+        // Cubic ease-out (smooth deceleration)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        const vol = startVolume * (1 - eased)
+
+        dspVolume('music', Math.max(0, vol))
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(fadeOut)
         }
-        dspVolume('music', Math.max(0, currentVol))
-      }, 50)
+      }
+
+      rafId = requestAnimationFrame(fadeOut)
 
       return () => {
-        clearInterval(fadeInterval)
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId)
+        }
       }
     } else if (phase === 'content' && section?.type === 'projects') {
       // User returned to grid (selectedProject null)
-      // Resume lounge music with 1000ms fadein
-      console.log('[SlotFullScreen] Back to grid, fading in lounge music (1000ms)')
-      const originalVolume = dspGetVolume('music') || 1.0
+      // Fade in lounge music (1000ms, cubic ease-out)
+      console.log('[SlotFullScreen] Back to grid, fading in lounge music (1000ms, RAF)')
+      const targetVolume = dspGetVolume('music') || 1.0
+      const startTime = Date.now()
+      const fadeDuration = 1000
 
-      let vol = 0
-      const fadeInSteps = 20
-      const fadeInInterval = setInterval(() => {
-        vol += originalVolume / fadeInSteps
-        if (vol >= originalVolume) {
-          vol = originalVolume
-          clearInterval(fadeInInterval)
+      const fadeIn = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / fadeDuration, 1)
+
+        // Cubic ease-out
+        const eased = 1 - Math.pow(1 - progress, 3)
+        const vol = targetVolume * eased
+
+        dspVolume('music', Math.min(targetVolume, vol))
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(fadeIn)
         }
-        dspVolume('music', Math.min(originalVolume, vol))
-      }, 50)
+      }
+
+      rafId = requestAnimationFrame(fadeIn)
 
       return () => {
-        clearInterval(fadeInInterval)
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId)
+        }
       }
     }
   }, [selectedProject, phase, section])
