@@ -311,14 +311,17 @@ export function SlotFullScreen({
 
   // Lounge music fade when entering/exiting portfolio video
   // ULTIMATIVNO: RAF-based cubic ease-out, 1000ms fade
+  // IMPORTANT: Fade-in ONLY when exiting video (selectedProject: true → false), NOT on mount
   useEffect(() => {
     let rafId: number | null = null
 
     if (selectedProject) {
-      // Fade OUT lounge music (1000ms → 0 volume)
+      // Video opened → Fade OUT lounge music (1000ms → 0 volume)
       const startVolume = uaGetVolume('music')
       const startTime = Date.now()
       const fadeDuration = 1000
+
+      console.log('[SlotFullScreen] Video opened - fading OUT lounge music from', startVolume)
 
       const fadeOut = () => {
         const elapsed = Date.now() - startTime
@@ -330,38 +333,48 @@ export function SlotFullScreen({
         if (progress < 1) {
           rafId = requestAnimationFrame(fadeOut)
         } else {
-          console.log('[SlotFullScreen] Lounge music faded out (1000ms)')
+          console.log('[SlotFullScreen] Lounge music faded out COMPLETE (1000ms)')
         }
       }
       rafId = requestAnimationFrame(fadeOut)
+    }
+    // NO ELSE - fade-in handled in cleanup function below
 
-      return () => {
-        if (rafId !== null) cancelAnimationFrame(rafId)
+    // Cleanup: When selectedProject changes from true → false (exiting video)
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
       }
-    } else {
-      // Fade IN lounge music (1000ms → 0.5 volume)
-      const startVolume = uaGetVolume('music')
-      const targetVolume = 0.5
-      const startTime = Date.now()
-      const fadeDuration = 1000
 
-      const fadeIn = () => {
-        const elapsed = Date.now() - startTime
-        const progress = Math.min(elapsed / fadeDuration, 1)
-        const eased = 1 - Math.pow(1 - progress, 3)
-        const vol = startVolume + (targetVolume - startVolume) * eased
-        uaVolume('music', Math.min(targetVolume, vol), 0)
+      // If we're transitioning FROM video (selectedProject was true, now becoming false)
+      // Trigger fade-in in the cleanup phase
+      if (selectedProject) {
+        // Previous state was video mode, now exiting → fade IN
+        console.log('[SlotFullScreen] Video closed - fading IN lounge music')
 
-        if (progress < 1) {
-          rafId = requestAnimationFrame(fadeIn)
-        } else {
-          console.log('[SlotFullScreen] Lounge music faded in (1000ms)')
+        const startVolume = uaGetVolume('music')
+        const targetVolume = 0.5
+        const startTime = Date.now()
+        const fadeDuration = 1000
+        let cleanupRafId: number | null = null
+
+        const fadeIn = () => {
+          const elapsed = Date.now() - startTime
+          const progress = Math.min(elapsed / fadeDuration, 1)
+          const eased = 1 - Math.pow(1 - progress, 3)
+          const vol = startVolume + (targetVolume - startVolume) * eased
+          uaVolume('music', Math.min(targetVolume, vol), 0)
+
+          if (progress < 1) {
+            cleanupRafId = requestAnimationFrame(fadeIn)
+          } else {
+            console.log('[SlotFullScreen] Lounge music faded in COMPLETE (1000ms)')
+          }
         }
-      }
-      rafId = requestAnimationFrame(fadeIn)
+        cleanupRafId = requestAnimationFrame(fadeIn)
 
-      return () => {
-        if (rafId !== null) cancelAnimationFrame(rafId)
+        // Note: This RAF will complete even after component state changes
+        // No need to cancel since it's a finite animation
       }
     }
   }, [selectedProject])
