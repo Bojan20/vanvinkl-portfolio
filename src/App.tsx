@@ -1911,10 +1911,7 @@ export function App() {
         <SpectrumVisualizer />
       )}
 
-      {/* FPS & Quality Indicator - performance monitoring */}
-      {!showIntro && !spinningSlot && !isMobile && (
-        <FPSIndicator />
-      )}
+      {/* FPS Indicator removed - not needed for end users (dev tool only) */}
 
       {/* Keyboard Controls Hint - arrow keys + space at bottom center */}
       {!showIntro && !spinningSlot && !isMobile && (
