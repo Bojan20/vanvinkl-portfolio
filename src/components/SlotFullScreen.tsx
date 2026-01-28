@@ -2743,9 +2743,27 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [focusIndex, setFocusIndex] = React.useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider, 5: red X
   const [musicMuted, setMusicMuted] = React.useState(false)
   const [sfxMuted, setSfxMuted] = React.useState(false)
+  const [isFullscreen, setIsFullscreen] = React.useState(false)
 
   // Focus items count
   const FOCUS_ITEMS = 5
+
+  // Fullscreen change listener - enable controls only in fullscreen
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      const inFullscreen = !!document.fullscreenElement
+      setIsFullscreen(inFullscreen)
+      const video = videoRef.current
+      if (video) {
+        // Enable controls in fullscreen, disable otherwise
+        video.controls = inFullscreen
+        console.log(`[PortfolioPlayer] Fullscreen: ${inFullscreen}, controls: ${inFullscreen}`)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
 
   // Staggered reveal
   React.useEffect(() => {
