@@ -1260,7 +1260,7 @@ function AudioSettings({ disabled, isOpen, setIsOpen }: {
               color: '#666',
               fontSize: '10px'
             }}>
-              Tap sliders to adjust
+              Tap and drag sliders to adjust
             </div>
           )}
         </div>
