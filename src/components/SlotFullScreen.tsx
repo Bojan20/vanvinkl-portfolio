@@ -35,6 +35,9 @@ import { achievementStore } from '../store/achievements'
 // Audio system
 import { uaPlay, uaStop, uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
 
+// Security utilities
+import { safeGetLocalStorage, safeSetLocalStorage } from '../utils/security'
+
 // Feature module imports - ALL extracted components and utilities
 import {
   // Types
@@ -197,6 +200,11 @@ export function SlotFullScreen({
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
   const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string } | null>(null)
+
+  // Content onboarding hint - show once per visit session
+  const [showContentHint, setShowContentHint] = useState(() => {
+    return safeGetLocalStorage('vanvinkl-content-hint') !== 'true'
+  })
 
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
@@ -392,6 +400,17 @@ export function SlotFullScreen({
       }
     }
   }, [selectedProject])
+
+  // Content hint auto-dismiss after 6 seconds in content phase
+  useEffect(() => {
+    if (phase === 'content' && showContentHint) {
+      const timer = setTimeout(() => {
+        setShowContentHint(false)
+        safeSetLocalStorage('vanvinkl-content-hint', 'true')
+      }, 6000)
+      return () => clearTimeout(timer)
+    }
+  }, [phase, showContentHint])
 
   // Reel spin sound removed - only reel stop sounds remain
 
@@ -679,6 +698,7 @@ export function SlotFullScreen({
       {/* ESC hint - HIDDEN when video player active */}
       {!selectedProject && (
         <div
+          className="esc-exit-hint"
           style={{
             position: 'fixed',
             top: '24px',
@@ -696,8 +716,12 @@ export function SlotFullScreen({
             alignItems: 'center',
             gap: '8px',
             zIndex: 1001,
-            opacity: 0.9
+            opacity: 0.9,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
           }}
+          onClick={() => onClose?.()}
+          title="Return to casino floor"
         >
           <span style={{
             padding: '4px 8px',
@@ -707,6 +731,90 @@ export function SlotFullScreen({
             fontSize: '12px'
           }}>ESC</span>
           EXIT
+          {/* Hover tooltip */}
+          <span className="esc-tooltip" style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: '0',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            background: 'rgba(0,0,0,0.9)',
+            border: `1px solid ${primaryColor}30`,
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '11px',
+            fontWeight: 400,
+            letterSpacing: '0.3px',
+            whiteSpace: 'nowrap',
+            opacity: 0,
+            transform: 'translateY(-4px)',
+            transition: 'all 0.2s ease',
+            pointerEvents: 'none'
+          }}>
+            Press ESC to return to casino floor
+          </span>
+        </div>
+      )}
+
+      {/* Content navigation hint - shows on first visit to content phase */}
+      {phase === 'content' && showContentHint && !selectedProject && (
+        <div
+          className="content-hint"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(12px)',
+            border: `1px solid ${primaryColor}40`,
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: '13px',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            zIndex: 1001,
+            animation: 'contentHintFade 0.4s ease-out',
+            boxShadow: `0 4px 30px rgba(0,0,0,0.5), 0 0 20px ${primaryColor}20`
+          }}
+          onClick={() => {
+            setShowContentHint(false)
+            safeSetLocalStorage('vanvinkl-content-hint', 'true')
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <kbd style={{
+              padding: '4px 8px',
+              background: `${primaryColor}20`,
+              borderRadius: '4px',
+              border: `1px solid ${primaryColor}50`,
+              fontSize: '11px',
+              color: primaryColor,
+              fontFamily: 'monospace'
+            }}>←↑↓→</kbd>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Navigate</span>
+          </span>
+          <span style={{ color: `${primaryColor}60` }}>•</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <kbd style={{
+              padding: '4px 8px',
+              background: `${primaryColor}20`,
+              borderRadius: '4px',
+              border: `1px solid ${primaryColor}50`,
+              fontSize: '11px',
+              color: primaryColor,
+              fontFamily: 'monospace'
+            }}>ENTER</kbd>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Select</span>
+          </span>
+          <span style={{ color: `${primaryColor}60` }}>•</span>
+          <span style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: '11px',
+            cursor: 'pointer'
+          }}>Click to dismiss</span>
         </div>
       )}
 
@@ -1208,6 +1316,16 @@ export function SlotFullScreen({
         @keyframes contentHintFade {
           0% { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
+        }
+        /* ESC Exit Tooltip Hover */
+        .esc-exit-hint:hover {
+          opacity: 1 !important;
+          border-color: rgba(0, 255, 255, 0.6) !important;
+          box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .esc-exit-hint:hover .esc-tooltip {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
         }
       `}</style>
     </div>

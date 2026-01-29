@@ -119,7 +119,9 @@ export function isValidExternalURL(
 
     // If allowedDomains specified, check domain whitelist
     if (allowedDomains && allowedDomains.length > 0) {
-      const isAllowed = allowedDomains.some(domain => parsed.hostname.endsWith(domain))
+      const isAllowed = allowedDomains.some(domain =>
+        parsed.hostname === domain || parsed.hostname.endsWith('.' + domain)
+      )
       if (!isAllowed) return false
     }
 

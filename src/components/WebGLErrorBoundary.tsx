@@ -228,9 +228,17 @@ export class WebGLErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
 
     // Log to analytics if available
     if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'webgl_error', {
+      // Sanitize stack trace - remove local file paths
+      const sanitizedStack = error.stack
+        ?.replace(/file:\/\/[^\s)]+/g, '[local]')
+        ?.replace(/\/Users\/[^/\s)]+/g, '/[user]')
+        ?.replace(/\/home\/[^/\s)]+/g, '/[user]')
+        ?.replace(/C:\\Users\\[^\\s)]+/g, 'C:\\[user]')
+        ?.slice(0, 500) || ''
+
+      ;(window as any).gtag('event', 'webgl_error', {
         error_message: error.message,
-        error_stack: error.stack
+        error_stack: sanitizedStack
       })
     }
   }

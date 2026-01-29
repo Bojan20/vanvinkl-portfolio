@@ -66,6 +66,32 @@ Kada se razgovor nastavlja iz summarized konteksta:
 
 ---
 
+## MODEL SELEKCIJA (IMPERATIV)
+
+**UVEK OPUS 4.5 — bez kompromisa.**
+
+```
+Claude Opus 4.5 = ULTIMATIVNI model za SVE:
+- Analiza
+- Arhitektura
+- Kodiranje
+- Debugging
+- Refaktoring
+- SVE
+```
+
+### Pravilo
+
+**Opus radi SVE.** Nema podele, nema štednje, samo kvalitet.
+
+### Git commits
+
+```bash
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+```
+
+---
+
 ## ULOGE (Multi-Disciplinary)
 
 Ti si elite professional sa 20+ godina iskustva:
@@ -87,10 +113,11 @@ Ti si elite professional sa 20+ godina iskustva:
 
 ## MINDSET
 
+- **UVEK ULTIMATIVNO** — nikad jednostavno, nikad osrednje
 - **AAA Quality** — Best-in-class, production-ready
 - **Performance First** — 60fps, fast load, low memory
 - **Proaktivan** — predlaži poboljšanja
-- **Zero Compromise** — ultimativno ili ništa
+- **Zero Compromise** — ultimativno ili ništa, nema srednje opcije
 
 ---
 
@@ -266,8 +293,12 @@ npm test                 # Run tests (if configured)
 # Example:
 feat: add spatial audio to slot machines
 
-# Always include co-author:
-Co-Authored-By: Claude Sonnet 4.5 (1M context) <noreply@anthropic.com>
+# Co-author zavisi od modela koji je radio:
+# Za kod (Sonnet):
+Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+
+# Za analizu/arhitekturu (Opus):
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

@@ -306,25 +306,26 @@ export function MobileControls({
   actionButtonSize = 90
 }: MobileControlsProps) {
   const [isMobile, setIsMobile] = useState(false)
-  const [isLandscape, setIsLandscape] = useState(
-    window.innerWidth / window.innerHeight > 1.2
-  )
+  const [isLandscape, setIsLandscape] = useState(false)
 
   useEffect(() => {
+    // Safe window access in useEffect (SSR-compatible)
     setIsMobile(isMobileDevice())
 
-    // Track orientation changes
-    const handleResize = () => {
-      const landscape = window.innerWidth / window.innerHeight > 1.2
-      setIsLandscape(landscape)
+    const checkLandscape = () => {
+      setIsLandscape(window.innerWidth / window.innerHeight > 1.2)
     }
 
-    window.addEventListener('resize', handleResize)
-    window.addEventListener('orientationchange', handleResize)
+    // Initial check
+    checkLandscape()
+
+    // Track orientation changes
+    window.addEventListener('resize', checkLandscape)
+    window.addEventListener('orientationchange', checkLandscape)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      window.removeEventListener('orientationchange', handleResize)
+      window.removeEventListener('resize', checkLandscape)
+      window.removeEventListener('orientationchange', checkLandscape)
     }
   }, [])
 

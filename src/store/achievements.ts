@@ -53,9 +53,18 @@ class AchievementStore {
   }
 
   private loadFromStorage(): void {
+    let savedData: Record<string, { unlocked?: boolean; unlockedAt?: number }> = {}
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      const savedData = saved ? JSON.parse(saved) : {}
+      if (saved) {
+        try {
+          savedData = JSON.parse(saved)
+        } catch (parseError) {
+          console.warn('[Achievements] Corrupted data, resetting:', parseError)
+          localStorage.removeItem(STORAGE_KEY)
+        }
+      }
 
       // Initialize all achievements
       ACHIEVEMENT_DEFS.forEach(def => {

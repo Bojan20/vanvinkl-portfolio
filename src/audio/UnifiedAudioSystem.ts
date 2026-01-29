@@ -1141,3 +1141,10 @@ export function uaGetFrequencyData(): Uint8Array | null {
 export function uaGetBassLevel(): number {
   return unifiedAudio.getBassLevel()
 }
+
+/**
+ * Dispose audio system (cleanup)
+ */
+export function uaDispose(): void {
+  unifiedAudio.dispose()
+}
