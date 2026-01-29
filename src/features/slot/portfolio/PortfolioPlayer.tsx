@@ -583,7 +583,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
         boxShadow: '0 0 10px rgba(255,215,0,0.6)',
         transition: 'width 0.1s linear',
-        zIndex: 999,
+        zIndex: 1001, // Above controls bar (1000)
         pointerEvents: 'none'
       }} />
 

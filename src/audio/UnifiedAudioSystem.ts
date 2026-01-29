@@ -1066,9 +1066,9 @@ unifiedAudio.registerAll({
   jackpot: { url: '/audio/slots/jackpot.wav', volume: 1.0, bus: 'sfx' },
 
   // Player
-  footstep1: { url: '/audio/player/footstep-1.wav', volume: 0.15, bus: 'sfx' },
-  footstep2: { url: '/audio/player/footstep-2.wav', volume: 0.15, bus: 'sfx' },
-  footstep3: { url: '/audio/player/footstep-3.wav', volume: 0.15, bus: 'sfx' },
+  footstep1: { url: '/audio/player/footstep-1.wav', volume: 0.2, bus: 'sfx' },
+  footstep2: { url: '/audio/player/footstep-2.wav', volume: 0.2, bus: 'sfx' },
+  footstep3: { url: '/audio/player/footstep-3.wav', volume: 0.2, bus: 'sfx' },
 })
 
 // ============================================
