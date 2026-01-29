@@ -209,6 +209,7 @@ export function SlotFullScreen({
   // Touch/swipe state
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mainContainerRef = useRef<HTMLDivElement>(null)
 
   // Music fade RAF tracking (cancellable)
   const fadeRafRef = useRef<number | null>(null)
@@ -318,6 +319,15 @@ export function SlotFullScreen({
     if (phase === 'content') {
       setFocusIndex(0) // Start with first item focused
     }
+  }, [phase])
+
+  // CRITICAL: Focus main container on mount and phase change for keyboard events
+  useEffect(() => {
+    // Delay slightly to ensure DOM is ready
+    const timer = setTimeout(() => {
+      mainContainerRef.current?.focus()
+    }, 100)
+    return () => clearTimeout(timer)
   }, [phase])
 
   // Lounge music fade when entering/exiting portfolio video
@@ -624,6 +634,8 @@ export function SlotFullScreen({
   // ========== RENDER ==========
   return (
     <div
+      ref={mainContainerRef}
+      tabIndex={-1}
       id="main-content"
       role="main"
       aria-label={`${segmentConfig.title} slot machine`}
@@ -643,7 +655,8 @@ export function SlotFullScreen({
       overflow: 'auto',
       transition: 'background 0.5s ease',
       animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none',
-      cursor: 'default'
+      cursor: 'default',
+      outline: 'none' // Hide focus ring (fullscreen overlay)
     }}>
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 

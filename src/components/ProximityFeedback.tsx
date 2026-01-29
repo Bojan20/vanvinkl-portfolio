@@ -218,6 +218,11 @@ export function FloorPulse({
     `
   }), [color])
 
+  // Cleanup ShaderMaterial on unmount
+  useEffect(() => {
+    return () => { material.dispose() }
+  }, [material])
+
   useFrame((_, delta) => {
     time.current += delta
 

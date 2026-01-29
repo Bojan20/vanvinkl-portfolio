@@ -37,12 +37,7 @@ export function LogoHint({ active, position }: LogoHintProps) {
     return { canvas: cvs, texture: tex }
   }, [])
 
-  useEffect(() => {
-    return () => {
-      texture.dispose()
-      console.log('[LogoHint] CanvasTexture disposed')
-    }
-  }, [texture])
+  // Note: material disposal added below after material is defined
 
   useEffect(() => {
     const ctx = canvas.getContext('2d')
@@ -122,6 +117,15 @@ export function LogoHint({ active, position }: LogoHintProps) {
     side: THREE.DoubleSide,
     depthWrite: false
   }), [texture])
+
+  // Cleanup texture and material on unmount
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+      material.dispose()
+      console.log('[LogoHint] Texture + Material disposed')
+    }
+  }, [texture, material])
 
   useFrame((_, delta) => {
     if (!groupRef.current) return

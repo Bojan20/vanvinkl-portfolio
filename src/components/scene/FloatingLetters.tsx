@@ -67,10 +67,6 @@ function FloatingLetter({
     return tex
   }, [letter, color])
 
-  useEffect(() => {
-    return () => { texture.dispose() }
-  }, [texture])
-
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       map: { value: texture },
@@ -115,6 +111,14 @@ function FloatingLetter({
     depthWrite: false,
     toneMapped: false
   }), [texture, color])
+
+  // Cleanup texture and material on unmount
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+      material.dispose()
+    }
+  }, [texture, material])
 
   useFrame((state) => {
     if (!meshRef.current) return

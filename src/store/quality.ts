@@ -147,6 +147,10 @@ export const useQualityStore = create<QualityState>()(
           ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
           : ''
 
+        // CRITICAL: Release test context to avoid "Too many active WebGL contexts"
+        const loseExt = gl.getExtension('WEBGL_lose_context')
+        loseExt?.loseContext()
+
         // Heuristic device tier detection
         let tier: 'low' | 'medium' | 'high' = 'medium'
 

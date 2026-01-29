@@ -283,9 +283,16 @@ export function detectQualityPreset(): QualityPreset {
 
   if (!gl) return 'low'
 
+  // Helper to release context before returning
+  const releaseAndReturn = (preset: QualityPreset): QualityPreset => {
+    const loseExt = gl.getExtension('WEBGL_lose_context')
+    loseExt?.loseContext()
+    return preset
+  }
+
   // Check for mobile
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  if (isMobile) return 'low'
+  if (isMobile) return releaseAndReturn('low')
 
   // Check GPU vendor
   const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
@@ -294,21 +301,21 @@ export function detectQualityPreset(): QualityPreset {
 
     // Integrated graphics = medium
     if (renderer.includes('intel') || renderer.includes('integrated')) {
-      return 'medium'
+      return releaseAndReturn('medium')
     }
 
     // High-end discrete GPU = high/ultra
     if (renderer.includes('rtx') || renderer.includes('radeon rx 6') || renderer.includes('radeon rx 7')) {
-      return 'ultra'
+      return releaseAndReturn('ultra')
     }
 
     if (renderer.includes('gtx') || renderer.includes('radeon')) {
-      return 'high'
+      return releaseAndReturn('high')
     }
   }
 
   // Default to medium
-  return 'medium'
+  return releaseAndReturn('medium')
 }
 
 // ============================================

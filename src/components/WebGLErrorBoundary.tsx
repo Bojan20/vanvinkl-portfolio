@@ -344,24 +344,52 @@ export function ContextHandler() {
 
 // ============================================
 // CHECK WEBGL SUPPORT
+// Properly cleanup test contexts to avoid "Too many active WebGL contexts"
+// Results are cached after first check
 // ============================================
+let webglSupportCache: boolean | null = null
+let webgl2SupportCache: boolean | null = null
+
 export function isWebGLSupported(): boolean {
+  if (webglSupportCache !== null) return webglSupportCache
+
   try {
     const canvas = document.createElement('canvas')
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
-    )
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+
+    if (gl) {
+      // CRITICAL: Explicitly lose context to free resources
+      const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context')
+      ext?.loseContext()
+      webglSupportCache = true
+      return true
+    }
+    webglSupportCache = false
+    return false
   } catch (e) {
+    webglSupportCache = false
     return false
   }
 }
 
 export function isWebGL2Supported(): boolean {
+  if (webgl2SupportCache !== null) return webgl2SupportCache
+
   try {
     const canvas = document.createElement('canvas')
-    return !!canvas.getContext('webgl2')
+    const gl = canvas.getContext('webgl2')
+
+    if (gl) {
+      // CRITICAL: Explicitly lose context to free resources
+      const ext = gl.getExtension('WEBGL_lose_context')
+      ext?.loseContext()
+      webgl2SupportCache = true
+      return true
+    }
+    webgl2SupportCache = false
+    return false
   } catch (e) {
+    webgl2SupportCache = false
     return false
   }
 }

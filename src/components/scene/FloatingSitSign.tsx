@@ -48,10 +48,6 @@ export function FloatingSitSign({ position, color = '#8844ff' }: FloatingSitSign
     return tex
   }, [color])
 
-  useEffect(() => {
-    return () => { texture.dispose() }
-  }, [texture])
-
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       map: { value: texture },
@@ -93,6 +89,14 @@ export function FloatingSitSign({ position, color = '#8844ff' }: FloatingSitSign
     depthWrite: false,
     toneMapped: false
   }), [texture, color])
+
+  // Cleanup texture and material on unmount
+  useEffect(() => {
+    return () => {
+      texture.dispose()
+      material.dispose()
+    }
+  }, [texture, material])
 
   useFrame((state, delta) => {
     if (!meshRef.current) return

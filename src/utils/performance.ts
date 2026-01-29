@@ -236,9 +236,18 @@ export function detectGPUTier(): 'low' | 'medium' | 'high' {
   if (!gl) return 'low'
 
   const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
-  if (!debugInfo) return 'medium'
+  if (!debugInfo) {
+    // CRITICAL: Release test context before returning
+    const loseExt = gl.getExtension('WEBGL_lose_context')
+    loseExt?.loseContext()
+    return 'medium'
+  }
 
   const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string
+
+  // CRITICAL: Release test context to avoid "Too many active WebGL contexts"
+  const loseExt = gl.getExtension('WEBGL_lose_context')
+  loseExt?.loseContext()
 
   // High-end
   if (
