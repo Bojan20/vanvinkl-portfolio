@@ -34,6 +34,7 @@ import { achievementStore } from '../store/achievements'
 
 // Audio system
 import { uaPlay, uaStop, uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
+import { useAudioStore } from '../store/audio'
 
 // Security utilities
 import { safeGetLocalStorage, safeSetLocalStorage } from '../utils/security'
@@ -321,14 +322,20 @@ export function SlotFullScreen({
     }
   }, [phase])
 
-  // CRITICAL: Focus main container on mount and phase change for keyboard events
+  // CRITICAL: Focus main container for keyboard events
+  // Focus on mount, phase change, and when video closes
   useEffect(() => {
-    // Delay slightly to ensure DOM is ready
-    const timer = setTimeout(() => {
-      mainContainerRef.current?.focus()
-    }, 100)
+    const focusContainer = () => {
+      if (mainContainerRef.current && !selectedProject) {
+        mainContainerRef.current.focus()
+      }
+    }
+    // Immediate focus
+    focusContainer()
+    // Also after short delay for safety
+    const timer = setTimeout(focusContainer, 50)
     return () => clearTimeout(timer)
-  }, [phase])
+  }, [phase, selectedProject, detailItem])
 
   // Lounge music fade when entering/exiting portfolio video
   // ULTIMATIVNO: RAF-based, cancellable, 1000ms fade TO ZERO
@@ -367,13 +374,14 @@ export function SlotFullScreen({
       fadeRafRef.current = requestAnimationFrame(fadeOut)
 
     } else {
-      // Video closed → Fade IN lounge music (1000ms → 0.5 volume)
-      // ONLY if music is actually muted (< 0.1)
+      // Video closed → Fade IN lounge music to stored volume
+      // Read target volume from audio store (respects user's slider setting)
+      const targetVolume = useAudioStore.getState().musicVolume
       const currentVol = uaGetVolume('music')
 
       // Always restart lounge when exiting video
       if (currentVol < 0.1) {
-        console.log('[Music] Video closed → RESTART lounge + Fade IN to 0.5')
+        console.log(`[Music] Video closed → RESTART lounge + Fade IN to ${targetVolume.toFixed(2)}`)
 
         // Restart lounge music
         uaPlay('lounge')
@@ -387,14 +395,14 @@ export function SlotFullScreen({
             const elapsed = Date.now() - startTime
             const progress = Math.min(elapsed / fadeDuration, 1)
             const eased = 1 - Math.pow(1 - progress, 3)
-            const vol = 0.5 * eased // Start from 0 → 0.5
+            const vol = targetVolume * eased // Fade to stored volume
             uaVolume('music', vol, 0)
 
             if (progress < 1) {
               fadeRafRef.current = requestAnimationFrame(fadeIn)
             } else {
               fadeRafRef.current = null
-              console.log('[Music] Fade IN complete → Lounge at 0.5')
+              console.log(`[Music] Fade IN complete → Lounge at ${targetVolume.toFixed(2)}`)
             }
           }
           fadeRafRef.current = requestAnimationFrame(fadeIn)
@@ -524,22 +532,30 @@ export function SlotFullScreen({
     touchStartRef.current = null
   }, [section])
 
-  // Keyboard navigation with sound effects
+  // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ESC - close detail modal first, then close slot
-      if (e.key === 'Escape') {
+      // SKIP if video player is active - PortfolioPlayer handles its own keyboard
+      if (selectedProject) return
+
+      const key = e.key
+
+      // ========== ESC - Universal close ==========
+      if (key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
         if (detailItem) {
           setDetailItem(null)
-          return
+        } else {
+          onClose()
         }
-        onClose()
         return
       }
 
-      // SPACE - hard stop if spinning, new spin only if in valid phase
-      if (e.key === ' ') {
+      // ========== SPACE - Spinning control ==========
+      if (key === ' ') {
         e.preventDefault()
+        e.stopPropagation()
         if (phase === 'spinning') {
           // HARD STOP - immediately stop all reels and show result
           setForceStop(true)
@@ -557,39 +573,50 @@ export function SlotFullScreen({
             setCurrentIndices(targetIndices)
             setTimeout(() => setForceStop(false), 100)
           }, 150)
-        } else if (phase === 'intro' || phase === 'result') {
+        } else if (phase === 'result') {
+          // SPACE in result = new spin
           handleSpin()
         }
         return
       }
 
-      // ENTER in result phase → go to content
-      if (e.key === 'Enter' && phase === 'result') {
+      // ========== ENTER - Phase transitions ==========
+      if (key === 'Enter') {
         e.preventDefault()
-        setPhase('content')
+        e.stopPropagation()
+
+        if (phase === 'result') {
+          // Result → Content
+          setPhase('content')
+          uaPlaySynth('select', 0.5)
+        } else if (phase === 'content' && section) {
+          // Content → Activate selected item
+          if (focusIndex >= 0) {
+            haptic.medium()
+            handleActivate(focusIndex)
+          } else {
+            setFocusIndex(0)
+          }
+        }
         return
       }
 
-      // Only handle arrow/enter in content phase
-      if (phase !== 'content' || !section) return
+      // ========== ARROWS - Content navigation only ==========
+      if (phase === 'content' && section) {
+        const itemCount = getItemCount(section)
+        const columns = getGridColumns(section)
 
-      const itemCount = getItemCount(section)
-      const columns = getGridColumns(section)
-
-      switch (e.key) {
-        case 'ArrowRight':
+        if (key === 'ArrowRight') {
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
           setFocusIndex(prev => (prev + 1) % itemCount)
-          break
-        case 'ArrowLeft':
+        } else if (key === 'ArrowLeft') {
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
           setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
-          break
-        case 'ArrowDown':
+        } else if (key === 'ArrowDown') {
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
@@ -601,8 +628,7 @@ export function SlotFullScreen({
           } else {
             setFocusIndex(prev => (prev + 1) % itemCount)
           }
-          break
-        case 'ArrowUp':
+        } else if (key === 'ArrowUp') {
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
@@ -614,33 +640,33 @@ export function SlotFullScreen({
           } else {
             setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
           }
-          break
-        case 'Enter':
-          e.preventDefault()
-          if (focusIndex >= 0) {
-            haptic.medium()
-            handleActivate(focusIndex)
-          } else {
-            setFocusIndex(0)
-          }
-          break
+        }
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices])
+    // Use capture phase to intercept before any child elements
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [onClose, phase, section, focusIndex, handleActivate, handleSpin, detailItem, segmentConfig, targetIndices, selectedProject])
+
+  // Click handler to refocus container (ensures keyboard works after clicking)
+  const handleContainerClick = useCallback(() => {
+    if (!selectedProject && mainContainerRef.current) {
+      mainContainerRef.current.focus()
+    }
+  }, [selectedProject])
 
   // ========== RENDER ==========
   return (
     <div
       ref={mainContainerRef}
-      tabIndex={-1}
+      tabIndex={0}
       id="main-content"
       role="main"
       aria-label={`${segmentConfig.title} slot machine`}
       aria-live={phase === 'spinning' ? 'polite' : 'off'}
       aria-busy={phase === 'spinning'}
+      onClick={handleContainerClick}
       style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,

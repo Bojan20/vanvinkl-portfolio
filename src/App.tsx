@@ -46,7 +46,8 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 // Unified Audio System
-import { initUnifiedAudio, uaPlay } from './audio'
+import { initUnifiedAudio, uaPlay, uaVolume, uaIsPlaying } from './audio'
+import { useAudioStore } from './store/audio'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 import { useQualityStore, initQualitySystem } from './store/quality'
@@ -115,6 +116,9 @@ export function App() {
 
     // Always try to play music (mute state is handled by masterGain)
     uaPlay('lounge')
+    // Set initial music volume from store (default 50%)
+    const { musicVolume } = useAudioStore.getState()
+    uaVolume('music', musicVolume)
 
     // Hide splash
     setShowSplash(false)
@@ -319,6 +323,14 @@ export function App() {
                 qualityStore.setPreset('auto')
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
+              // Resume lounge music with volume from audio store (no overlap)
+              const { musicVolume } = useAudioStore.getState()
+              if (!uaIsPlaying('lounge')) {
+                uaPlay('lounge')
+                console.log('[Music] Slot closed - lounge started')
+              }
+              uaVolume('music', musicVolume, 500) // Fade to stored volume over 500ms
+              console.log(`[Music] Volume synced to ${musicVolume.toFixed(2)}`)
             }}
             onNavigate={setSpinningSlot}
           />

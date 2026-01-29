@@ -76,13 +76,15 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
     onEnter()
   }, [isClicking, isLoaded, onEnter])
 
-  // Listen for any key press (only when loaded)
+  // Listen for SPACE key only (desktop)
   useEffect(() => {
     if (!isLoaded) return
     const handleKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      handleEnter()
+      if (e.code === 'Space') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleEnter()
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -90,7 +92,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
 
   return (
     <div
-      onClick={handleEnter}
+      onClick={isMobile ? handleEnter : undefined}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -105,7 +107,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         opacity: isClicking ? 0 : 1,
         transition: 'opacity 0.4s ease-out',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        cursor: isLoaded ? 'pointer' : 'default'
+        cursor: isMobile ? 'pointer' : 'default'
       }}
     >
       {/* Scanlines overlay */}
@@ -275,7 +277,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
               textAlign: 'center',
               display: 'block'
             }}>
-              {isMobile ? 'TAP TO ENTER' : 'PRESS ANY KEY TO ENTER'}
+              {isMobile ? 'TAP TO ENTER' : 'PRESS SPACE TO ENTER'}
             </span>
           )}
         </div>

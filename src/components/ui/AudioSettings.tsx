@@ -1,10 +1,13 @@
 /**
  * AudioSettings - Audio volume control panel
  * Opens with A key, controlled with arrow keys
+ *
+ * CONNECTED TO GLOBAL STORE - syncs with PortfolioPlayer sliders
  */
 
 import { useState, useEffect } from 'react'
-import { uaVolume, uaGetVolume } from '../../audio'
+import { uaVolume } from '../../audio'
+import { useAudioStore } from '../../store/audio'
 
 // Inline mobile detection
 function isMobileDevice(): boolean {
@@ -20,8 +23,9 @@ interface AudioSettingsProps {
 export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProps) {
   const isMobile = isMobileDevice()
   const [selected, setSelected] = useState<'music' | 'sfx'>('music')
-  const [musicVol, setMusicVol] = useState(() => uaGetVolume('music'))
-  const [sfxVol, setSfxVol] = useState(() => uaGetVolume('sfx'))
+
+  // USE GLOBAL STORE - synced with PortfolioPlayer
+  const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
 
   // Keyboard controls
   useEffect(() => {
@@ -50,12 +54,12 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
         case 'ArrowLeft':
           e.preventDefault()
           if (selected === 'music') {
-            const newVal = Math.max(0, musicVol - step)
-            setMusicVol(newVal)
+            const newVal = Math.max(0, musicVolume - step)
+            setMusicVolume(newVal)
             uaVolume('music', newVal)
           } else {
-            const newVal = Math.max(0, sfxVol - step)
-            setSfxVol(newVal)
+            const newVal = Math.max(0, sfxVolume - step)
+            setSfxVolume(newVal)
             uaVolume('sfx', newVal)
           }
           break
@@ -63,12 +67,12 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
         case 'ArrowRight':
           e.preventDefault()
           if (selected === 'music') {
-            const newVal = Math.min(1, musicVol + step)
-            setMusicVol(newVal)
+            const newVal = Math.min(1, musicVolume + step)
+            setMusicVolume(newVal)
             uaVolume('music', newVal)
           } else {
-            const newVal = Math.min(1, sfxVol + step)
-            setSfxVol(newVal)
+            const newVal = Math.min(1, sfxVolume + step)
+            setSfxVolume(newVal)
             uaVolume('sfx', newVal)
           }
           break
@@ -82,7 +86,7 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [disabled, isOpen, selected, musicVol, sfxVol, setIsOpen])
+  }, [disabled, isOpen, selected, musicVolume, sfxVolume, setMusicVolume, setSfxVolume, setIsOpen])
 
   return (
     <>
@@ -216,10 +220,10 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                     type="range"
                     min="0"
                     max="100"
-                    value={musicVol * 100}
+                    value={musicVolume * 100}
                     onChange={(e) => {
                       const vol = Number(e.target.value) / 100
-                      setMusicVol(vol)
+                      setMusicVolume(vol)
                       uaVolume('music', vol)
                     }}
                     style={{ width: '100px', height: '6px', cursor: 'pointer' }}
@@ -233,7 +237,7 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                     overflow: 'hidden'
                   }}>
                     <div style={{
-                      width: `${musicVol * 100}%`,
+                      width: `${musicVolume * 100}%`,
                       height: '100%',
                       background: selected === 'music'
                         ? 'linear-gradient(90deg, #ff00aa, #ff66cc)'
@@ -250,7 +254,7 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                   minWidth: '32px',
                   textAlign: 'right'
                 }}>
-                  {Math.round(musicVol * 100)}%
+                  {Math.round(musicVolume * 100)}%
                 </span>
               </div>
             </div>
@@ -280,10 +284,10 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                     type="range"
                     min="0"
                     max="100"
-                    value={sfxVol * 100}
+                    value={sfxVolume * 100}
                     onChange={(e) => {
                       const vol = Number(e.target.value) / 100
-                      setSfxVol(vol)
+                      setSfxVolume(vol)
                       uaVolume('sfx', vol)
                       uaVolume('ui', vol)
                     }}
@@ -298,7 +302,7 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                     overflow: 'hidden'
                   }}>
                     <div style={{
-                      width: `${sfxVol * 100}%`,
+                      width: `${sfxVolume * 100}%`,
                       height: '100%',
                       background: selected === 'sfx'
                         ? 'linear-gradient(90deg, #00ffff, #66ffff)'
@@ -315,7 +319,7 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
                   minWidth: '32px',
                   textAlign: 'right'
                 }}>
-                  {Math.round(sfxVol * 100)}%
+                  {Math.round(sfxVolume * 100)}%
                 </span>
               </div>
             </div>

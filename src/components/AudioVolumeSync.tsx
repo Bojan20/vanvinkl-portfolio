@@ -17,20 +17,23 @@ export function AudioVolumeSync() {
   const musicVolume = useAudioStore((state) => state.musicVolume)
   const sfxVolume = useAudioStore((state) => state.sfxVolume)
 
-  // Sync music volume with music bus
+  // Initial sync on mount + whenever volume changes
   useEffect(() => {
-    if (unifiedAudio.isInitialized()) {
-      unifiedAudio.setVolume('music', musicVolume)
+    const syncVolumes = () => {
+      if (unifiedAudio.isInitialized()) {
+        unifiedAudio.setVolume('music', musicVolume)
+        unifiedAudio.setVolume('sfx', sfxVolume)
+        unifiedAudio.setVolume('ui', sfxVolume)
+      }
     }
-  }, [musicVolume])
 
-  // Sync SFX volume with sfx AND ui buses
-  useEffect(() => {
-    if (unifiedAudio.isInitialized()) {
-      unifiedAudio.setVolume('sfx', sfxVolume)
-      unifiedAudio.setVolume('ui', sfxVolume) // UI synth sounds use same volume
-    }
-  }, [sfxVolume])
+    // Immediate sync
+    syncVolumes()
+
+    // Also sync after short delay (in case audio initializes late)
+    const timer = setTimeout(syncVolumes, 100)
+    return () => clearTimeout(timer)
+  }, [musicVolume, sfxVolume])
 
   return null // This component only handles side effects
 }

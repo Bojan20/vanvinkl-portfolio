@@ -34,7 +34,7 @@ import {
   FloatingLetters
 } from './scene'
 
-import { uaPlaySynth } from '../audio'
+import { uaPlay, uaPlaySynth } from '../audio'
 import { getEffectiveQuality } from '../store/quality'
 
 // ============================================
@@ -95,6 +95,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   const avatarRotation = useRef(0)
   const isMovingRef = useRef(false)
   const lastFootstepTime = useRef(0)
+  const footstepFoot = useRef(0) // 0 = left, 1 = right (alternating)
 
   // State refs (avoid re-renders)
   const nearMachineRef = useRef<string | null>(null)
@@ -235,11 +236,14 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   useFrame((state) => {
     if (introActive) return
 
-    // Footstep sounds
+    // Footstep sounds - alternate between feet for realism
     if (isMovingRef.current && !isSittingRef.current && !introActive) {
       const now = state.clock.elapsedTime
       if (now - lastFootstepTime.current > 0.4) {
-        uaPlaySynth('footstep', 0.4)
+        // Alternate between footstep1 and footstep2 (left/right foot)
+        const step = footstepFoot.current === 0 ? 'footstep1' : 'footstep2'
+        uaPlay(step)
+        footstepFoot.current = footstepFoot.current === 0 ? 1 : 0
         lastFootstepTime.current = now
       }
     }

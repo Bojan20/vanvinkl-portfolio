@@ -27,7 +27,6 @@
  */
 
 import React, { useState, useEffect, useRef, memo } from 'react'
-import { useAudioStore } from '../../../store/audio'
 import { uaPlaySynth } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
@@ -54,7 +53,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const safeMusicPath = isValidMediaPath(project.musicPath) ? project.musicPath : undefined
   const safeSfxPath = isValidMediaPath(project.sfxPath) ? project.sfxPath : undefined
 
-  const { musicVolume, sfxVolume, setMusicVolume, setSfxVolume } = useAudioStore()
+  // LOCAL state for video player volumes (100% default, NOT synced with lounge)
+  const [musicVolume, setMusicVolume] = useState(1.0)
+  const [sfxVolume, setSfxVolume] = useState(1.0)
   const videoRef = useRef<HTMLVideoElement>(null)
   const musicRef = useRef<HTMLAudioElement>(null)
   const sfxRef = useRef<HTMLAudioElement>(null)
