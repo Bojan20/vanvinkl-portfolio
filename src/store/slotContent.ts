@@ -278,6 +278,16 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         sfxPath: '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'
       },
       {
+        title: 'Smash Factory',
+        icon: '🔨',
+        tags: ['Slots', 'Audio', 'Video'],
+        description: 'High-energy slot game audio production with dynamic soundscape. Features explosive sound design and driving music tracks synchronized with gameplay mechanics.',
+        year: '2024',
+        videoPath: '/videoSlotPortfolio/Smash Portfolio Video.mp4',
+        musicPath: '/audioSlotPortfolio/music/Smash-Factory-Music',
+        sfxPath: '/audioSlotPortfolio/sfx/Smash-Factory-SFX'
+      },
+      {
         title: 'VanVinkl Studio Packages',
         icon: '📦',
         tags: ['Turnkey', 'International', 'B2B'],
