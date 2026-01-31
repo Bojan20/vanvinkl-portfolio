@@ -63,3 +63,4 @@ videoSlotPortfolio/           # Source video files
 public/videoSlotPortfolio/    # Deployed video
 public/audioSlotPortfolio/    # Deployed OPUS/AAC audio
 public/Piggy Portfolio Video.mp4
+audioSlotPortfolio/*.wav
