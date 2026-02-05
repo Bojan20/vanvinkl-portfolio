@@ -135,12 +135,13 @@ export function getNavigableItems(section: SlotSection): { icon: string; title: 
 }
 
 /**
- * Get total number of items for a section
- * Used for grid navigation bounds checking
+ * Get total number of focusable items for a section
+ * Must match what the view component renders as focusable items
+ * Skills: individual skills across all categories (not category count)
  */
 export function getItemCount(section: SlotSection): number {
   switch (section.type) {
-    case 'skills': return section.categories.length
+    case 'skills': return section.categories.reduce((sum, cat) => sum + cat.skills.length, 0)
     case 'services': return section.items.length
     case 'about': return section.stats.length
     case 'projects': return section.featured.length
@@ -152,14 +153,34 @@ export function getItemCount(section: SlotSection): number {
 
 /**
  * Get grid column count for 2D keyboard navigation
- * Determines navigation layout (vertical vs multi-column)
+ * MUST match the actual grid layout in each view component
+ * Used for ArrowUp/ArrowDown to jump by column count
  */
 export function getGridColumns(section: SlotSection): number {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
+
   switch (section.type) {
+    case 'skills': {
+      // Skills navigate per individual skill within 2-column category grid
+      // But skills within a category are a vertical list, so left/right should move between categories
+      // Use 1 for vertical skill list navigation (up/down moves between skills)
+      return 1
+    }
     case 'services': return 2
-    case 'about': return 4
-    case 'projects': return 2
-    case 'contact': return 2
-    default: return 1 // Vertical lists
+    case 'about': return isMobile ? 2 : Math.min(section.stats.length, 3)
+    case 'projects': {
+      const count = section.featured.length
+      return isMobile ? 2 : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
+    }
+    case 'experience': {
+      const count = section.timeline.length
+      return count <= 2 ? count : count <= 4 ? 2 : 3
+    }
+    case 'contact': {
+      const count = section.methods.length
+      return count <= 2 ? count : count <= 4 ? 2 : 3
+    }
+    default: return 1
   }
 }

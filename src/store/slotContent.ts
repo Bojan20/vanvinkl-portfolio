@@ -274,7 +274,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     color: '#ffd700',
     featured: [
       {
-        title: 'Piggy Plunger Game',
+        title: 'Piggy Plunger',
         icon: '🐷',
         tags: ['Slots', 'Audio', 'Video'],
         description: 'Interactive slot game portfolio featuring synchronized video and audio presentation. Complete production showcase with background music and sound effects.',
@@ -355,27 +355,6 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         audioTracks: [
           { label: 'Base Game (2 Layers)', path: '/audioSlotPortfolio/portfolio/Midnight-BG' }
         ]
-      },
-      {
-        title: 'VanVinkl Studio Packages',
-        icon: '📦',
-        tags: ['Turnkey', 'International', 'B2B'],
-        description: 'Full audio packages for international gaming clients. Each package includes original soundtrack, complete SFX library, implementation documentation, and ongoing support. Designed for seamless integration into slot game engines.',
-        year: '2024-Present'
-      },
-      {
-        title: 'Trailer Music Compositions',
-        icon: '🎬',
-        tags: ['Cinematic', 'Orchestral', 'Epic'],
-        description: 'Original trailer music for game marketing and promotional content. Epic orchestral arrangements combined with modern production techniques to create impactful, emotionally engaging compositions.',
-        year: 'Ongoing'
-      },
-      {
-        title: 'Live Event Audio',
-        icon: '🎤',
-        tags: ['Live', 'Corporate', 'Production'],
-        description: 'Audio production and coordination for live corporate events during my work with Music Studio "Strip". Experience includes on-site sound management, artist coordination, and event audio logistics.',
-        year: '2020-2022'
       }
     ],
     cta: { label: 'Listen to Demo Reel', external: 'https://vanvinkl.com/demos' }

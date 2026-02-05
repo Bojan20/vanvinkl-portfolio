@@ -2,43 +2,65 @@ import { memo } from 'react'
 import type { SkillsSection } from '../types'
 
 const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: SkillsSection, focusIndex: number }) {
-  // Flatten all skills for navigation
   let itemIndex = 0
   const catCount = section.categories.length
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const columns = isMobile ? 1 : (catCount <= 2 ? catCount : catCount <= 4 ? 2 : 3)
+  const columns = isMobile ? 1 : (catCount <= 2 ? catCount : 2)
 
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gap: '40px',
-      maxWidth: '1400px',
+      gridTemplateRows: `repeat(${Math.ceil(catCount / columns)}, 1fr)`,
+      gap: 'clamp(10px, 1.5vh, 20px)',
+      maxWidth: '1200px',
+      width: '100%',
+      height: '100%',
       margin: '0 auto'
     }}>
       {section.categories.map((cat, catIdx) => (
-        <div key={cat.name} style={{ animation: `fadeSlideIn 0.5s ease-out ${catIdx * 0.1}s both` }}>
+        <div key={cat.name} style={{
+          animation: `fadeSlideIn 0.5s ease-out ${catIdx * 0.1}s both`,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'hidden',
+          background: 'rgba(255,255,255,0.015)',
+          borderRadius: '14px',
+          padding: 'clamp(10px, 1.5vh, 20px) clamp(12px, 1.5vw, 20px)',
+          border: '1px solid rgba(255,255,255,0.06)'
+        }}>
+          {/* Category header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            marginBottom: '24px',
-            paddingBottom: '14px',
-            borderBottom: `2px solid ${cat.color}40`
+            gap: 'clamp(6px, 1vw, 12px)',
+            marginBottom: 'clamp(8px, 1.2vh, 16px)',
+            paddingBottom: 'clamp(6px, 0.8vh, 12px)',
+            borderBottom: `2px solid ${cat.color}40`,
+            flexShrink: 0
           }}>
             <span style={{
-              fontSize: '36px',
-              filter: `drop-shadow(0 0 12px ${cat.color})`
+              fontSize: 'clamp(20px, 2.5vh, 32px)',
+              filter: `drop-shadow(0 0 8px ${cat.color})`,
+              lineHeight: 1
             }}>{cat.icon}</span>
             <span style={{
               color: cat.color,
               fontWeight: 'bold',
-              fontSize: '22px',
-              letterSpacing: '2px',
+              fontSize: 'clamp(15px, 1.8vh, 22px)',
+              letterSpacing: '1px',
               textShadow: `0 0 12px ${cat.color}50`
             }}>{cat.name}</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Skills list */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'clamp(4px, 0.7vh, 10px)',
+            flex: 1,
+            justifyContent: 'space-evenly'
+          }}>
             {cat.skills.map(skill => {
               const currentIndex = itemIndex
               const isFocused = focusIndex === currentIndex
@@ -49,25 +71,26 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '16px',
-                    padding: '14px 18px',
-                    borderRadius: '14px',
-                    background: isFocused ? `linear-gradient(135deg, ${cat.color}15, ${cat.color}05)` : 'rgba(255,255,255,0.02)',
-                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.05)',
-                    boxShadow: isFocused ? `0 8px 30px ${cat.color}25` : 'none',
+                    gap: 'clamp(8px, 1vw, 14px)',
+                    padding: 'clamp(6px, 0.8vh, 12px) clamp(8px, 1vw, 16px)',
+                    borderRadius: '10px',
+                    background: isFocused ? `linear-gradient(135deg, ${cat.color}18, ${cat.color}08)` : 'rgba(255,255,255,0.02)',
+                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.04)',
+                    boxShadow: isFocused ? `0 4px 16px ${cat.color}25` : 'none',
                     transition: 'all 0.3s ease'
                   }}
                 >
                   <span style={{
-                    color: isFocused ? '#fff' : '#aaaacc',
-                    fontSize: '16px',
-                    minWidth: '110px',
+                    color: isFocused ? '#fff' : '#bbbbd0',
+                    fontSize: 'clamp(12px, 1.5vh, 16px)',
+                    minWidth: 'clamp(70px, 8vw, 110px)',
                     flex: '0 0 auto',
-                    fontWeight: isFocused ? '600' : '500'
+                    fontWeight: isFocused ? '700' : '500',
+                    letterSpacing: '0.3px'
                   }}>{skill.name}</span>
                   <div style={{
                     flex: 1,
-                    height: '14px',
+                    height: 'clamp(8px, 1.2vh, 14px)',
                     background: 'rgba(255,255,255,0.08)',
                     borderRadius: '7px',
                     overflow: 'hidden'
@@ -75,18 +98,19 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
                     <div style={{
                       width: `${skill.level}%`,
                       height: '100%',
-                      background: `linear-gradient(90deg, ${cat.color}90, ${cat.color})`,
+                      background: `linear-gradient(90deg, ${cat.color}80, ${cat.color})`,
                       borderRadius: '7px',
-                      boxShadow: isFocused ? `0 0 18px ${cat.color}60` : `0 0 10px ${cat.color}30`,
+                      boxShadow: isFocused ? `0 0 12px ${cat.color}60` : `0 0 6px ${cat.color}30`,
                       animation: `barGrow 1s ease-out ${catIdx * 0.1}s both`
                     }} />
                   </div>
                   <span style={{
                     color: cat.color,
-                    fontSize: '16px',
-                    width: '55px',
+                    fontSize: 'clamp(12px, 1.4vh, 16px)',
+                    width: '40px',
                     fontWeight: 'bold',
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    fontFamily: 'monospace'
                   }}>{skill.level}%</span>
                 </div>
               )

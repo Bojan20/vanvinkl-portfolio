@@ -16,19 +16,26 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
     }
   }
 
-  // Determine columns based on item count
   const itemCount = section.methods.length
   const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
 
   return (
-    <div style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
-      {/* Contact cards - fixed columns based on count */}
+    <div style={{
+      animation: 'fadeSlideIn 0.5s ease-out',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'clamp(14px, 2vh, 28px)',
+      justifyContent: 'center'
+    }}>
+      {/* Contact cards */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gap: '28px',
-        maxWidth: columns === 2 ? '800px' : '1200px',
-        margin: '0 auto 50px'
+        gap: 'clamp(10px, 1.5vh, 18px)',
+        maxWidth: columns === 2 ? '700px' : '1000px',
+        width: '100%',
+        margin: '0 auto'
       }}>
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i
@@ -42,35 +49,36 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
                   ? 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))'
                   : 'linear-gradient(135deg, rgba(255,68,68,0.06), rgba(255,68,68,0.02))',
                 border: isFocused ? '2px solid #ff4444' : '1px solid rgba(255,68,68,0.12)',
-                borderRadius: '20px',
-                padding: '48px 32px',
+                borderRadius: '14px',
+                padding: 'clamp(18px, 2.5vh, 36px) clamp(14px, 1.5vw, 24px)',
                 textAlign: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-                boxShadow: isFocused
-                  ? '0 16px 50px rgba(255,68,68,0.2)'
-                  : '0 6px 30px rgba(0,0,0,0.12)',
-                outline: 'none'
+                boxShadow: isFocused ? '0 6px 20px rgba(255,68,68,0.2)' : '0 2px 10px rgba(0,0,0,0.12)',
+                outline: 'none',
+                display: 'flex',
+                flexDirection: 'column' as const,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'clamp(6px, 1vh, 14px)'
               }}
             >
               <div style={{
-                fontSize: '60px',
-                marginBottom: '20px',
-                filter: isFocused ? 'drop-shadow(0 0 15px rgba(255,68,68,0.6))' : 'none',
-                transition: 'all 0.3s ease'
+                fontSize: 'clamp(32px, 4vh, 52px)',
+                filter: isFocused ? 'drop-shadow(0 0 10px rgba(255,68,68,0.6))' : 'none',
+                lineHeight: 1
               }}>{method.icon}</div>
               <div style={{
                 color: isFocused ? '#ff6666' : '#ff4444',
                 fontWeight: 'bold',
-                fontSize: '26px',
-                marginBottom: '12px',
-                transition: 'all 0.3s ease'
+                fontSize: 'clamp(16px, 2vh, 22px)',
+                letterSpacing: '0.5px'
               }}>{method.label}</div>
               <div style={{
-                color: isFocused ? '#bbb' : '#777788',
-                fontSize: '16px',
-                transition: 'color 0.3s ease'
+                color: isFocused ? '#bbb' : '#888899',
+                fontSize: 'clamp(12px, 1.4vh, 15px)',
+                fontWeight: isCopied ? '600' : '400'
               }}>
                 {isCopied ? '✓ Copied!' : method.value}
               </div>
@@ -79,20 +87,21 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
         })}
       </div>
       {/* Availability badge */}
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: 'center', flexShrink: 0 }}>
         <div style={{
           display: 'inline-block',
           background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))',
-          padding: '18px 48px',
-          borderRadius: '30px',
+          padding: 'clamp(10px, 1.5vh, 18px) clamp(20px, 3vw, 40px)',
+          borderRadius: '16px',
           border: '1px solid rgba(0,255,136,0.3)'
         }}>
           <p style={{
             color: '#00ff88',
-            fontSize: '22px',
+            fontSize: 'clamp(14px, 1.8vh, 20px)',
             fontWeight: '600',
             margin: 0,
-            textShadow: '0 0 20px rgba(0,255,136,0.4)'
+            textShadow: '0 0 15px rgba(0,255,136,0.4)',
+            letterSpacing: '0.5px'
           }}>
             {section.availability}
           </p>

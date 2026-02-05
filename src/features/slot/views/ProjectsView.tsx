@@ -4,72 +4,116 @@ import type { ProjectsSection } from '../types'
 const ProjectsView = memo(function ProjectsView({ section, focusIndex }: { section: ProjectsSection, focusIndex: number }) {
   const itemCount = section.featured.length
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const columns = isMobile ? 1 : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
+  const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
+  const columns = isMobile ? 2 : isTablet ? 3 : (itemCount <= 4 ? 2 : itemCount <= 6 ? 3 : 4)
+  const rows = Math.ceil(itemCount / columns)
 
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gap: '28px',
-      maxWidth: columns === 2 ? '950px' : '1400px',
+      gridTemplateRows: `repeat(${rows}, 1fr)`,
+      gap: 'clamp(8px, 1.2vh, 16px)',
+      maxWidth: '1400px',
+      width: '100%',
+      height: '100%',
       margin: '0 auto'
     }}>
       {section.featured.map((proj, i) => {
         const isFocused = focusIndex === i
+        const hasVideo = !!proj.videoPath
+        const hasAudioOnly = !proj.videoPath && !!proj.audioTracks?.length
+        const accentColor = hasVideo ? '#00ccff' : hasAudioOnly ? '#ff8800' : '#ffd700'
+        const accentBg = hasVideo ? 'rgba(0,204,255,' : hasAudioOnly ? 'rgba(255,136,0,' : 'rgba(255,215,0,'
+
         return (
           <div
             key={proj.title}
             style={{
               background: isFocused
-                ? 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04))'
-                : 'linear-gradient(135deg, rgba(255,215,0,0.04), rgba(255,215,0,0.01))',
-              borderRadius: '20px',
-              padding: '36px',
-              border: isFocused ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.12)',
-              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-              boxShadow: isFocused ? '0 16px 50px rgba(255,215,0,0.15)' : '0 6px 25px rgba(0,0,0,0.15)',
-              transition: 'all 0.3s ease'
+                ? `linear-gradient(135deg, ${accentBg}0.12), ${accentBg}0.04))`
+                : `linear-gradient(135deg, ${accentBg}0.04), ${accentBg}0.01))`,
+              borderRadius: '14px',
+              padding: 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
+              border: isFocused ? `2px solid ${accentColor}` : `1px solid ${accentBg}0.15)`,
+              animation: `fadeSlideIn 0.4s ease-out ${i * 0.05}s both`,
+              boxShadow: isFocused ? `0 6px 20px ${accentBg}0.2)` : '0 2px 8px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s ease',
+              overflow: 'hidden',
+              position: 'relative' as const,
+              display: 'flex',
+              flexDirection: 'column' as const,
+              justifyContent: 'space-evenly',
+              alignItems: 'center',
+              gap: 'clamp(6px, 1vh, 14px)',
+              minHeight: 0
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+            {/* Type badge */}
+            {(hasVideo || hasAudioOnly) && (
+              <div style={{
+                position: 'absolute',
+                top: 'clamp(6px, 1vh, 10px)',
+                right: 'clamp(6px, 1vw, 10px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: 'clamp(3px, 0.4vh, 5px) clamp(6px, 0.8vw, 10px)',
+                borderRadius: '8px',
+                background: hasVideo ? 'rgba(0,204,255,0.15)' : 'rgba(255,136,0,0.15)',
+                border: `1px solid ${hasVideo ? 'rgba(0,204,255,0.3)' : 'rgba(255,136,0,0.3)'}`,
+                fontSize: 'clamp(10px, 1.2vh, 12px)',
+                fontWeight: 700,
+                color: accentColor,
+                letterSpacing: '0.5px',
+                zIndex: 1
+              }}>
+                <span style={{ fontSize: 'clamp(11px, 1.3vh, 14px)' }}>{hasVideo ? '🎬' : '🎧'}</span>
+                {hasVideo ? 'VIDEO' : 'AUDIO'}
+              </div>
+            )}
+
+            {/* Icon + Title */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column' as const,
+              alignItems: 'center',
+              gap: 'clamp(4px, 0.6vh, 8px)'
+            }}>
               <span style={{
-                fontSize: '52px',
-                filter: isFocused ? 'drop-shadow(0 0 15px rgba(255,215,0,0.5))' : 'none'
+                fontSize: 'clamp(28px, 3.5vh, 44px)',
+                filter: isFocused ? `drop-shadow(0 0 10px ${accentBg}0.5))` : 'none',
+                lineHeight: 1
               }}>{proj.icon}</span>
+              <h3 style={{
+                margin: 0,
+                color: accentColor,
+                fontSize: 'clamp(16px, 2vh, 22px)',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                lineHeight: 1.2,
+                letterSpacing: '0.3px'
+              }}>{proj.title}</h3>
               <span style={{
-                color: '#ffd700',
-                fontSize: '13px',
-                background: 'rgba(255,215,0,0.12)',
-                padding: '8px 16px',
-                borderRadius: '14px',
-                fontWeight: 600,
-                border: '1px solid rgba(255,215,0,0.25)'
+                color: accentColor,
+                fontSize: 'clamp(10px, 1.2vh, 13px)',
+                opacity: 0.7,
+                fontWeight: 600
               }}>{proj.year}</span>
             </div>
-            <h3 style={{
-              margin: '0 0 12px 0',
-              color: '#ffd700',
-              fontSize: '24px',
-              fontWeight: 'bold'
-            }}>{proj.title}</h3>
+
+            {/* Description */}
             <p style={{
-              margin: '0 0 20px 0',
-              color: isFocused ? '#ccc' : '#888899',
-              fontSize: '15px',
-              lineHeight: 1.7
+              margin: 0,
+              color: isFocused ? '#ccc' : '#999aaa',
+              fontSize: 'clamp(12px, 1.5vh, 16px)',
+              lineHeight: 1.6,
+              textAlign: 'center',
+              display: '-webkit-box',
+              WebkitLineClamp: 5,
+              WebkitBoxOrient: 'vertical' as const,
+              overflow: 'hidden'
             }}>{proj.description}</p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {proj.tags.map((t) => (
-                <span key={t} style={{
-                  fontSize: '12px',
-                  padding: '8px 14px',
-                  background: 'rgba(255,215,0,0.1)',
-                  borderRadius: '14px',
-                  color: '#ffd700',
-                  fontWeight: '500'
-                }}>{t}</span>
-              ))}
-            </div>
           </div>
         )
       })}

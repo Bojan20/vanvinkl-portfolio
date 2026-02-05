@@ -611,7 +611,7 @@ export function SlotFullScreen({
         return
       }
 
-      // ========== ARROWS - Content navigation only ==========
+      // ========== ARROWS - Content navigation with full wrap-around ==========
       if (phase === 'content' && section) {
         const itemCount = getItemCount(section)
         const columns = getGridColumns(section)
@@ -630,26 +630,24 @@ export function SlotFullScreen({
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
-          if (columns > 1) {
-            setFocusIndex(prev => {
-              const next = prev + columns
-              return next < itemCount ? next : prev
-            })
-          } else {
-            setFocusIndex(prev => (prev + 1) % itemCount)
-          }
+          setFocusIndex(prev => {
+            const next = prev + columns
+            // Wrap around: if past end, go to same column position at top
+            return next < itemCount ? next : prev % columns
+          })
         } else if (key === 'ArrowUp') {
           e.preventDefault()
           haptic.light()
           uaPlaySynth('tick', 0.3)
-          if (columns > 1) {
-            setFocusIndex(prev => {
-              const next = prev - columns
-              return next >= 0 ? next : prev
-            })
-          } else {
-            setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
-          }
+          setFocusIndex(prev => {
+            const next = prev - columns
+            if (next >= 0) return next
+            // Wrap around: go to same column position at bottom
+            const col = prev % columns
+            const lastRowStart = Math.floor((itemCount - 1) / columns) * columns
+            const target = lastRowStart + col
+            return target < itemCount ? target : target - columns
+          })
         }
       }
     }
@@ -1162,12 +1160,14 @@ export function SlotFullScreen({
           style={{
             width: '100%',
             height: '100%',
-            overflow: selectedProject ? 'hidden' : 'auto',
-            padding: selectedProject ? '0' : '60px 40px',
+            overflow: 'hidden',
+            padding: selectedProject ? '0' : 'clamp(16px, 3vh, 40px) clamp(12px, 3vw, 40px)',
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             position: 'relative',
             touchAction: selectedProject ? 'none' : 'pan-y',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column' as const
           }}
         >
           {/* Epic light burst on entry */}
@@ -1227,30 +1227,31 @@ export function SlotFullScreen({
           {!selectedProject && (
             <div style={{
               textAlign: 'center',
-              marginBottom: '60px',
-              animation: 'contentTitleDrop 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
+              marginBottom: 'clamp(12px, 2vh, 30px)',
+              animation: 'contentTitleDrop 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both',
+              flexShrink: 0
             }}>
               <h1 style={{
-                fontSize: 'clamp(48px, 8vw, 80px)',
+                fontSize: 'clamp(24px, 5vw, 48px)',
                 fontWeight: 900,
                 color: primaryColor,
                 textShadow: `0 0 40px ${primaryColor}, 0 0 80px ${primaryColor}50`,
-                letterSpacing: '12px',
-                margin: '0 0 20px 0',
+                letterSpacing: '8px',
+                margin: '0 0 8px 0',
                 animation: 'contentTitleGlow 2s ease-in-out infinite'
               }}>
                 {section.type.toUpperCase()}
               </h1>
               <div style={{
-                width: '200px',
-                height: '3px',
+                width: '120px',
+                height: '2px',
                 background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
-                margin: '0 auto 30px',
+                margin: '0 auto 8px',
                 animation: 'contentUnderlineExpand 0.8s ease-out 0.5s both',
                 boxShadow: `0 0 15px ${primaryColor}`
               }} />
               <div style={{
-                fontSize: '60px',
+                fontSize: '32px',
                 animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
                 filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
                 opacity: 0.8
@@ -1266,7 +1267,7 @@ export function SlotFullScreen({
           )}
 
           {/* Content */}
-          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both' }}>
+          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <ContentView
               section={section}
               focusIndex={focusIndex}
