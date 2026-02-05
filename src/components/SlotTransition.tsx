@@ -303,7 +303,7 @@ function SpinningReel({
   colors,
   stopped,
   matchSymbol,
-  index,
+  index: _index,
   isMatch
 }: {
   symbols: string[]
@@ -329,7 +329,7 @@ function SpinningReel({
   }, [stopped, symbols.length])
 
   const displaySymbol = stopped ? matchSymbol : symbols[currentSymbol]
-  const displayColor = stopped ? COLORS.gold : colors[currentSymbol]
+  const _displayColor = stopped ? COLORS.gold : colors[currentSymbol]
 
   return (
     <div

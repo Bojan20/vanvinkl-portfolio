@@ -1,4 +1,4 @@
-import { SkillReelSymbol, SegmentReelConfig } from '../types'
+import { SegmentReelConfig } from '../types'
 import { SLOT_THEMES } from './themes'
 
 // ============================================

@@ -247,7 +247,7 @@ describe('UnifiedAudioSystem', () => {
     })
 
     it('should stop sound by ID', () => {
-      const instanceId = uaPlay('lounge')
+      const _instanceId = uaPlay('lounge')
       uaStop('lounge', 0.1)
       // No errors means stop works
     })

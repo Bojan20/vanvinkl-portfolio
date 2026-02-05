@@ -16,8 +16,8 @@
  * 7. Screen Space Reflections - Glossy floor
  */
 
-import { useRef, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import {
   EffectComposer,
   Bloom,
@@ -26,10 +26,9 @@ import {
   Noise,
   SSAO as SSAOEffect,
   GodRays,
-  DepthOfField,
-  LensFlare
+  DepthOfField
 } from '@react-three/postprocessing'
-import { BlendFunction, KernelSize, GodRaysEffect } from 'postprocessing'
+import { BlendFunction, KernelSize } from 'postprocessing'
 import * as THREE from 'three'
 
 // ============================================
@@ -329,7 +328,7 @@ interface AdaptivePostProcessingProps {
 
 export function AdaptivePostProcessing({
   targetFPS = 55,
-  children
+  children: _children
 }: AdaptivePostProcessingProps) {
   const frameTimesRef = useRef<number[]>([])
   const qualityRef = useRef<QualityPreset>(detectQualityPreset())

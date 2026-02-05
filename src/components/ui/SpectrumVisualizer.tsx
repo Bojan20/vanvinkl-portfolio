@@ -8,7 +8,7 @@ import { uaGetFrequencyData } from '../../audio'
 export function SpectrumVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isHovered, setIsHovered] = useState(false)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
 
   // Animation loop
   const animate = useCallback(() => {

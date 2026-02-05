@@ -13,7 +13,7 @@
  * Machine dimensions: ~0.9m wide x 1.8m tall x 0.8m deep
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -60,7 +60,7 @@ export function VegasSlotMachine({
   position,
   label,
   isActive = false,
-  onInteract
+  onInteract: _onInteract
 }: VegasSlotMachineProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const ledStripRefs = useRef<THREE.Mesh[]>([])

@@ -12,7 +12,7 @@
  * PRODUCTION CODE - exact copy with all CSS animations
  */
 
-import React, { useState, useEffect, useMemo, memo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 
 // ============================================
 // GAME MARQUEE - Title Banner with Chase Lights

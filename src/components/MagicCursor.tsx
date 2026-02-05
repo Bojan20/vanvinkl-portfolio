@@ -13,7 +13,7 @@
  * - Glow effect on hover
  */
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 // ============================================
 // PARTICLE TRAIL CURSOR
@@ -33,7 +33,7 @@ export function ParticleTrailCursor() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const particlesRef = useRef<Particle[]>([])
   const mouseRef = useRef({ x: 0, y: 0, prevX: 0, prevY: 0 })
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -165,7 +165,7 @@ export function MagneticCursor() {
   const glowRef = useRef<HTMLDivElement>(null)
   const posRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 })
   const scaleRef = useRef({ current: 1, target: 1 })
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
 
   useEffect(() => {
     const cursor = cursorRef.current

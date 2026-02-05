@@ -26,7 +26,7 @@
  * Extracted from SlotFullScreen.tsx (lines 2717-3247)
  */
 
-import React, { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { uaPlaySynth } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
@@ -63,12 +63,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [focusIndex, setFocusIndex] = useState(1) // 1: music mute, 2: music slider, 3: sfx mute, 4: sfx slider
   const [musicMuted, setMusicMuted] = useState(false)
   const [sfxMuted, setSfxMuted] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [_isFullscreen, setIsFullscreen] = useState(false)
   const [videoProgress, setVideoProgress] = useState(0) // 0-100%
-  const [videoDuration, setVideoDuration] = useState(0)
+  const [_videoDuration, setVideoDuration] = useState(0)
 
   // Focus items count
-  const FOCUS_ITEMS = 4
+  const _FOCUS_ITEMS = 4
 
   // Auto-hide removed - permanent controls hint now displayed
 
@@ -375,7 +375,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           objectFit: 'contain',
           cursor: 'pointer'
         }}
-        onClick={(e) => {
+        onClick={(_e) => {
           const video = videoRef.current
           if (video) {
             if (video.paused) video.play()

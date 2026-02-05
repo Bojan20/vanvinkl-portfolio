@@ -228,7 +228,7 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     const moving = !isSittingRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right || mobileMoving)
     glowTime.current += delta
 
-    if (isMovingRef) isMovingRef.current = moving
+    if (isMovingRef) isMovingRef.current = !!moving
     if (externalRotationRef) externalRotationRef.current = rotationRef.current
 
     const glow = glowTime.current

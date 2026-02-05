@@ -66,7 +66,7 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [konamiActive, resetKonami] = useKonamiCode()
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
-  const [isSitting, setIsSitting] = useState(false)
+  const [_isSitting, setIsSitting] = useState(false)
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
   // Onboarding - show only for first-time visitors

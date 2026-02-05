@@ -5,3 +5,4 @@
  */
 
 export { default as PortfolioPlayer } from './PortfolioPlayer'
+export { default as AudioOnlyPlayer } from './AudioOnlyPlayer'

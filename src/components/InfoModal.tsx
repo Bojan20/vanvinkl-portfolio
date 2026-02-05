@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { playSound } from '../audio'
+import { uaPlaySynth } from '../audio'
 import {
   SLOT_CONTENT,
   MACHINE_ORDER,
@@ -124,7 +124,7 @@ function SkillsView({ section }: { section: SkillsSection }) {
           <button
             key={cat.name}
             onClick={() => {
-              playSound('hover', 0.3)
+              uaPlaySynth('tick', 0.3)
               setActiveCategory(i)
             }}
             style={{
@@ -443,7 +443,7 @@ function ExperienceView({ section }: { section: ExperienceSection }) {
 // ============================================
 function ContactView({ section }: { section: ContactSection }) {
   const handleClick = (method: typeof section.methods[0]) => {
-    playSound('click', 0.5)
+    uaPlaySynth('click', 0.5)
     if (method.action === 'email' && method.url) {
       const safeUrl = sanitizeUrl(method.url)
       if (safeUrl) window.location.href = safeUrl
@@ -565,7 +565,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
 
   // Navigate to another machine
   const navigateTo = useCallback((id: string) => {
-    playSound('modalOpen', 0.4)
+    uaPlaySynth('uiOpen', 0.4)
     setCurrentId(id)
     onNavigate?.(id)
   }, [onNavigate])
@@ -574,7 +574,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
   const handleCTA = useCallback(() => {
     if (!section.cta) return
 
-    playSound('click', 0.5)
+    uaPlaySynth('click', 0.5)
     if (section.cta.machineId) {
       navigateTo(section.cta.machineId)
     } else if (section.cta.external) {
@@ -598,7 +598,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
       switch (e.code) {
         case 'Escape':
           e.preventDefault()
-          playSound('click', 0.4)
+          uaPlaySynth('click', 0.4)
           onClose()
           break
 
@@ -655,7 +655,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          playSound('click', 0.3)
+          uaPlaySynth('click', 0.3)
           onClose()
         }
       }}
@@ -726,7 +726,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
             onMouseEnter={e => {
               e.currentTarget.style.background = `linear-gradient(135deg, ${section.color}50, ${section.color}30)`
               e.currentTarget.style.transform = 'translateY(-2px)'
-              playSound('hover', 0.3)
+              uaPlaySynth('tick', 0.3)
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = `linear-gradient(135deg, ${section.color}30, ${section.color}10)`
@@ -759,7 +759,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
             }}
             onMouseEnter={e => {
               e.currentTarget.style.color = '#00ffff'
-              playSound('hover', 0.3)
+              uaPlaySynth('tick', 0.3)
             }}
             onMouseLeave={e => e.currentTarget.style.color = '#888899'}
           >
@@ -792,7 +792,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
             }}
             onMouseEnter={e => {
               e.currentTarget.style.color = '#00ffff'
-              playSound('hover', 0.3)
+              uaPlaySynth('tick', 0.3)
             }}
             onMouseLeave={e => e.currentTarget.style.color = '#888899'}
           >
@@ -851,7 +851,7 @@ export function InfoModal({ machineId, onClose, onNavigate }: InfoModalProps) {
 }
 
 // Legacy export for backward compatibility
-export function InfoModalLegacy({ title, content, onClose }: {
+export function InfoModalLegacy({ title, content: _content, onClose }: {
   title: string
   content: string[]
   onClose: () => void

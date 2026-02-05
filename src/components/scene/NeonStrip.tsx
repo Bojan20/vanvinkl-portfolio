@@ -2,7 +2,7 @@
  * NeonStrip - GPU-animated neon strip with pre-compiled shaders
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { uaGetBassLevel } from '../../audio'

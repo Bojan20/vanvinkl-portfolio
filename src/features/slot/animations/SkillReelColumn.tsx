@@ -16,10 +16,9 @@
  * Extracted from SlotFullScreen.tsx (lines 670-1074)
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import useRAF from '../hooks/useRAF'
 import type { SkillReelSymbol } from '../types'
-import { uaPlaySynth } from '../../../audio'
 import { SLOT_COLORS } from '../configs/themes'
 
 // GPU-accelerated color constants

@@ -10,7 +10,7 @@
  */
 
 import { useRef, useMemo, useEffect } from 'react'
-import { useFrame, useThree, extend } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLORS } from '../store/theme'
 
@@ -146,7 +146,7 @@ export function GPUParticles({
   const colorObjects = useMemo(() => colors.map(c => new THREE.Color(c)), [colors])
 
   // Create geometry with all attributes
-  const { geometry, birthTimes, velocities } = useMemo(() => {
+  const { geometry, _birthTimes, _velocities } = useMemo(() => {
     const positions = new Float32Array(count * 3)
     const velocitiesArr = new Float32Array(count * 3)
     const birthTimesArr = new Float32Array(count)
@@ -194,7 +194,7 @@ export function GPUParticles({
     geo.setAttribute('aSize', new THREE.BufferAttribute(sizesArr, 1))
     geo.setAttribute('aColor', new THREE.BufferAttribute(colorsArr, 3))
 
-    return { geometry: geo, birthTimes: birthTimesArr, velocities: velocitiesArr }
+    return { geometry: geo, _birthTimes: birthTimesArr, _velocities: velocitiesArr }
   }, [count, spawnPosition, spawnRadius, velocityScale, lifetime, baseSize, colorObjects])
 
   // Shader material

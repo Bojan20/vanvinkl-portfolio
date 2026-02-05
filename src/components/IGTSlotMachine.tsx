@@ -46,7 +46,7 @@ export function IGTSlotMachine({ position, label, isActive = false }: IGTSlotMac
 
   useFrame((state, delta) => {
     timeRef.current += delta
-    const t = timeRef.current
+    const _t = timeRef.current
 
     // Reel spin (only when active)
     const spin = spinState.current

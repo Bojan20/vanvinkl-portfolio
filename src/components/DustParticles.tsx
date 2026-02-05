@@ -25,10 +25,10 @@ export function DustParticles({
   size = 0.05
 }: DustParticlesProps) {
   const pointsRef = useRef<THREE.Points>(null!)
-  const velocitiesRef = useRef<Float32Array>()
+  const velocitiesRef = useRef<Float32Array>(undefined)
 
   // Generate particle positions and velocities
-  const { positions, velocities } = useMemo(() => {
+  const { positions, _velocities } = useMemo(() => {
     const pos = new Float32Array(count * 3)
     const vel = new Float32Array(count * 3)
 
@@ -47,7 +47,7 @@ export function DustParticles({
     }
 
     velocitiesRef.current = vel
-    return { positions: pos, velocities: vel }
+    return { positions: pos, _velocities: vel }
   }, [count, area])
 
   // Animation
@@ -91,6 +91,7 @@ export function DustParticles({
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
+          args={[positions, 3]}
           count={count}
           array={positions}
           itemSize={3}

@@ -16,7 +16,7 @@ const KONAMI_CODE = [
 ]
 
 export function useKonamiCode(): [boolean, () => void] {
-  const [keys, setKeys] = useState<string[]>([])
+  const [_keys, setKeys] = useState<string[]>([])
   const [activated, setActivated] = useState(false)
 
   useEffect(() => {

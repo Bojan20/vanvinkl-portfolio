@@ -322,7 +322,7 @@ class UnifiedAudioSystem {
    */
   getFrequencyData(): Uint8Array | null {
     if (!this.analyser || !this.frequencyData) return null
-    this.analyser.getByteFrequencyData(this.frequencyData)
+    this.analyser.getByteFrequencyData(this.frequencyData as Uint8Array<ArrayBuffer>)
     return this.frequencyData
   }
 

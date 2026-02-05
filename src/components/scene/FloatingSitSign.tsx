@@ -98,7 +98,7 @@ export function FloatingSitSign({ position, color = '#8844ff' }: FloatingSitSign
     }
   }, [texture, material])
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (!meshRef.current) return
     time.current += delta
     material.uniforms.time.value = time.current

@@ -10,7 +10,7 @@
  * Visual Design from CLAUDE.md palette
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -44,7 +44,7 @@ export function LuxurySlotMachine({
   position,
   label,
   isActive = false,
-  onInteract
+  onInteract: _onInteract
 }: LuxurySlotMachineProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const screenRef = useRef<THREE.Mesh>(null!)
@@ -64,7 +64,7 @@ export function LuxurySlotMachine({
   })
 
   // LED positions along edges
-  const ledCount = 40
+  const _ledCount = 40
 
   useFrame((state, delta) => {
     timeRef.current += delta

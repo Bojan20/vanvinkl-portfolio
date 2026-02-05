@@ -79,7 +79,7 @@ export {
 // ============================================
 // PORTFOLIO PLAYER
 // ============================================
-export { PortfolioPlayer } from './portfolio'
+export { PortfolioPlayer, AudioOnlyPlayer } from './portfolio'
 
 // ============================================
 // DETAIL MODAL
@@ -94,5 +94,4 @@ export type {
   SkillReelSymbol,
   SlotSection,
   AboutSection,
-  ReelConfig,
 } from './types'

@@ -418,7 +418,7 @@ export function IntroOverlay({
     // Reset at start of reveal
     setRevealedChars(0)
 
-    const revealDuration = 2000 // 2 seconds to reveal all letters - slow enough to read
+    const _revealDuration = 2000 // 2 seconds to reveal all letters - slow enough to read
     const intervalMs = 70 // 70ms per letter for visible effect
     let currentChar = 0
 
@@ -604,7 +604,7 @@ export function IntroOverlay({
       }} />
 
       {/* Skip hint - desktop only (mobile has tap to skip) */}
-      {showSkipHint && phase !== 'done' && !isMobile && (
+      {showSkipHint && !isMobile && (
         <div style={{
           position: 'absolute',
           bottom: '40px',

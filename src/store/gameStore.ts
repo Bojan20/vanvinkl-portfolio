@@ -26,11 +26,6 @@ interface CouchPosition {
   standZ: number
 }
 
-interface SlotInfo {
-  title: string
-  content: string[]
-}
-
 // ============================================
 // GAME STATE
 // ============================================

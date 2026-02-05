@@ -102,7 +102,7 @@ const neonMagentaMaterial = new THREE.MeshBasicMaterial({
   toneMapped: false
 })
 
-const neonCyanMaterial = new THREE.MeshBasicMaterial({
+const _neonCyanMaterial = new THREE.MeshBasicMaterial({
   color: COLORS.cyan,
   toneMapped: false
 })

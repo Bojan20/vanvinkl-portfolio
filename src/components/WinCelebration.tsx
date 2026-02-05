@@ -22,12 +22,12 @@ export function WinCelebration({
   count = 100
 }: WinCelebrationProps) {
   const pointsRef = useRef<THREE.Points>(null!)
-  const velocitiesRef = useRef<Float32Array>()
-  const lifetimesRef = useRef<Float32Array>()
+  const velocitiesRef = useRef<Float32Array | null>(null)
+  const lifetimesRef = useRef<Float32Array | null>(null)
   const activeRef = useRef(false)
 
   // Particle data
-  const { positions, velocities, lifetimes } = useMemo(() => {
+  const { positions, _velocities, _lifetimes } = useMemo(() => {
     const pos = new Float32Array(count * 3)
     const vel = new Float32Array(count * 3)
     const life = new Float32Array(count)
@@ -35,7 +35,7 @@ export function WinCelebration({
     velocitiesRef.current = vel
     lifetimesRef.current = life
 
-    return { positions: pos, velocities: vel, lifetimes: life }
+    return { positions: pos, _velocities: vel, _lifetimes: life }
   }, [count])
 
   // Trigger burst when active changes
@@ -129,6 +129,7 @@ export function WinCelebration({
           count={count}
           array={positions}
           itemSize={3}
+          args={[positions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial

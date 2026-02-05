@@ -7,7 +7,7 @@
  * - Smooth, responsive follow
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const COLORS = {
   cyan: '#00ffff',
@@ -30,7 +30,7 @@ export function CyberpunkCursor({ active = true }: { active?: boolean }) {
   const lastMoveTime = useRef(Date.now())
   const lastPos = useRef({ x: 0, y: 0 })
   const animationRef = useRef<number>(0)
-  const movingTimeout = useRef<NodeJS.Timeout>()
+  const movingTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Track mouse movement
   useEffect(() => {
@@ -236,11 +236,11 @@ export function CyberpunkCursor({ active = true }: { active?: boolean }) {
 
         {/* Corner accents */}
         {[
-          { top: -20, left: -20, rotate: 0 },
-          { top: -20, right: -20, rotate: 90 },
-          { bottom: -20, right: -20, rotate: 180 },
-          { bottom: -20, left: -20, rotate: 270 }
-        ].map((pos, i) => (
+          { top: -20, left: -20, rotateAngle: 0 },
+          { top: -20, right: -20, rotateAngle: 90 },
+          { bottom: -20, right: -20, rotateAngle: 180 },
+          { bottom: -20, left: -20, rotateAngle: 270 }
+        ].map(({ rotateAngle, ...pos }, i) => (
           <div
             key={i}
             style={{
@@ -250,7 +250,7 @@ export function CyberpunkCursor({ active = true }: { active?: boolean }) {
               height: 8,
               borderTop: `2px solid ${COLORS.purple}`,
               borderLeft: `2px solid ${COLORS.purple}`,
-              transform: `rotate(${pos.rotate}deg)`,
+              transform: `rotate(${rotateAngle}deg)`,
               opacity: isMoving ? 1 : 0.5,
               boxShadow: isMoving ? `0 0 5px ${COLORS.purple}` : 'none',
               transition: 'opacity 0.1s ease-out'

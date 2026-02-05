@@ -51,10 +51,10 @@ import {
   SkillReelColumn,
   CoinRain,
   ParticleBurst,
-  WinSparkles,
+  WinSparkles as _WinSparkles,
   TypewriterText,
-  RippleEffect,
-  SelectBurst,
+  RippleEffect as _RippleEffect,
+  SelectBurst as _SelectBurst,
   ScreenShake,
   // UI Components
   GameMarquee,
@@ -73,6 +73,7 @@ import {
   ContactView,
   // Portfolio
   PortfolioPlayer,
+  AudioOnlyPlayer,
   // Detail Modal
   DetailModal,
   // Utils
@@ -156,13 +157,21 @@ const InfoPanel = memo(function InfoPanel({
 function ContentView({ section, focusIndex, selectedProject, onBackFromProject }: {
   section: SlotSection
   focusIndex: number
-  selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string } | null
+  selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null
   onBackFromProject?: () => void
 }) {
-  // Show portfolio player if project selected
+  // Show portfolio player if project selected (video projects only)
+  // Audio-only projects are rendered outside contentBodyReveal wrapper in SlotFullScreen
+  // because CSS filter:blur() on the animation creates a containing block that breaks position:fixed
   if (selectedProject && onBackFromProject) {
-    console.log('[ContentView] Rendering PortfolioPlayer with project:', selectedProject.title)
-    return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
+    if (selectedProject.videoPath) {
+      console.log('[ContentView] Rendering PortfolioPlayer with project:', selectedProject.title)
+      return <PortfolioPlayer project={selectedProject} onBack={onBackFromProject} />
+    }
+    // Audio-only: return null, rendered separately in SlotFullScreen
+    if (selectedProject.audioTracks?.length) {
+      return null
+    }
   }
 
   console.log('[ContentView] Rendering section view:', section.type)
@@ -194,13 +203,13 @@ export function SlotFullScreen({
   const [focusIndex, setFocusIndex] = useState(-1) // -1 = nothing focused initially
   const [spinCount, setSpinCount] = useState(0)
   const [skillsDiscovered, setSkillsDiscovered] = useState(new Set<string>())
-  const [currentIndices, setCurrentIndices] = useState([0, 0, 0, 0, 0])
+  const [_currentIndices, setCurrentIndices] = useState([0, 0, 0, 0, 0])
   const [isJackpot, setIsJackpot] = useState(false)
   const [jackpotStory, setJackpotStory] = useState<{ story: string, highlight: string } | undefined>()
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
-  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string } | null>(null)
+  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null>(null)
 
   // Content onboarding hint - show once per visit session
   const [showContentHint, setShowContentHint] = useState(() => {
@@ -217,7 +226,7 @@ export function SlotFullScreen({
 
   // ========== DERIVED STATE ==========
   const section = SLOT_CONTENT[machineId]
-  const theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
+  const _theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
   const primaryColor = section?.color || '#00ffff'
   const segmentConfig = getSegmentConfig(machineId)
 
@@ -440,7 +449,7 @@ export function SlotFullScreen({
     // Play UI click sound
     uaPlaySynth('click', 0.4)
     haptic.medium()
-    markVisited(section.id, index)
+    markVisited(section.id)
 
     switch (section.type) {
       case 'skills': {
@@ -460,8 +469,8 @@ export function SlotFullScreen({
       }
       case 'projects': {
         const proj = (section as ProjectsSection).featured[index]
-        if (proj) {
-          // Show video player for selected project
+        if (proj && (proj.videoPath || proj.audioTracks?.length)) {
+          // Show video/audio player for selected project
           setSelectedProject({
             icon: proj.icon,
             title: proj.title,
@@ -470,7 +479,8 @@ export function SlotFullScreen({
             tags: proj.tags,
             videoPath: proj.videoPath,
             musicPath: proj.musicPath,
-            sfxPath: proj.sfxPath
+            sfxPath: proj.sfxPath,
+            audioTracks: proj.audioTracks
           })
         }
         break
@@ -1267,6 +1277,17 @@ export function SlotFullScreen({
               }}
             />
           </div>
+
+          {/* Audio-only player rendered OUTSIDE contentBodyReveal to avoid filter:blur breaking position:fixed */}
+          {selectedProject && !selectedProject.videoPath && selectedProject.audioTracks?.length && (
+            <AudioOnlyPlayer
+              project={selectedProject as any}
+              onBack={() => {
+                console.log('[SlotFullScreen] AudioOnlyPlayer onBack, setting selectedProject to null')
+                setSelectedProject(null)
+              }}
+            />
+          )}
         </div>
       )}
 

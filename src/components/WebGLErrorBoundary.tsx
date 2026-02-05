@@ -9,7 +9,7 @@
  * ZERO LATENCY: Error handling doesn't affect main render loop
  */
 
-import React, { Component, ReactNode, useState, useEffect, useCallback } from 'react'
+import React, { Component, ReactNode, useState, useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import { COLORS } from '../store/theme'
 
@@ -335,7 +335,7 @@ export class WebGLErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
 // Place inside Canvas to monitor WebGL context
 // ============================================
 export function ContextHandler() {
-  const contextLost = useWebGLContextHandler()
+  const _contextLost = useWebGLContextHandler()
 
   // This component doesn't render anything
   // Context loss overlay is rendered outside Canvas

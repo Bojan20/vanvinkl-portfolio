@@ -32,6 +32,11 @@ export interface ServiceItem {
   features: string[]
 }
 
+export interface AudioTrack {
+  label: string
+  path: string  // Without extension - .opus and .m4a will be appended
+}
+
 export interface ProjectItem {
   title: string
   icon: string
@@ -41,6 +46,7 @@ export interface ProjectItem {
   videoPath?: string
   musicPath?: string
   sfxPath?: string
+  audioTracks?: AudioTrack[]  // For audio-only projects
 }
 
 export interface TimelineItem {
@@ -286,6 +292,69 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         videoPath: '/videoSlotPortfolio/Smash Portfolio Video.mp4',
         musicPath: '/audioSlotPortfolio/music/Smash-Factory-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Smash-Factory-SFX'
+      },
+      {
+        title: 'Starlight Travelers',
+        icon: '✨',
+        tags: ['Slots', 'Audio', 'Video'],
+        description: 'Cosmic-themed slot game audio with ethereal soundscapes and atmospheric music. Immersive space exploration experience with layered audio design.',
+        year: '2024',
+        videoPath: '/videoSlotPortfolio/Starlight Portfolio Video.mp4',
+        musicPath: '/audioSlotPortfolio/music/Starlight-Travelers-Music',
+        sfxPath: '/audioSlotPortfolio/sfx/Starlight-Travelers-SFX'
+      },
+      {
+        title: 'Mummy',
+        icon: '🏺',
+        tags: ['Slots', 'Audio'],
+        description: 'Ancient Egypt-themed slot game with layered music system and dramatic big win audio.',
+        year: '2024',
+        audioTracks: [
+          { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Mummy-BG' },
+          { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Mummy-BW' }
+        ]
+      },
+      {
+        title: 'Valkyries',
+        icon: '⚔️',
+        tags: ['Slots', 'Audio'],
+        description: 'Norse mythology slot with epic orchestral layers and powerful big win celebration audio.',
+        year: '2024',
+        audioTracks: [
+          { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Valkyries-BG' },
+          { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Valkyries-BW' }
+        ]
+      },
+      {
+        title: 'Zhulongs',
+        icon: '🐉',
+        tags: ['Slots', 'Audio'],
+        description: 'Asian dragon-themed slot featuring layered base game music and celebratory big win sequences.',
+        year: '2024',
+        audioTracks: [
+          { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Zhulongs-BG' },
+          { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Zhulongs-BW' }
+        ]
+      },
+      {
+        title: "Blazin's",
+        icon: '🔥',
+        tags: ['Slots', 'Audio'],
+        description: 'High-energy slot game with multi-layered base game audio design.',
+        year: '2024',
+        audioTracks: [
+          { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Blazins-BG' }
+        ]
+      },
+      {
+        title: 'Midnight',
+        icon: '🌙',
+        tags: ['Slots', 'Audio'],
+        description: 'Atmospheric midnight-themed slot with layered ambient music composition.',
+        year: '2024',
+        audioTracks: [
+          { label: 'Base Game (2 Layers)', path: '/audioSlotPortfolio/portfolio/Midnight-BG' }
+        ]
       },
       {
         title: 'VanVinkl Studio Packages',

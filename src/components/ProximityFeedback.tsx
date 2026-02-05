@@ -257,7 +257,7 @@ export function ProximityIndicator({
   nearMachine,
   nearCouch,
   machinePositions,
-  couchPositions
+  couchPositions: _couchPositions
 }: {
   avatarPosition: THREE.Vector3
   nearMachine: string | null
