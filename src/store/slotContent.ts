@@ -68,6 +68,7 @@ export interface AboutItem {
   icon: string
   label: string
   value: string
+  description?: string
 }
 
 export interface CTA {
@@ -142,23 +143,23 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🎮',
         color: '#00ffff',
         skills: [
-          { name: 'Slot Game Audio', level: 98 },
-          { name: 'Interactive Sound Design', level: 95 },
-          { name: 'Adaptive Music Systems', level: 92 },
-          { name: 'UI/UX Sound Design', level: 95 },
-          { name: 'Ambient & Atmosphere', level: 90 }
+          { name: 'Slot Game Sound Design', level: 98 },
+          { name: 'Feature-Focused Audio', level: 95 },
+          { name: 'Event-Based Implementation', level: 92 },
+          { name: 'Audio QA & Build Validation', level: 95 },
+          { name: 'Adaptive Music Systems', level: 93 }
         ]
       },
       {
-        name: 'Sound Implementation',
+        name: 'Tools & DAWs',
         icon: '⚙️',
         color: '#ff00aa',
         skills: [
-          { name: 'FMOD Studio', level: 95 },
-          { name: 'Wwise', level: 90 },
-          { name: 'Unity Audio', level: 95 },
-          { name: 'JSON Audio Logic', level: 92 },
-          { name: 'Web Audio API', level: 85 }
+          { name: 'Logic Pro', level: 96 },
+          { name: 'Reaper', level: 94 },
+          { name: 'iZotope RX', level: 92 },
+          { name: 'Event-Driven Systems', level: 90 },
+          { name: 'In-House Audio Tools', level: 88 }
         ]
       },
       {
@@ -166,11 +167,11 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🎹',
         color: '#8844ff',
         skills: [
-          { name: 'Original Composition', level: 95 },
+          { name: 'Original Composition', level: 96 },
+          { name: 'Layered Music Systems', level: 95 },
           { name: 'Orchestral Arrangement', level: 88 },
           { name: 'Electronic Production', level: 92 },
-          { name: 'Trailer Music', level: 90 },
-          { name: 'Layered Music Systems', level: 95 }
+          { name: 'Adaptive Transitions', level: 93 }
         ]
       },
       {
@@ -180,7 +181,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         skills: [
           { name: 'Mixing & Mastering', level: 95 },
           { name: 'Foley Recording', level: 85 },
-          { name: 'Sound Effects Creation', level: 95 },
+          { name: 'Custom Sound Libraries', level: 93 },
           { name: 'Audio Restoration', level: 88 },
           { name: 'Format Optimization', level: 92 }
         ]
@@ -199,49 +200,49 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
       {
         icon: '🎰',
         title: 'Slot Game Audio Packages',
-        description: 'End-to-end audio production for slot games including music, SFX, and implementation. Delivered as ready-to-integrate packages with documentation.',
+        description: 'End-to-end audio production for slot games — from creative direction through implementation logic to final delivery. Production-ready packages for EU regulated markets.',
         features: [
-          'Full soundtrack composition (base game, features, bonus rounds)',
-          'Complete SFX library (spins, wins, UI, ambience)',
-          'Implementation-ready audio with JSON logic',
-          'Multi-format delivery (OGG, MP3, WAV)',
-          'Performance optimization for mobile & web'
+          'Full soundtrack (base game, free spins, feature states)',
+          'Complete SFX library with event-based implementation',
+          'Adaptive music with smooth state transitions',
+          'Multi-format delivery (WAV, MP3, OGG, FLAC, AAC, Opus)',
+          'Parallel production across multiple titles'
         ]
       },
       {
         icon: '🎵',
         title: 'Original Music Composition',
-        description: 'Custom music tailored to your game\'s theme and mood. From epic orchestral to modern electronic, composed to enhance player experience.',
+        description: 'Adaptive and layered music structures aligned with gameplay progression. Clear escalation, smooth transitions and musically coherent systems for every game state.',
         features: [
+          'Layered music systems (base game, features, bonus)',
+          'Adaptive transitions between game states',
           'Theme-based original compositions',
-          'Adaptive/layered music systems',
           'Loop-friendly arrangements',
-          'Multiple variations for game states',
-          'Unlimited revisions until perfect'
+          'Multiple variations for volatility pacing'
         ]
       },
       {
         icon: '🔊',
         title: 'Sound Design & SFX',
-        description: 'High-quality sound effects from scratch or library curation. Every sound crafted to provide satisfying player feedback.',
+        description: 'Feature-focused sound design crafted to support gameplay mechanics and player feedback. Every sound reinforces visual presentation and emotional pacing.',
         features: [
           'Custom Foley recording',
-          'Synthesized effects creation',
+          'Custom sound libraries',
           'UI/UX audio design',
-          'Win celebration sounds',
-          'Ambient soundscapes'
+          'Win celebration & big win sequences',
+          'Ambient soundscapes & atmosphere'
         ]
       },
       {
         icon: '🎚️',
-        title: 'Audio Mastering & QA',
-        description: 'Professional mastering and quality assurance to ensure your audio meets industry standards across all platforms.',
+        title: 'Audio QA & Mastering',
+        description: 'Structured QA and polish passes to identify missing events, balance issues and integration gaps. Professional mastering for consistent quality across platforms.',
         features: [
+          'Audio trigger validation across builds',
           'Loudness normalization (LUFS standards)',
-          'Cross-platform testing',
-          'Compression & format optimization',
-          'Audio bug testing & reporting',
-          'Final delivery preparation'
+          'Cross-platform testing & optimization',
+          'Audio bug identification & reporting',
+          'Final mastering & delivery preparation'
         ]
       }
     ],
@@ -252,16 +253,16 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     id: 'about',
     type: 'about',
     title: 'ABOUT',
-    tagline: 'Audio Producer | Sound Designer | Composer',
+    tagline: 'Bojan Petkovic — Audio Producer | Sound Designer | Composer',
     color: '#8844ff',
-    bio: "I'm Bojan Petkovic, founder of VanVinkl Studio - a professional audio production company based in Belgrade, Serbia. With over a decade of experience in the gaming industry, I specialize in creating immersive audio experiences for slot games and interactive entertainment.\n\nMy journey began with classical music education at the Faculty of Music in Belgrade, followed by professional audio engineering training at SAE Institute. This foundation, combined with 4+ years as Lead Sound Designer at IGT (one of the world's largest slot machine manufacturers), has given me deep expertise in what makes game audio truly engaging.\n\nAt VanVinkl Studio, I deliver complete audio solutions - from original music composition and sound design to technical implementation. I understand the unique requirements of iGaming: the need for loop-friendly music, the importance of satisfying win sounds, and the technical constraints of web and mobile platforms.\n\nEvery project receives my full attention, ensuring high-quality audio that enhances player experience and meets the demanding standards of the gaming industry.",
+    bio: "Senior Audio Producer, Lead Sound Designer and Composer with over ten years of experience in slot and mobile game development. I work across the full audio pipeline — from creative direction and production to implementation logic, build validation and final delivery.\n\nMy focus is on building clear, feature-driven and musically coherent audio systems that support gameplay flow, volatility pacing and long-term player engagement, with strong experience in EU regulated markets.\n\nI am equally comfortable working hands-on and at a production level, collaborating closely with producers, designers, artists and engineers while maintaining audio quality under tight schedules and parallel production pressure. I also bring leadership experience through mentoring sound designers, planning workloads and setting practical audio standards that hold up in real production environments.",
     stats: [
-      { icon: '📅', label: 'Industry Experience', value: '10+ Years' },
-      { icon: '🎰', label: 'Slot Games Completed', value: '50+' },
-      { icon: '🏢', label: 'Notable Client', value: 'IGT (4 years)' },
-      { icon: '🎓', label: 'Education', value: 'SAE Institute + BA Music' },
-      { icon: '🌍', label: 'Location', value: 'Belgrade, Serbia' },
-      { icon: '🌐', label: 'Work Style', value: 'Remote / International' }
+      { icon: '📅', label: 'Industry Experience', value: '10+ Years', description: 'Over ten years of experience in slot and mobile game development, covering the full audio pipeline from creative direction and production to implementation logic, build validation and final delivery.' },
+      { icon: '🎰', label: 'Slot Titles', value: '50+', description: 'Contributed to more than fifty slot game titles for EU regulated markets with full audio ownership on multiple productions, including sound design, music composition and implementation.' },
+      { icon: '🏢', label: 'IGT', value: 'Senior Sound Designer, Audio Lead', description: 'Worked as Senior Sound Designer and Audio Lead on multiple slot titles within a large international studio. Led and mentored a team of three sound designers, overseeing task planning, reviews and overall audio quality. Focused on clarity, pacing and player feedback for regulated markets.' },
+      { icon: '🏢', label: 'Playnetic', value: 'Audio Producer, Lead Sound Designer', description: 'Responsible for end-to-end audio production across approximately ten slot game productions running in parallel. Designed adaptive and layered music structures for base game, free spins and feature states. Validated audio triggers and coverage across builds with structured QA and polish passes.' },
+      { icon: '🎓', label: 'Education', value: 'SAE Institute + BA Music', description: 'Diploma in Audio Production from SAE Institute in Belgrade with specialization in audio for interactive media. Bachelor\'s degree in accordion and piano performance, providing a strong foundation in harmony, arrangement and musical structure.' },
+      { icon: '🌐', label: 'Work Style', value: 'Remote / International', description: 'Collaborating with international clients in fully remote production setups, delivering production-ready audio and maintaining clear, reliable communication throughout development cycles.' }
     ],
     cta: { label: 'My Journey', machineId: 'experience' }
   },
@@ -368,50 +369,47 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
     color: '#00ff88',
     timeline: [
       {
+        period: 'Jun 2024 - Feb 2026',
+        role: 'Audio Producer, Lead Sound Designer, Composer',
+        company: 'Playnetic',
+        highlights: [
+          'End-to-end audio production across ~10 slot games in parallel',
+          'Adaptive and layered music for base game, free spins and feature states',
+          'Audio trigger validation, structured QA and polish passes',
+          'Collaboration with production, game design, art and engineering'
+        ]
+      },
+      {
         period: 'May 2024 - Present',
-        role: 'Founder & Audio Producer',
+        role: 'Founder, Audio Producer',
         company: 'VanVinkl Studio',
         highlights: [
-          'Founded professional audio production studio in Belgrade',
-          'Delivering complete slot game audio packages to international clients',
-          'End-to-end production: composition, sound design, implementation',
-          'Building long-term partnerships with gaming companies worldwide',
-          'Maintaining IGT-level quality standards as an independent studio'
+          'Independent audio production studio for slot and mobile games',
+          'Full audio solutions: sound design, music, implementation, mastering',
+          'International clients in fully remote production setups',
+          'Production-ready audio with clear, reliable communication'
         ]
       },
       {
         period: 'Sep 2020 - May 2024',
-        role: 'Lead Sound Designer',
+        role: 'Senior Sound Designer, Audio Lead',
         company: 'IGT (International Game Technology)',
         highlights: [
-          'Led audio team of 2 sound designers for European slot production',
-          'Completed 50+ slot game titles with full audio packages',
-          'Created adaptive music systems and interactive soundscapes',
-          'Established audio production pipelines and documentation standards',
-          'Delivered for both land-based and online slot platforms',
-          'Mentored junior audio designers in game audio best practices'
+          'Led and mentored team of 3 sound designers',
+          'Complete sound design and music packages for multiple slot titles',
+          'Audio iteration based on playtests and build feedback',
+          'Internal workflows and review processes for EU regulated markets'
         ]
       },
       {
-        period: 'Apr 2020 - Dec 2022',
-        role: 'Music Production Assistant',
-        company: 'Music Studio "Strip"',
-        highlights: [
-          'Assisted in music production for various projects',
-          'Coordinated live corporate events and concerts',
-          'Managed on-site audio for public gatherings',
-          'Developed project management and client communication skills'
-        ]
-      },
-      {
-        period: '2015 - 2019',
-        role: 'Education & Early Career',
+        period: 'Education',
+        role: 'Audio Production & Music Performance',
         company: 'SAE Institute & Faculty of Music Belgrade',
         highlights: [
-          'BA in Music Education - Faculty of Music, University of Belgrade',
-          'Audio Engineering Diploma - SAE Institute Belgrade',
-          'Specialized in game audio and interactive sound design',
-          'Classical music foundation with modern production techniques'
+          'Audio Production Diploma — SAE Institute, Belgrade',
+          'Specialization in audio for interactive media',
+          'BA in Accordion & Piano Performance',
+          'Foundation in harmony, arrangement and musical structure'
         ]
       }
     ],

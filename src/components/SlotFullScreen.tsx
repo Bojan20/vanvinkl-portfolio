@@ -464,7 +464,7 @@ export function SlotFullScreen({
       }
       case 'about': {
         const stat = (section as AboutSection).stats[index]
-        if (stat) setDetailItem({ type: 'stat', index, data: { ...stat, bio: (section as AboutSection).bio } })
+        if (stat) setDetailItem({ type: 'stat', index, data: { ...stat, bio: (stat as any).description || (section as AboutSection).bio } })
         break
       }
       case 'projects': {
@@ -1250,19 +1250,32 @@ export function SlotFullScreen({
                 animation: 'contentUnderlineExpand 0.8s ease-out 0.5s both',
                 boxShadow: `0 0 15px ${primaryColor}`
               }} />
-              <div style={{
-                fontSize: '32px',
-                animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
-                filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
-                opacity: 0.8
-              }}>
-                {section.type === 'skills' ? '⚡' :
-                 section.type === 'services' ? '🎯' :
-                 section.type === 'about' ? '👤' :
-                 section.type === 'projects' ? '🚀' :
-                 section.type === 'experience' ? '📈' :
-                 section.type === 'contact' ? '💬' : '✨'}
-              </div>
+              {section.type === 'about' ? (
+                <div style={{
+                  fontSize: 'clamp(20px, 3vw, 32px)',
+                  animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
+                  color: primaryColor,
+                  fontWeight: 600,
+                  letterSpacing: '3px',
+                  opacity: 0.9,
+                  textShadow: `0 0 20px ${primaryColor}50`
+                }}>
+                  BOJAN PETKOVIC
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: '32px',
+                  animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
+                  filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
+                  opacity: 0.8
+                }}>
+                  {section.type === 'skills' ? '⚡' :
+                   section.type === 'services' ? '🎯' :
+                   section.type === 'projects' ? '🚀' :
+                   section.type === 'experience' ? '📈' :
+                   section.type === 'contact' ? '💬' : '✨'}
+                </div>
+              )}
             </div>
           )}
 

@@ -56,10 +56,10 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
           {/* Skills list */}
           <div style={{
             display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(4px, 0.7vh, 10px)',
+            flexWrap: 'wrap',
+            gap: 'clamp(6px, 0.8vh, 10px)',
             flex: 1,
-            justifyContent: 'space-evenly'
+            alignContent: 'flex-start'
           }}>
             {cat.skills.map(skill => {
               const currentIndex = itemIndex
@@ -69,49 +69,19 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
                 <div
                   key={skill.name}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'clamp(8px, 1vw, 14px)',
-                    padding: 'clamp(6px, 0.8vh, 12px) clamp(8px, 1vw, 16px)',
-                    borderRadius: '10px',
-                    background: isFocused ? `linear-gradient(135deg, ${cat.color}18, ${cat.color}08)` : 'rgba(255,255,255,0.02)',
-                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.04)',
+                    padding: 'clamp(6px, 0.8vh, 10px) clamp(12px, 1.2vw, 18px)',
+                    borderRadius: '8px',
+                    background: isFocused ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.04)',
+                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.08)',
                     boxShadow: isFocused ? `0 4px 16px ${cat.color}25` : 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    color: isFocused ? '#fff' : '#c0c0d8',
+                    fontSize: 'clamp(12px, 1.5vh, 16px)',
+                    fontWeight: isFocused ? '600' : '400',
+                    letterSpacing: '0.3px'
                   }}
                 >
-                  <span style={{
-                    color: isFocused ? '#fff' : '#bbbbd0',
-                    fontSize: 'clamp(12px, 1.5vh, 16px)',
-                    minWidth: 'clamp(70px, 8vw, 110px)',
-                    flex: '0 0 auto',
-                    fontWeight: isFocused ? '700' : '500',
-                    letterSpacing: '0.3px'
-                  }}>{skill.name}</span>
-                  <div style={{
-                    flex: 1,
-                    height: 'clamp(8px, 1.2vh, 14px)',
-                    background: 'rgba(255,255,255,0.08)',
-                    borderRadius: '7px',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      width: `${skill.level}%`,
-                      height: '100%',
-                      background: `linear-gradient(90deg, ${cat.color}80, ${cat.color})`,
-                      borderRadius: '7px',
-                      boxShadow: isFocused ? `0 0 12px ${cat.color}60` : `0 0 6px ${cat.color}30`,
-                      animation: `barGrow 1s ease-out ${catIdx * 0.1}s both`
-                    }} />
-                  </div>
-                  <span style={{
-                    color: cat.color,
-                    fontSize: 'clamp(12px, 1.4vh, 16px)',
-                    width: '40px',
-                    fontWeight: 'bold',
-                    textAlign: 'right',
-                    fontFamily: 'monospace'
-                  }}>{skill.level}%</span>
+                  {skill.name}
                 </div>
               )
             })}
