@@ -1289,6 +1289,31 @@ export function SlotFullScreen({
               }}
             />
           )}
+
+          {/* Controls hint - bottom left */}
+          {!selectedProject && (
+            <div style={{
+              position: 'fixed',
+              bottom: 'clamp(12px, 2vh, 24px)',
+              left: 'clamp(12px, 2vw, 24px)',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: 'rgba(0,0,0,0.7)',
+              backdropFilter: 'blur(8px)',
+              border: `1px solid ${primaryColor}30`,
+              color: '#888',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              lineHeight: 1.5,
+              zIndex: 100,
+              pointerEvents: 'none',
+              animation: 'fadeSlideIn 0.5s ease-out 1s both'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px', color: primaryColor, fontSize: '10px', letterSpacing: '1px' }}>CONTROLS</div>
+              <div>←↑↓→ Navigate</div>
+              <div>ENTER Select</div>
+            </div>
+          )}
         </div>
       )}
 

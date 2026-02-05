@@ -362,22 +362,23 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                       uaPlaySynth('tick', 0.3)
                     }}
                     style={{
-                      width: '32px',
                       height: '32px',
-                      borderRadius: '50%',
+                      padding: '0 10px',
+                      borderRadius: '16px',
                       background: isFocused ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      gap: '4px',
                       fontSize: '14px',
                       color: isFocused ? '#ffd700' : '#666',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       flexShrink: 0
                     }}
-                    title="Restart track"
+                    title="Restart track (R)"
                   >
-                    ⏮
+                    ⏮ <span style={{ fontSize: '10px', opacity: 0.7, fontFamily: 'monospace' }}>R</span>
                   </div>
                 )}
               </div>

@@ -278,7 +278,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🐷',
         tags: ['Slots', 'Audio', 'Video'],
         description: 'Interactive slot game portfolio featuring synchronized video and audio presentation. Complete production showcase with background music and sound effects.',
-        year: '2024',
+        year: '2025',
         videoPath: '/videoSlotPortfolio/Piggy Portfolio Video.mp4',
         musicPath: '/audioSlotPortfolio/music/Piggy-Plunger-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'
@@ -288,7 +288,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🔨',
         tags: ['Slots', 'Audio', 'Video'],
         description: 'High-energy slot game audio production with dynamic soundscape. Features explosive sound design and driving music tracks synchronized with gameplay mechanics.',
-        year: '2024',
+        year: '2025',
         videoPath: '/videoSlotPortfolio/Smash Portfolio Video.mp4',
         musicPath: '/audioSlotPortfolio/music/Smash-Factory-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Smash-Factory-SFX'
@@ -298,7 +298,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '✨',
         tags: ['Slots', 'Audio', 'Video'],
         description: 'Cosmic-themed slot game audio with ethereal soundscapes and atmospheric music. Immersive space exploration experience with layered audio design.',
-        year: '2024',
+        year: '2025',
         videoPath: '/videoSlotPortfolio/Starlight Portfolio Video.mp4',
         musicPath: '/audioSlotPortfolio/music/Starlight-Travelers-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Starlight-Travelers-SFX'
@@ -308,7 +308,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🏺',
         tags: ['Slots', 'Audio'],
         description: 'Ancient Egypt-themed slot game with layered music system and dramatic big win audio.',
-        year: '2024',
+        year: '2026',
         audioTracks: [
           { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Mummy-BG' },
           { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Mummy-BW' }
@@ -319,7 +319,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '⚔️',
         tags: ['Slots', 'Audio'],
         description: 'Norse mythology slot with epic orchestral layers and powerful big win celebration audio.',
-        year: '2024',
+        year: '2026',
         audioTracks: [
           { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Valkyries-BG' },
           { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Valkyries-BW' }
@@ -330,7 +330,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🐉',
         tags: ['Slots', 'Audio'],
         description: 'Asian dragon-themed slot featuring layered base game music and celebratory big win sequences.',
-        year: '2024',
+        year: '2025',
         audioTracks: [
           { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Zhulongs-BG' },
           { label: 'Big Win', path: '/audioSlotPortfolio/portfolio/Zhulongs-BW' }
@@ -341,7 +341,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🔥',
         tags: ['Slots', 'Audio'],
         description: 'High-energy slot game with multi-layered base game audio design.',
-        year: '2024',
+        year: '2025',
         audioTracks: [
           { label: 'Base Game (3 Layers)', path: '/audioSlotPortfolio/portfolio/Blazins-BG' }
         ]
@@ -351,7 +351,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         icon: '🌙',
         tags: ['Slots', 'Audio'],
         description: 'Atmospheric midnight-themed slot with layered ambient music composition.',
-        year: '2024',
+        year: '2026',
         audioTracks: [
           { label: 'Base Game (2 Layers)', path: '/audioSlotPortfolio/portfolio/Midnight-BG' }
         ]
