@@ -1138,7 +1138,7 @@ export function SlotFullScreen({
                     letterSpacing: '3px',
                     textTransform: 'uppercase'
                   }}>
-                    or click to view details
+                    to view details
                   </div>
                 </div>
               </div>
