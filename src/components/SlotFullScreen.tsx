@@ -1043,8 +1043,8 @@ export function SlotFullScreen({
               config={segmentConfig}
             />
 
-            {/* Jackpot Story with Typewriter Effect */}
-            {phase === 'result' && isJackpot && jackpotStory && (
+            {/* Jackpot Story with Typewriter Effect - hidden for About section */}
+            {phase === 'result' && isJackpot && jackpotStory && machineId !== 'about' && (
               <div style={{
                 position: 'absolute',
                 bottom: '250px',
