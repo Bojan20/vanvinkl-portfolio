@@ -66,7 +66,7 @@ export function SpectrumVisualizer() {
       onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'fixed',
-        bottom: '80px',
+        bottom: '20px',
         left: '20px',
         width: '200px',
         height: '60px',

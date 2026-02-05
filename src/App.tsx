@@ -17,7 +17,6 @@ import {
   AchievementToast,
   KonamiEasterEgg,
   LoadingScreen,
-  OnboardingTooltip,
   AudioSettings,
   KeyboardControlsHint,
   ClickToEnterSplash
@@ -69,15 +68,6 @@ export function App() {
   const [_isSitting, setIsSitting] = useState(false)
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
-  // Onboarding - show only for first-time visitors
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return safeGetLocalStorage('vanvinkl-onboarded') !== 'true'
-  })
-
-  const handleOnboardingDismiss = useCallback(() => {
-    setShowOnboarding(false)
-    safeSetLocalStorage('vanvinkl-onboarded', 'true')
-  }, [])
 
   // Track session on mount
   useEffect(() => {
@@ -349,10 +339,7 @@ export function App() {
         onClose={() => setUnlockedAchievement(null)}
       />
 
-      {/* Onboarding tooltip - desktop only (mobile has intuitive touch controls) */}
-      {showOnboarding && !showIntro && !spinningSlot && !isMobile && (
-        <OnboardingTooltip onDismiss={handleOnboardingDismiss} />
-      )}
+      {/* Onboarding tooltip removed - controls hint already shown at bottom of screen */}
 
       {/* Click to Enter Splash - first thing user sees */}
       {showSplash && <ClickToEnterSplash onEnter={handleSplashEnter} />}
