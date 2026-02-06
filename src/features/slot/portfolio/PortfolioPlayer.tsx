@@ -532,17 +532,19 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation() // Prevent SlotFullScreen from capturing touch
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
   }, [])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation() // Prevent SlotFullScreen swipe from firing
     if (!touchStartRef.current) return
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x
     const dy = e.changedTouches[0].clientY - touchStartRef.current.y
     const dt = Date.now() - touchStartRef.current.time
     touchStartRef.current = null
 
-    // Swipe right = back
+    // Swipe right = back to project list
     if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       uaPlaySynth('back', 0.4)
       onBack()
