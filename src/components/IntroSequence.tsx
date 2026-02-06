@@ -12,7 +12,7 @@
  * Movement does NOT interrupt the animation
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { uaPlaySynth } from '../audio'
