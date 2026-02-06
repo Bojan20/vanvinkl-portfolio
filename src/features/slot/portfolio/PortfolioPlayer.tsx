@@ -868,8 +868,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </div>
       </div>}
 
-      {/* Video Progress Bar */}
-      <div style={{
+      {/* Video Progress Bar — hidden in fullscreen */}
+      {!isFullscreen && <div style={{
         position: 'fixed',
         bottom: isMobilePortrait ? '108px' : '62px',
         left: 0,
@@ -880,7 +880,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         transition: 'width 0.1s linear',
         zIndex: 1001,
         pointerEvents: 'none'
-      }} />
+      }} />}
     </div>
   )
 })
