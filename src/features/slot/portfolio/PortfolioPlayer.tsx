@@ -75,7 +75,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [focusIndex, setFocusIndex] = useState(1)
   const [musicMuted, setMusicMuted] = useState(false)
   const [sfxMuted, setSfxMuted] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(() => {
+    const doc = document as Document & { webkitFullscreenElement?: Element }
+    return !!(document.fullscreenElement || doc.webkitFullscreenElement)
+  })
   const [videoProgress, setVideoProgress] = useState(0)
   const [_videoDuration, setVideoDuration] = useState(0)
 
@@ -285,7 +288,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Orientation / resize / visibility → HARD SYNC (no extra play calls)
+  // Orientation / resize / visibility → HARD SYNC + resume paused audio
   useEffect(() => {
     const forceSync = () => {
       const video = videoRef.current
@@ -295,10 +298,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
       setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
 
-      // Only sync timeline if actively playing — NO play() calls here
+      // Sync timeline + resume audio if playing (orientation change can pause audio)
       if (playStateRef.current === 'playing') {
         music.currentTime = video.currentTime
         sfx.currentTime = video.currentTime
+        if (music.paused) music.play().catch(() => {})
+        if (sfx.paused) sfx.play().catch(() => {})
+        if (video.paused) video.play().catch(() => {})
         console.log('[Transport] Hard sync on orientation/resize/visibility')
       }
     }
@@ -306,13 +312,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         forceSync()
-        // Resume audio if state is playing but audio got suspended by OS
-        if (playStateRef.current === 'playing') {
-          const music = musicRef.current
-          const sfx = sfxRef.current
-          if (music?.paused) music.play().catch(() => {})
-          if (sfx?.paused) sfx.play().catch(() => {})
-        }
       }
     }
 
@@ -529,34 +528,49 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
 
   // Swipe right = back (mobile gesture)
+  // Native DOM listeners in capture phase — guaranteed to fire before React delegation
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
+  const containerDivRef = useRef<HTMLDivElement>(null)
+  const onBackRef = useRef(onBack)
+  onBackRef.current = onBack
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation() // Prevent SlotFullScreen from capturing touch
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
-  }, [])
+  useEffect(() => {
+    const el = containerDivRef.current
+    if (!el) return
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation() // Prevent SlotFullScreen swipe from firing
-    if (!touchStartRef.current) return
-    const dx = e.changedTouches[0].clientX - touchStartRef.current.x
-    const dy = e.changedTouches[0].clientY - touchStartRef.current.y
-    const dt = Date.now() - touchStartRef.current.time
-    touchStartRef.current = null
-
-    // Swipe right = back to project list
-    if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      uaPlaySynth('back', 0.4)
-      onBack()
+    const onTouchStart = (e: TouchEvent) => {
+      e.stopPropagation()
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
     }
-  }, [onBack])
+
+    const onTouchEnd = (e: TouchEvent) => {
+      e.stopPropagation()
+      if (!touchStartRef.current) return
+      const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+      const dy = e.changedTouches[0].clientY - touchStartRef.current.y
+      const dt = Date.now() - touchStartRef.current.time
+      touchStartRef.current = null
+
+      if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        uaPlaySynth('back', 0.4)
+        onBackRef.current()
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, true)
+    el.addEventListener('touchend', onTouchEnd, true)
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart, true)
+      el.removeEventListener('touchend', onTouchEnd, true)
+    }
+  }, [])
 
   const isFocused = (index: number) => focusIndex === index
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      ref={containerDivRef}
       style={{
       position: 'relative',
       width: '100%',

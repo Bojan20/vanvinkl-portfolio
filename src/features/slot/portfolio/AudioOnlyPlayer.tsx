@@ -49,6 +49,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     project.audioTracks.map(() => ({ playing: false, progress: 0, duration: 0, currentTime: 0 }))
   )
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([])
+  // Track which index is intentionally playing (survives orientation changes)
+  const playingIndexRef = useRef<number>(-1)
 
   // Staggered reveal
   useEffect(() => {
@@ -66,6 +68,32 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           audio.load()
         }
       })
+    }
+  }, [])
+
+  // Orientation / resize / visibility → resume audio interrupted by browser
+  useEffect(() => {
+    const resumePlaying = () => {
+      const idx = playingIndexRef.current
+      if (idx < 0) return
+      const audio = audioRefs.current[idx]
+      if (audio && audio.paused && audio.currentTime < audio.duration) {
+        audio.play().catch(() => {})
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') resumePlaying()
+    }
+
+    window.addEventListener('orientationchange', resumePlaying)
+    window.addEventListener('resize', resumePlaying)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('orientationchange', resumePlaying)
+      window.removeEventListener('resize', resumePlaying)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
@@ -143,9 +171,11 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         }
       })
       audio.play().catch(e => console.warn('Audio play failed:', e))
+      playingIndexRef.current = index
       uaPlaySynth('select', 0.5)
     } else {
       audio.pause()
+      playingIndexRef.current = -1
       uaPlaySynth('select', 0.3)
     }
   }
@@ -178,6 +208,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   }
 
   const handleEnded = (index: number) => {
+    if (playingIndexRef.current === index) playingIndexRef.current = -1
     setTrackStates(prev => {
       const next = [...prev]
       next[index] = { ...next[index], playing: false, progress: 0 }
