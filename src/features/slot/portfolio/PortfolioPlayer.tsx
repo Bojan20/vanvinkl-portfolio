@@ -419,18 +419,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [release, prepare])
 
   // ============================================================
-  // RAF-BASED SYNC ENGINE — 60Hz drift correction (replaces timeupdate ~4Hz)
+  // RAF-BASED SYNC ENGINE — seek-only drift correction
   // ============================================================
   //
-  // Why RAF instead of timeupdate:
-  // - timeupdate fires ~4Hz on mobile, ~15Hz on desktop → 250ms blind spots
-  // - RAF fires at display refresh rate (60Hz) → checks every ~16ms
-  // - Drift never accumulates beyond one frame before correction
-  //
-  // Drift correction strategy (3-tier):
-  // - < 30ms: perfect sync, do nothing
-  // - 30-100ms: proportional playbackRate correction (0.92–1.08)
-  // - > 100ms: hard seek (instant resync, tiny audio pop)
+  // ZERO playbackRate changes — they cause audible stutter/artifacts.
+  // Instead: check drift every 500ms. If >150ms, hard-seek audio to video.
+  // Below 150ms drift is imperceptible and self-corrects naturally.
   //
   useEffect(() => {
     const video = videoRef.current
@@ -442,31 +436,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     let lastProgressUpdate = 0
     let lastDriftCheck = 0
 
-    const correctDrift = (audioEl: HTMLAudioElement, _label: string) => {
-      const drift = audioEl.currentTime - video.currentTime // positive = audio ahead
-      const absDrift = Math.abs(drift)
-
-      if (absDrift < 0.05) {
-        // Within 50ms — perfect sync, restore normal rate
-        if (audioEl.playbackRate !== 1.0) audioEl.playbackRate = 1.0
-        return
+    const correctDrift = (audioEl: HTMLAudioElement, label: string) => {
+      const drift = Math.abs(audioEl.currentTime - video.currentTime)
+      // Only correct if drift exceeds 150ms — below that is imperceptible
+      if (drift > 0.15) {
+        audioEl.currentTime = video.currentTime
+        console.log(`[Sync] ${label} drift ${(drift * 1000).toFixed(0)}ms → hard seek`)
       }
-
-      if (absDrift <= 0.15) {
-        // 50-150ms drift — gentle proportional playbackRate correction
-        // Smaller correction range (0.97–1.03) to avoid audible artifacts
-        const correction = 0.01 + (absDrift - 0.05) * 0.2 // 0.01 to ~0.03
-        const newRate = drift > 0 ? (1.0 - correction) : (1.0 + correction)
-        // Hysteresis: only update if change is meaningful
-        if (Math.abs(audioEl.playbackRate - newRate) > 0.005) {
-          audioEl.playbackRate = newRate
-        }
-        return
-      }
-
-      // >150ms drift — hard seek
-      audioEl.playbackRate = 1.0
-      audioEl.currentTime = video.currentTime
     }
 
     const syncLoop = () => {
@@ -477,8 +453,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
       const now = performance.now()
 
-      // Drift correction throttled to ~4Hz (every 250ms) — avoids audio stutter
-      if (now - lastDriftCheck > 250) {
+      // Drift check every 500ms — lightweight, no playbackRate mutation
+      if (now - lastDriftCheck > 500) {
         lastDriftCheck = now
         correctDrift(music, 'music')
         correctDrift(sfx, 'sfx')

@@ -732,7 +732,7 @@ export function SlotFullScreen({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      overflow: 'auto',
+      overflow: 'hidden',
       transition: 'background 0.5s ease',
       animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none',
       cursor: 'default',
