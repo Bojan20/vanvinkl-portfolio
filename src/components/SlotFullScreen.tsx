@@ -154,11 +154,12 @@ const InfoPanel = memo(function InfoPanel({
 // ============================================
 // CONTENT VIEW ROUTER (Routes to extracted views)
 // ============================================
-function ContentView({ section, focusIndex, selectedProject, onBackFromProject }: {
+function ContentView({ section, focusIndex, selectedProject, onBackFromProject, onActivate }: {
   section: SlotSection
   focusIndex: number
   selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null
   onBackFromProject?: () => void
+  onActivate?: (index: number) => void
 }) {
   // Show portfolio player if project selected (video projects only)
   // Audio-only projects are rendered outside contentBodyReveal wrapper in SlotFullScreen
@@ -180,7 +181,7 @@ function ContentView({ section, focusIndex, selectedProject, onBackFromProject }
     case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
     case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
     case 'about': return <AboutView section={section} focusIndex={focusIndex} />
-    case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} />
+    case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} onSelect={onActivate} />
     case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} />
     case 'contact': return <ContactView section={section} focusIndex={focusIndex} />
     default: return null
@@ -1288,6 +1289,7 @@ export function SlotFullScreen({
                 console.log('[SlotFullScreen] onBackFromProject called, setting selectedProject to null')
                 setSelectedProject(null)
               }}
+              onActivate={handleActivate}
             />
           </div>
 
