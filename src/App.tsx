@@ -165,16 +165,27 @@ export function App() {
     let startTime = 0
     let pulling = false
     let pullIndicator: HTMLDivElement | null = null
+    const PULL_THRESHOLD = 120
 
     const createPullIndicator = () => {
       const el = document.createElement('div')
       el.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; height: 4px;
-        background: linear-gradient(90deg, transparent, #00ff88, transparent);
-        transform: scaleX(0); transform-origin: center;
-        transition: transform 0.1s ease-out; z-index: 99999;
-        pointer-events: none;
+        position: fixed; top: -60px; left: 50%; width: 44px; height: 44px;
+        margin-left: -22px; border-radius: 50%;
+        background: rgba(5, 5, 15, 0.85);
+        border: 2px solid rgba(0, 255, 136, 0.4);
+        backdrop-filter: blur(8px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 99999; pointer-events: none;
+        transition: border-color 0.2s ease;
       `
+      // SVG refresh arrow
+      el.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.2s ease;">
+        <path d="M21 2v6h-6"/>
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+        <path d="M3 22v-6h6"/>
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+      </svg>`
       document.body.appendChild(el)
       return el
     }
@@ -196,10 +207,20 @@ export function App() {
       if (dy > 20 && Math.abs(dx) < dy * 0.5) {
         pulling = true
         if (!pullIndicator) pullIndicator = createPullIndicator()
-        const progress = Math.min(dy / 120, 1)
-        pullIndicator.style.transform = `scaleX(${progress})`
+        const progress = Math.min(dy / PULL_THRESHOLD, 1)
+        // Move indicator down with finger (max 70px from top), rotate proportionally
+        const translateY = Math.min(dy * 0.5, 70)
+        const rotation = progress * 360
+        pullIndicator.style.transform = `translateY(${translateY}px) rotate(${rotation}deg)`
+        pullIndicator.style.opacity = `${Math.min(progress * 1.5, 1)}`
+        // Color change at threshold
+        const svg = pullIndicator.querySelector('svg')
         if (progress >= 1) {
-          pullIndicator.style.background = 'linear-gradient(90deg, transparent, #ff00aa, transparent)'
+          pullIndicator.style.borderColor = 'rgba(255, 0, 170, 0.6)'
+          if (svg) svg.style.stroke = '#ff00aa'
+        } else {
+          pullIndicator.style.borderColor = 'rgba(0, 255, 136, 0.4)'
+          if (svg) svg.style.stroke = '#00ff88'
         }
       }
     }
@@ -210,14 +231,18 @@ export function App() {
       const dy = touch.clientY - startY
       const dt = Date.now() - startTime
 
-      // Remove pull indicator
+      // Animate pull indicator out
       if (pullIndicator) {
-        pullIndicator.remove()
+        const el = pullIndicator
+        el.style.transition = 'transform 0.3s ease-in, opacity 0.3s ease-in'
+        el.style.transform = 'translateY(-60px) rotate(0deg)'
+        el.style.opacity = '0'
+        setTimeout(() => el.remove(), 300)
         pullIndicator = null
       }
 
-      // Pull-to-refresh: pulled down >120px (works everywhere, including slots)
-      if (pulling && dy > 120 && dt < 1500) {
+      // Pull-to-refresh: pulled down >threshold (works everywhere, including slots)
+      if (pulling && dy > PULL_THRESHOLD && dt < 1500) {
         window.location.reload()
         return
       }
