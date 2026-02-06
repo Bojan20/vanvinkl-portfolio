@@ -2,18 +2,19 @@
  * PortfolioPlayer - Full-Screen Video Player with Dual Audio Sync
  *
  * PLAYBACK STATE MACHINE (FluxForge-style lifecycle):
- *   Idle → Prepared → Playing → Paused → Released
+ *   Idle → Preparing → Prepared → Playing → Paused → Released
  *
- * - prepare() valid only from Idle → Prepared (idempotent from Prepared/Playing)
- * - start()  valid only from Prepared/Paused → Playing (NOOP from Playing)
- * - pause()  valid only from Playing → Paused
+ * - On mount: immediately begins buffering video + audio
+ * - Shows LOADING overlay until all media reaches canplaythrough
+ * - Play button only appears when fully buffered
+ * - start() valid only from Prepared/Paused → Playing
+ * - pause() valid only from Playing → Paused
  * - release() from any → Released (cleanup, only way to re-prepare)
  *
  * AUDIO ARCHITECTURE:
  * - Video element is ALWAYS MUTED (video.muted = true)
  * - Audio routed exclusively through <audio> refs (music + SFX)
  * - Single transport.start() gate — no duplicate .play() calls
- * - No currentTime=0, load(), or src changes after initial mount
  *
  * KEYBOARD CONTROLS:
  * - Arrow Left/Right: Navigate focus (4 items)
@@ -33,7 +34,7 @@ const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i
 // ============================================================
 // PLAYBACK STATE MACHINE
 // ============================================================
-type PlayState = 'idle' | 'prepared' | 'playing' | 'paused' | 'released'
+type PlayState = 'idle' | 'preparing' | 'prepared' | 'playing' | 'paused' | 'released'
 
 interface PortfolioPlayerProps {
   project: {
@@ -83,6 +84,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [_videoDuration, setVideoDuration] = useState(0)
 
   // ============================================================
+  // BUFFER STATE — tracks loading progress for UI
+  // ============================================================
+  const [bufferState, setBufferState] = useState<'loading' | 'ready' | 'playing' | 'paused'>('loading')
+  const [bufferProgress, setBufferProgress] = useState(0) // 0-100
+
+  // ============================================================
   // STATE MACHINE — single source of truth for playback
   // ============================================================
   const playStateRef = useRef<PlayState>('idle')
@@ -94,44 +101,61 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const _FOCUS_ITEMS = 4
 
   /**
-   * prepare() — Idle → Prepared
-   * Idempotent: NOOP from Prepared or Playing
-   * Ensures video readyState >= HAVE_FUTURE_DATA before resolving
+   * prepare() — Idle → Preparing → Prepared
+   * Waits for ALL media to reach canplaythrough (readyState >= 4)
+   * This ensures enough data is buffered for smooth uninterrupted playback.
    */
   const prepare = useCallback(async () => {
     const state = playStateRef.current
-    if (state === 'prepared' || state === 'playing') return // idempotent
-    if (state === 'released') return // cannot prepare after release
+    if (state === 'prepared' || state === 'playing' || state === 'preparing') return
+    if (state === 'released') return
 
     const video = videoRef.current
     const music = musicRef.current
     const sfx = sfxRef.current
     if (!video || !music || !sfx) return
 
-    // Wait for video + audio to be buffered enough to play without stall
+    playStateRef.current = 'preparing'
+    console.log('[Transport] Idle → Preparing (buffering media)')
+
+    // Wait for canplaythrough (readyState >= 4) — enough buffer for uninterrupted play
     const waitReady = (el: HTMLMediaElement, label: string) =>
-      el.readyState >= 3 ? Promise.resolve() : new Promise<void>((resolve) => {
+      el.readyState >= 4 ? Promise.resolve() : new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
-          el.removeEventListener('canplay', onReady)
-          console.warn(`[Transport] ${label} canplay timeout — proceeding anyway`)
+          el.removeEventListener('canplaythrough', onReady)
+          console.warn(`[Transport] ${label} canplaythrough timeout — proceeding with readyState ${el.readyState}`)
           resolve()
-        }, 3000) // Don't block forever on slow mobile networks
+        }, 15000) // 15s timeout — generous for mobile networks
         const onReady = () => {
           clearTimeout(timeout)
-          el.removeEventListener('canplay', onReady)
+          el.removeEventListener('canplaythrough', onReady)
+          console.log(`[Transport] ${label} ready (readyState: ${el.readyState})`)
           resolve()
         }
-        el.addEventListener('canplay', onReady)
+        el.addEventListener('canplaythrough', onReady)
       })
 
+    // Track individual readiness for progress reporting
+    let readyCount = 0
+    const totalTracks = 3
+
+    const trackReady = async (el: HTMLMediaElement, label: string) => {
+      await waitReady(el, label)
+      readyCount++
+      setBufferProgress(Math.round((readyCount / totalTracks) * 100))
+    }
+
     await Promise.all([
-      waitReady(video, 'video'),
-      waitReady(music, 'music'),
-      waitReady(sfx, 'sfx')
+      trackReady(video, 'video'),
+      trackReady(music, 'music'),
+      trackReady(sfx, 'sfx')
     ])
 
+    if (playStateRef.current === 'released') return // unmounted during prepare
+
     playStateRef.current = 'prepared'
-    console.log('[Transport] Idle → Prepared')
+    setBufferState('ready')
+    console.log('[Transport] Preparing → Prepared (all media buffered)')
   }, [])
 
   /**
@@ -140,19 +164,21 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
    * Single gate: ALL play triggers route through here
    *
    * BULLETPROOF: startingRef lock held until 300ms AFTER playback begins.
-   * This prevents any concurrent or delayed play trigger (synthetic click,
-   * touch→click coalescing, React re-render race) from causing double audio.
    */
   const start = useCallback(async () => {
-    // Double-call guard: lock prevents concurrent async starts
     if (startingRef.current) return
     if (playStateRef.current === 'playing') return
     if (playStateRef.current === 'released') return
     startingRef.current = true
 
     try {
-      if (playStateRef.current === 'idle') {
+      // If not prepared yet, prepare first (waits for buffer)
+      if (playStateRef.current === 'idle' || playStateRef.current === 'preparing') {
         await prepare()
+      }
+
+      if (playStateRef.current !== 'prepared' && playStateRef.current !== 'paused') {
+        return // Cannot start from this state
       }
 
       const video = videoRef.current
@@ -175,22 +201,20 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       playStateRef.current = 'playing'
       playStartedAtRef.current = Date.now()
       setIsPlaying(true)
+      setBufferState('playing')
       console.log('[Transport] → Playing')
     } catch (e) {
       console.warn('[Transport] start() failed:', e)
     } finally {
-      // Hold lock for 300ms after play to absorb delayed synthetic clicks
       setTimeout(() => { startingRef.current = false }, 300)
     }
   }, [prepare])
 
   /**
    * pause() — Playing → Paused
-   * NOOP from non-Playing states
    */
   const pause = useCallback(() => {
     if (playStateRef.current !== 'playing') return
-    // Block premature pause from synthetic click after play (mobile touch→click race)
     if (Date.now() - playStartedAtRef.current < 500) return
 
     const video = videoRef.current
@@ -204,12 +228,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     playStateRef.current = 'paused'
     setIsPlaying(false)
+    setBufferState('paused')
     console.log('[Transport] Playing → Paused')
   }, [])
 
   /**
    * release() — Any → Released
-   * Full cleanup. Only way to re-prepare is remount.
    */
   const release = useCallback(() => {
     const video = videoRef.current
@@ -244,7 +268,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     const state = playStateRef.current
     if (state === 'playing') {
       pause()
-    } else {
+    } else if (state === 'prepared' || state === 'paused') {
       start()
     }
   }, [start, pause])
@@ -289,14 +313,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [])
 
   // Orientation / resize / visibility → resume paused media (debounced)
-  // Key insight: do NOT seek currentTime on resize — it causes audio stutter.
-  // Only resume .play() if browser paused media during rotation.
-  // Timeline sync only if drift exceeds 300ms (same as timeupdate drift correction).
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
     const forceSync = () => {
-      // Debounce: resize fires 5-15x during rotation — only act once at the end
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         const video = videoRef.current
@@ -307,12 +327,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
 
         if (playStateRef.current === 'playing') {
-          // Resume any media paused by the browser during rotation
           if (video.paused) video.play().catch(() => {})
           if (music.paused) music.play().catch(() => {})
           if (sfx.paused) sfx.play().catch(() => {})
 
-          // Only re-sync timeline if drift is significant (>300ms)
           const drift = Math.abs(music.currentTime - video.currentTime)
           if (drift > 0.3) {
             music.currentTime = video.currentTime
@@ -339,13 +357,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
   }, [])
 
-  // Initialize on mount — NO autoplay, NO currentTime resets after this
+  // Initialize on mount — start buffering immediately, NO autoplay
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
     const sfx = sfxRef.current
 
-    // Ensure video is muted — audio comes ONLY from <audio> refs
     if (video) {
       video.muted = true
       video.loop = false
@@ -355,12 +372,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     playStateRef.current = 'idle'
 
+    // Start buffering immediately — prepare() waits for canplaythrough
+    prepare()
+
     return () => {
       release()
     }
-  }, [release])
+  }, [release, prepare])
 
-  // Video event listeners — route through state machine, no direct play() calls
+  // Video event listeners
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
@@ -368,13 +388,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     if (!video || !music || !sfx) return
 
     const handleSeeked = () => {
-      // Sync audio timeline on user scrub
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
     }
 
-    // Drift correction: only correct large drifts to avoid micro-seek stutter
-    // Mobile browsers fire timeupdate ~4Hz — aggressive correction causes audio gaps
     let lastSyncTime = 0
 
     const handleTimeUpdate = () => {
@@ -383,13 +400,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
       if (video.ended || playStateRef.current !== 'playing') return
 
-      // Throttle drift correction to max once per second
       const now = performance.now()
       if (now - lastSyncTime < 1000) return
       lastSyncTime = now
 
-      // Only correct significant drift (300ms) — small drifts are imperceptible
-      // Setting currentTime causes a micro-seek → audio gap on mobile
       const musicDrift = Math.abs(video.currentTime - music.currentTime)
       if (musicDrift > 0.3) {
         music.currentTime = video.currentTime
@@ -408,31 +422,41 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     const handleEnded = () => {
       playStateRef.current = 'paused'
       setIsPlaying(false)
+      setBufferState('paused')
       console.log('[Transport] Video ended → Paused')
     }
 
-    // Track stall state so handlePlaying only resumes after actual stall
     let stalled = false
 
-    // Video stall → pause audio to prevent drift (state stays 'playing')
     const handleWaiting = () => {
       if (playStateRef.current !== 'playing') return
       stalled = true
       music.pause()
       sfx.pause()
-      console.log('[Transport] Video stalled, audio paused')
+      setBufferState('loading')
+      console.log('[Transport] Video stalled, showing buffer indicator')
     }
 
-    // Video resumed from stall → hard sync + resume audio (only after stall)
     const handlePlaying = () => {
-      if (!stalled) return // Ignore playing events from normal start()
+      if (!stalled) return
       if (playStateRef.current !== 'playing') return
       stalled = false
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
       music.play().catch(() => {})
       sfx.play().catch(() => {})
+      setBufferState('playing')
       console.log('[Transport] Resumed from stall, audio re-synced')
+    }
+
+    // Track buffer progress during initial load
+    const handleProgress = () => {
+      if (playStateRef.current !== 'idle' && playStateRef.current !== 'preparing') return
+      if (video.buffered.length > 0 && video.duration > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1)
+        const pct = Math.round((bufferedEnd / video.duration) * 100)
+        setBufferProgress(prev => Math.max(prev, Math.min(pct, 99))) // Cap at 99 until fully ready
+      }
     }
 
     video.addEventListener('seeked', handleSeeked)
@@ -441,6 +465,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     video.addEventListener('ended', handleEnded)
     video.addEventListener('waiting', handleWaiting)
     video.addEventListener('playing', handlePlaying)
+    video.addEventListener('progress', handleProgress)
 
     return () => {
       video.removeEventListener('seeked', handleSeeked)
@@ -449,6 +474,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       video.removeEventListener('ended', handleEnded)
       video.removeEventListener('waiting', handleWaiting)
       video.removeEventListener('playing', handlePlaying)
+      video.removeEventListener('progress', handleProgress)
     }
   }, [])
 
@@ -511,8 +537,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
         case ' ':
           e.preventDefault()
-          togglePlayPause()
-          uaPlaySynth('select', playStateRef.current === 'playing' ? 0.3 : 0.5)
+          if (bufferState === 'ready' || bufferState === 'playing' || bufferState === 'paused') {
+            togglePlayPause()
+            uaPlaySynth('select', playStateRef.current === 'playing' ? 0.3 : 0.5)
+          }
           break
 
         case 'Enter':
@@ -538,7 +566,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
+  }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack, bufferState])
 
   // Mobile back: handled entirely via history.pushState/popstate in SlotFullScreen + App.tsx.
   // Native back gesture (edge swipe) fires popstate → App.tsx dispatches slot:closeVideo.
@@ -621,7 +649,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
         playsInline
-        preload="metadata"
+        preload="auto"
         poster={safePosterPath || '/logo_van.png'}
         onContextMenu={(e) => e.preventDefault()}
         className="portfolio-video-player"
@@ -635,15 +663,69 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           objectFit: 'contain',
           cursor: 'pointer'
         }}
-        onClick={() => { if (playStateRef.current !== 'idle') togglePlayPause() }}
+        onClick={() => {
+          if (bufferState === 'playing' || bufferState === 'paused') togglePlayPause()
+          else if (bufferState === 'ready') start()
+        }}
         onDoubleClick={toggleVideoFullscreen}
       >
         <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=6`} type="video/mp4" />
         Your browser does not support video playback.
       </video>
 
-      {/* Play overlay — shown until user starts playback */}
-      {!isPlaying && (
+      {/* LOADING overlay — shown while buffering */}
+      {bufferState === 'loading' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '16px',
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 5,
+            pointerEvents: 'none'
+          }}
+        >
+          {/* Spinning ring */}
+          <div style={{
+            width: 'clamp(48px, 12vw, 72px)',
+            height: 'clamp(48px, 12vw, 72px)',
+            borderRadius: '50%',
+            border: '3px solid rgba(255,215,0,0.15)',
+            borderTopColor: '#ffd700',
+            animation: 'ppSpinnerRotate 0.8s linear infinite'
+          }} />
+          <div style={{
+            color: '#ffd700',
+            fontSize: 'clamp(12px, 2.5vw, 15px)',
+            fontWeight: 600,
+            letterSpacing: '2px',
+            textTransform: 'uppercase'
+          }}>LOADING</div>
+          {/* Buffer progress bar */}
+          <div style={{
+            width: 'clamp(120px, 40vw, 200px)',
+            height: '3px',
+            background: 'rgba(255,215,0,0.15)',
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${bufferProgress}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
+              borderRadius: '2px',
+              transition: 'width 0.3s ease-out'
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* PLAY overlay — shown only when fully buffered and not yet playing */}
+      {bufferState === 'ready' && (
         <div
           onClick={(e) => { e.stopPropagation(); start() }}
           style={{
@@ -668,7 +750,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backdropFilter: 'blur(4px)'
+            backdropFilter: 'blur(4px)',
+            animation: 'ppReadyPulse 1.5s ease-in-out infinite'
           }}>
             <div style={{
               width: 0, height: 0,
@@ -685,6 +768,43 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             letterSpacing: '2px',
             textTransform: 'uppercase'
           }}>TAP TO PLAY</div>
+        </div>
+      )}
+
+      {/* PAUSED overlay — tap to resume */}
+      {bufferState === 'paused' && (
+        <div
+          onClick={(e) => { e.stopPropagation(); start() }}
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.35)',
+            cursor: 'pointer',
+            zIndex: 5
+          }}
+        >
+          <div style={{
+            width: 'clamp(48px, 12vw, 80px)',
+            height: 'clamp(48px, 12vw, 80px)',
+            borderRadius: '50%',
+            background: 'rgba(255,215,0,0.15)',
+            border: '2px solid rgba(255,215,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)'
+          }}>
+            <div style={{
+              width: 0, height: 0,
+              borderTop: 'clamp(10px, 3vw, 18px) solid transparent',
+              borderBottom: 'clamp(10px, 3vw, 18px) solid transparent',
+              borderLeft: 'clamp(18px, 5vw, 30px) solid rgba(255,215,0,0.7)',
+              marginLeft: 'clamp(3px, 1vw, 6px)'
+            }} />
+          </div>
         </div>
       )}
 
@@ -881,6 +1001,18 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         zIndex: 1001,
         pointerEvents: 'none'
       }} />}
+
+      {/* Spinner animation */}
+      <style>{`
+        @keyframes ppSpinnerRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes ppReadyPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0.3); }
+          50% { transform: scale(1.05); box-shadow: 0 0 20px 4px rgba(255,215,0,0.15); }
+        }
+      `}</style>
     </div>
   )
 })
