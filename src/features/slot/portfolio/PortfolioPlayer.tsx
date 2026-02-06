@@ -83,6 +83,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   // STATE MACHINE — single source of truth for playback
   // ============================================================
   const playStateRef = useRef<PlayState>('idle')
+  const startingRef = useRef(false) // Lock to prevent concurrent start() calls
   const [isPlaying, setIsPlaying] = useState(false)
 
   // Focus items count
@@ -124,39 +125,42 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
    * Single gate: ALL play triggers route through here
    */
   const start = useCallback(async () => {
-    const state = playStateRef.current
-    if (state === 'playing') return // NOOP — prevents double attack
-    if (state === 'idle') {
-      await prepare()
-    }
-    if (state === 'released') return
+    // Double-call guard: lock prevents concurrent async starts
+    if (startingRef.current) return
+    if (playStateRef.current === 'playing') return
+    if (playStateRef.current === 'released') return
+    startingRef.current = true
 
-    const video = videoRef.current
-    const music = musicRef.current
-    const sfx = sfxRef.current
-    if (!video || !music || !sfx) return
-
-    // Single atomic start sequence:
-    // 1. Sync audio timeline to video
-    music.currentTime = video.currentTime
-    sfx.currentTime = video.currentTime
-
-    // 2. Start video (muted — audio comes from <audio> elements only)
     try {
+      if (playStateRef.current === 'idle') {
+        await prepare()
+      }
+
+      const video = videoRef.current
+      const music = musicRef.current
+      const sfx = sfxRef.current
+      if (!video || !music || !sfx) return
+
+      // Sync audio timeline to video
+      music.currentTime = video.currentTime
+      sfx.currentTime = video.currentTime
+
+      // Start video (muted — audio comes from <audio> elements only)
       await video.play()
+
+      // Start audio tracks
+      music.play().catch(() => {})
+      sfx.play().catch(() => {})
+
+      // Transition state
+      playStateRef.current = 'playing'
+      setIsPlaying(true)
+      console.log('[Transport] → Playing')
     } catch (e) {
-      console.warn('[Transport] video.play() failed:', e)
-      return
+      console.warn('[Transport] start() failed:', e)
+    } finally {
+      startingRef.current = false
     }
-
-    // 3. Start audio tracks
-    music.play().catch(e => console.warn('[Transport] music.play() failed:', e))
-    sfx.play().catch(e => console.warn('[Transport] sfx.play() failed:', e))
-
-    // 4. Transition state
-    playStateRef.current = 'playing'
-    setIsPlaying(true)
-    console.log('[Transport] → Playing')
   }, [prepare])
 
   /**
@@ -352,21 +356,28 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       console.log('[Transport] Video ended → Paused')
     }
 
+    // Track stall state so handlePlaying only resumes after actual stall
+    let stalled = false
+
     // Video stall → pause audio to prevent drift (state stays 'playing')
     const handleWaiting = () => {
       if (playStateRef.current !== 'playing') return
+      stalled = true
       music.pause()
       sfx.pause()
-      console.log('[Transport] Video stalled, audio paused (state still Playing)')
+      console.log('[Transport] Video stalled, audio paused')
     }
 
-    // Video resumed from stall → hard sync + resume audio (no state change)
+    // Video resumed from stall → hard sync + resume audio (only after stall)
     const handlePlaying = () => {
+      if (!stalled) return // Ignore playing events from normal start()
       if (playStateRef.current !== 'playing') return
+      stalled = false
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
-      if (music.paused) music.play().catch(() => {})
-      if (sfx.paused) sfx.play().catch(() => {})
+      music.play().catch(() => {})
+      sfx.play().catch(() => {})
+      console.log('[Transport] Resumed from stall, audio re-synced')
     }
 
     video.addEventListener('seeked', handleSeeked)
@@ -580,7 +591,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       {/* Play overlay — shown until user starts playback */}
       {!isPlaying && (
         <div
-          onClick={() => start()}
+          onClick={(e) => { e.stopPropagation(); start() }}
           style={{
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
