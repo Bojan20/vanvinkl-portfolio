@@ -754,64 +754,55 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* ESC hint - HIDDEN when video player active */}
-      {!selectedProject && (
-        <div
-          className="esc-exit-hint"
-          style={{
-            position: 'fixed',
-            top: 'max(24px, env(safe-area-inset-top, 0px))',
-            right: 'max(24px, env(safe-area-inset-right, 0px))',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            background: 'rgba(0,0,0,0.75)',
-            border: `1px solid ${primaryColor}40`,
-            color: primaryColor,
-            fontSize: '13px',
-            fontWeight: 600,
-            letterSpacing: '1px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            zIndex: 1001,
-            opacity: 0.9,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => onClose?.()}
-          title="Return to casino floor"
-        >
-          <span style={{
-            padding: '4px 8px',
-            background: `${primaryColor}20`,
-            borderRadius: '4px',
-            border: `1px solid ${primaryColor}60`,
-            fontSize: '12px'
-          }}>ESC</span>
-          EXIT
-          {/* Hover tooltip */}
-          <span className="esc-tooltip" style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: '0',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            background: 'rgba(0,0,0,0.9)',
-            border: `1px solid ${primaryColor}30`,
-            color: 'rgba(255,255,255,0.8)',
-            fontSize: '11px',
-            fontWeight: 400,
-            letterSpacing: '0.3px',
-            whiteSpace: 'nowrap',
-            opacity: 0,
-            transform: 'translateY(-4px)',
-            transition: 'all 0.2s ease',
-            pointerEvents: 'none'
-          }}>
-            Press ESC to return to casino floor
-          </span>
-        </div>
-      )}
+      {/* Back to Lounge button - HIDDEN when video player active */}
+      {!selectedProject && (() => {
+        const isTouch = window.matchMedia('(pointer: coarse)').matches
+        return (
+          <div
+            className="esc-exit-hint"
+            role="button"
+            style={{
+              position: 'fixed',
+              top: 'max(16px, env(safe-area-inset-top, 0px))',
+              left: isTouch ? 'max(16px, env(safe-area-inset-left, 0px))' : 'auto',
+              right: isTouch ? 'auto' : 'max(24px, env(safe-area-inset-right, 0px))',
+              padding: isTouch ? '12px 16px' : '10px 16px',
+              borderRadius: '8px',
+              background: 'rgba(0,0,0,0.8)',
+              border: `1px solid ${primaryColor}50`,
+              color: primaryColor,
+              fontSize: isTouch ? '14px' : '13px',
+              fontWeight: 600,
+              letterSpacing: '1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              zIndex: 1001,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none' as const
+            }}
+            onClick={() => { uaPlaySynth('back', 0.4); onClose?.() }}
+            title="Return to casino floor"
+          >
+            {isTouch ? (
+              <>← LOUNGE</>
+            ) : (
+              <>
+                <span style={{
+                  padding: '4px 8px',
+                  background: `${primaryColor}20`,
+                  borderRadius: '4px',
+                  border: `1px solid ${primaryColor}60`,
+                  fontSize: '12px'
+                }}>ESC</span>
+                EXIT
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Content navigation hint - desktop only (no keyboard on touch devices) */}
       {phase === 'content' && showContentHint && !selectedProject && !window.matchMedia('(pointer: coarse)').matches && (

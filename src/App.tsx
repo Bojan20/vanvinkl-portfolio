@@ -406,14 +406,16 @@ export function App() {
                 qualityStore.setPreset('auto')
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
-              // Resume lounge music with volume from audio store (no overlap)
+              // Resume lounge music — ALWAYS restart + force volume
+              // SlotFullScreen may have stopped lounge or left music bus at 0
               const { musicVolume } = useAudioStore.getState()
+              uaVolume('music', 0, 0) // Instant zero (cancel any stale ramp)
               if (!uaIsPlaying('lounge')) {
                 uaPlay('lounge')
-                console.log('[Music] Slot closed - lounge started')
               }
-              uaVolume('music', musicVolume, 500) // Fade to stored volume over 500ms
-              console.log(`[Music] Volume synced to ${musicVolume.toFixed(2)}`)
+              // Fade in from 0 to stored volume over 500ms
+              setTimeout(() => uaVolume('music', musicVolume, 0.5), 50)
+              console.log(`[Music] Slot closed - lounge resumed, fade to ${musicVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {
               setSpinningSlot(machineId)
