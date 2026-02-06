@@ -1,5 +1,7 @@
 /**
  * FullscreenToggle - Site-wide fullscreen toggle button
+ * Works in lounge AND inside slot views (z-index above SlotFullScreen)
+ * Cross-browser: standard + webkit (iOS Safari)
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -8,24 +10,61 @@ function isMobileDevice(): boolean {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 }
 
+// Cross-browser fullscreen helpers
+function canFullscreen(): boolean {
+  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void }
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen)
+}
+
+function isInFullscreen(): boolean {
+  return !!(document.fullscreenElement || (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement)
+}
+
+function enterFullscreen() {
+  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }
+  if (el.requestFullscreen) {
+    el.requestFullscreen().catch(() => {})
+  } else if (el.webkitRequestFullscreen) {
+    el.webkitRequestFullscreen()
+  }
+}
+
+function exitFullscreen() {
+  const doc = document as Document & { webkitExitFullscreen?: () => void }
+  if (document.exitFullscreen) {
+    document.exitFullscreen().catch(() => {})
+  } else if (doc.webkitExitFullscreen) {
+    doc.webkitExitFullscreen()
+  }
+}
+
 export function FullscreenToggle() {
   const isMobile = isMobileDevice()
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(isInFullscreen)
 
   // Sync state with actual fullscreen changes (e.g. user presses Esc)
   useEffect(() => {
-    const onChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
+    const onChange = () => setIsFullscreen(isInFullscreen())
     document.addEventListener('fullscreenchange', onChange)
-    return () => document.removeEventListener('fullscreenchange', onChange)
+    document.addEventListener('webkitfullscreenchange', onChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange)
+      document.removeEventListener('webkitfullscreenchange', onChange)
+    }
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (isInFullscreen()) {
+      exitFullscreen()
+    } else {
+      enterFullscreen()
+    }
   }, [])
 
   // Keyboard shortcut (F key)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Don't trigger when typing in inputs
         const tag = (e.target as HTMLElement)?.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA') return
         e.preventDefault()
@@ -34,42 +73,36 @@ export function FullscreenToggle() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      document.documentElement.requestFullscreen().catch(() => {
-        // Fullscreen not supported or denied
-      })
-    }
-  }, [])
+  }, [toggleFullscreen])
 
   // Hide if browser doesn't support Fullscreen API at all
-  if (!document.documentElement.requestFullscreen) {
+  if (!canFullscreen()) {
     return null
   }
 
   return (
     <div
       onClick={toggleFullscreen}
+      role="button"
+      aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
       style={{
         position: 'fixed',
-        top: isMobile ? '20px' : '20px',
-        right: '20px',
+        top: isMobile ? 'max(16px, env(safe-area-inset-top, 0px))' : '20px',
+        right: isMobile ? 'max(16px, env(safe-area-inset-right, 0px))' : '20px',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        padding: '10px 16px',
+        padding: isMobile ? '12px 14px' : '10px 16px',
         background: 'rgba(5, 5, 15, 0.75)',
         border: `1px solid ${isFullscreen ? 'rgba(0, 255, 136, 0.4)' : 'rgba(0, 255, 255, 0.3)'}`,
         borderRadius: '20px',
         backdropFilter: 'blur(8px)',
         cursor: 'pointer',
-        zIndex: 100,
+        zIndex: 10000,
         transition: 'all 0.2s ease',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none' as const
       }}
     >
       {/* Fullscreen icon */}

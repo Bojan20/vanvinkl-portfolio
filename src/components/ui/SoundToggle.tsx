@@ -65,7 +65,7 @@ export function SoundToggle() {
         borderRadius: '20px',
         backdropFilter: 'blur(8px)',
         cursor: 'pointer',
-        zIndex: 100,
+        zIndex: 10000,
         transition: 'all 0.2s ease',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}

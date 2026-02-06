@@ -75,7 +75,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [focusIndex, setFocusIndex] = useState(1)
   const [musicMuted, setMusicMuted] = useState(false)
   const [sfxMuted, setSfxMuted] = useState(false)
-  const [_isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [videoProgress, setVideoProgress] = useState(0)
   const [_videoDuration, setVideoDuration] = useState(0)
 
@@ -241,19 +241,33 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   // LIFECYCLE
   // ============================================================
 
-  // Fullscreen change listener
+  // Cross-browser fullscreen helpers
+  const toggleVideoFullscreen = useCallback(() => {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void }
+    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void }
+    const inFS = !!(document.fullscreenElement || doc.webkitFullscreenElement)
+    if (inFS) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {})
+      else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen()
+    } else {
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+    }
+  }, [])
+
+  // Fullscreen change listener (standard + webkit)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const inFullscreen = !!document.fullscreenElement
+      const doc = document as Document & { webkitFullscreenElement?: Element }
+      const inFullscreen = !!(document.fullscreenElement || doc.webkitFullscreenElement)
       setIsFullscreen(inFullscreen)
-      const video = videoRef.current
-      if (video) {
-        video.controls = inFullscreen
-        console.log(`[PortfolioPlayer] Fullscreen: ${inFullscreen}, controls: ${inFullscreen}`)
-      }
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+    }
   }, [])
 
   // Staggered reveal
@@ -593,16 +607,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           cursor: 'pointer'
         }}
         onClick={() => togglePlayPause()}
-        onDoubleClick={() => {
-          const video = videoRef.current
-          if (video) {
-            if (document.fullscreenElement) {
-              document.exitFullscreen()
-            } else {
-              video.requestFullscreen().catch(e => console.warn('Fullscreen failed:', e))
-            }
-          }
-        }}
+        onDoubleClick={toggleVideoFullscreen}
       >
         <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=6`} type="video/mp4" />
         Your browser does not support video playback.
@@ -830,6 +835,88 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
               }}
             />
           </div>
+
+          {/* Play/Pause button (mobile) */}
+          {isMobile && (
+            <button
+              onClick={togglePlayPause}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+              style={{
+                width: '40px',
+                height: '40px',
+                padding: '0',
+                border: '1px solid rgba(255,215,0,0.4)',
+                borderRadius: '6px',
+                background: 'rgba(255,215,0,0.15)',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              {isPlaying ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffd700">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffd700">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Fullscreen button */}
+          <button
+            onClick={toggleVideoFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            style={{
+              width: isMobile ? '40px' : '48px',
+              height: isMobile ? '40px' : '48px',
+              padding: '0',
+              border: '1px solid rgba(255,215,0,0.3)',
+              borderRadius: '6px',
+              background: isFullscreen ? 'rgba(0,255,136,0.15)' : 'rgba(0,0,0,0.5)',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={isFullscreen ? '#00ff88' : '#ffd700'}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {isFullscreen ? (
+                <>
+                  <polyline points="4 14 8 14 8 18" />
+                  <polyline points="20 10 16 10 16 6" />
+                  <polyline points="14 4 14 8 18 8" />
+                  <polyline points="10 20 10 16 6 16" />
+                </>
+              ) : (
+                <>
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <polyline points="21 3 14 10" />
+                  <polyline points="3 21 10 14" />
+                </>
+              )}
+            </svg>
+          </button>
         </div>
       </div>
 
