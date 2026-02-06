@@ -106,7 +106,7 @@ const InfoPanel = memo(function InfoPanel({
       justifyContent: 'space-around',
       alignItems: 'center',
       width: '100%',
-      padding: '25px 40px',
+      padding: 'clamp(12px, 2.5vh, 25px) clamp(16px, 4vw, 40px)',
       background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(15,15,35,0.9) 50%, rgba(20,20,45,0.85) 100%)',
       borderTop: `3px solid ${primaryColor}60`,
       position: 'relative'
@@ -137,11 +137,11 @@ const InfoPanel = memo(function InfoPanel({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '16px'
+        gap: 'clamp(6px, 1.5vw, 16px)'
       }}>
         <span style={{
           color: '#999',
-          fontSize: '13px',
+          fontSize: 'clamp(10px, 1.5vh, 13px)',
           letterSpacing: '2px',
           textTransform: 'uppercase'
         }}>SPINS</span>
@@ -1117,16 +1117,12 @@ export function SlotFullScreen({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '24px 40px',
+                  gap: 'clamp(8px, 1.5vh, 12px)',
+                  padding: 'clamp(14px, 3vh, 24px) clamp(20px, 5vw, 40px)',
                   background: 'linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,10,30,0.95))',
                   borderRadius: '20px',
                   border: `4px solid ${primaryColor}`,
-                  boxShadow: `
-                    0 0 60px ${primaryColor}80,
-                    0 0 120px ${primaryColor}40,
-                    inset 0 0 40px ${primaryColor}20
-                  `,
+                  boxShadow: `0 0 30px ${primaryColor}60, 0 0 60px ${primaryColor}20`,
                   animation: 'totalWinPulse 2s ease-in-out infinite'
                 }}>
                   <div style={{
@@ -1135,23 +1131,23 @@ export function SlotFullScreen({
                     gap: '16px'
                   }}>
                     <span style={{
-                      padding: '12px 24px',
+                      padding: 'clamp(8px, 1.5vh, 12px) clamp(14px, 3vw, 24px)',
                       background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
                       borderRadius: '12px',
                       color: '#000',
                       fontWeight: 900,
-                      fontSize: '22px',
-                      letterSpacing: '3px',
+                      fontSize: 'clamp(14px, 3vw, 22px)',
+                      letterSpacing: 'clamp(1px, 0.5vw, 3px)',
                       boxShadow: `0 0 30px ${primaryColor}80`,
                       textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                     }}>
-                      PRESS ENTER
+                      {window.matchMedia('(pointer: coarse)').matches ? 'TAP HERE' : 'PRESS ENTER'}
                     </span>
                   </div>
                   <div style={{
-                    fontSize: '16px',
+                    fontSize: 'clamp(11px, 2vw, 16px)',
                     color: '#888',
-                    letterSpacing: '3px',
+                    letterSpacing: 'clamp(1px, 0.5vw, 3px)',
                     textTransform: 'uppercase'
                   }}>
                     to view details
@@ -1254,7 +1250,7 @@ export function SlotFullScreen({
                 fontWeight: 900,
                 color: primaryColor,
                 textShadow: `0 0 40px ${primaryColor}, 0 0 80px ${primaryColor}50`,
-                letterSpacing: isTouch ? '4px' : '8px',
+                letterSpacing: isTouch ? 'clamp(1px, 0.8vw, 4px)' : '8px',
                 margin: isTouch ? '0 0 4px 0' : '0 0 8px 0',
                 animation: 'contentTitleGlow 2s ease-in-out infinite'
               }}>

@@ -158,6 +158,7 @@ export function getItemCount(section: SlotSection): number {
  */
 export function getGridColumns(section: SlotSection): number {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 400
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
   const isLandscape = isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
 
@@ -170,7 +171,7 @@ export function getGridColumns(section: SlotSection): number {
     case 'about': return isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
     case 'projects': {
       const count = section.featured.length
-      return isMobile ? 2 : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
+      return isMobile ? (isNarrow ? 1 : 2) : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
     }
     case 'experience': {
       const count = section.timeline.length

@@ -1,3 +1,8 @@
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+}
+
 /* Mobile slider thumb sizing */
 @media (max-width: 600px) {
   input[type="range"]::-webkit-slider-thumb {
@@ -15,5 +20,14 @@
   button:active, [role="button"]:active {
     transform: scale(0.95);
     opacity: 0.8;
+  }
+}
+
+/* Reduce animations for users who prefer reduced motion or low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

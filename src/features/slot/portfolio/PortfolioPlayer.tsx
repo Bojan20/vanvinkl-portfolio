@@ -75,6 +75,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const [_isFullscreen, setIsFullscreen] = useState(false)
   const [videoProgress, setVideoProgress] = useState(0) // 0-100%
   const [_videoDuration, setVideoDuration] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   // Focus items count
   const _FOCUS_ITEMS = 4
@@ -143,7 +144,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
   // Lounge music is now handled by parent (selectedProject state change)
 
-  // Auto-play video when component mounts (smooth start, no second click needed)
+  // Initialize video state on mount — NO autoplay, user must tap/click to start
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
@@ -151,25 +152,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     if (video) {
       video.currentTime = 0
-      video.loop = false // Video stops at last frame, doesn't loop
-
-      // Wait for enough data to play smoothly, then auto-start
-      const tryAutoPlay = () => {
-        video.play().then(() => {
-          console.log('[PortfolioPlayer] Auto-play started')
-        }).catch(e => {
-          // Browser blocked autoplay — user will need to tap
-          console.warn('[PortfolioPlayer] Auto-play blocked:', e.message)
-        })
-      }
-
-      // If video already has data, play immediately
-      if (video.readyState >= 3) { // HAVE_FUTURE_DATA
-        tryAutoPlay()
-      } else {
-        // Wait for canplay event (enough data buffered)
-        video.addEventListener('canplay', tryAutoPlay, { once: true })
-      }
+      video.loop = false
     }
     if (music) {
       music.currentTime = 0
@@ -179,8 +162,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.currentTime = 0
       sfx.pause()
     }
-
-    console.log('[PortfolioPlayer] Video auto-play queued, video.loop = false')
 
     // Cleanup on unmount - prevent memory leaks
     return () => {
@@ -212,11 +193,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     if (!video || !music || !sfx) return
 
     const handlePlay = () => {
+      setIsPlaying(true)
       music.play().catch(e => console.warn('Music play failed:', e))
       sfx.play().catch(e => console.warn('SFX play failed:', e))
     }
 
     const handlePause = () => {
+      setIsPlaying(false)
       // Only pause audio if video is paused manually (not ended)
       if (!video.ended) {
         music.pause()
@@ -259,7 +242,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
 
     const handleEnded = () => {
-      // Video ended but audio continues playing
+      setIsPlaying(false)
       console.log('[PortfolioPlayer] Video ended, audio continues')
     }
 
@@ -480,7 +463,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
         playsInline
-        preload="auto"
+        preload="metadata"
         poster={safePosterPath || '/logo_van.png'}
         onContextMenu={(e) => e.preventDefault()}
         className="portfolio-video-player"
@@ -515,6 +498,55 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=6`} type="video/mp4" />
         Your browser does not support video playback.
       </video>
+
+      {/* Play overlay — shown until user taps to start */}
+      {!isPlaying && (
+        <div
+          onClick={() => {
+            const video = videoRef.current
+            if (video) video.play().catch(() => {})
+          }}
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '12px',
+            background: 'rgba(0,0,0,0.5)',
+            cursor: 'pointer',
+            zIndex: 5
+          }}
+        >
+          <div style={{
+            width: 'clamp(48px, 12vw, 80px)',
+            height: 'clamp(48px, 12vw, 80px)',
+            borderRadius: '50%',
+            background: 'rgba(255,215,0,0.2)',
+            border: '2px solid rgba(255,215,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)'
+          }}>
+            <div style={{
+              width: 0, height: 0,
+              borderTop: 'clamp(10px, 3vw, 18px) solid transparent',
+              borderBottom: 'clamp(10px, 3vw, 18px) solid transparent',
+              borderLeft: 'clamp(18px, 5vw, 30px) solid rgba(255,215,0,0.9)',
+              marginLeft: 'clamp(3px, 1vw, 6px)'
+            }} />
+          </div>
+          <div style={{
+            color: 'rgba(255,215,0,0.8)',
+            fontSize: 'clamp(12px, 2.5vw, 16px)',
+            fontWeight: 600,
+            letterSpacing: '2px',
+            textTransform: 'uppercase'
+          }}>TAP TO PLAY</div>
+        </div>
+      )}
 
       {/* Hidden audio tracks */}
       <audio ref={musicRef} style={{ display: 'none' }}>

@@ -100,7 +100,7 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSel
             {/* Highlights */}
             <ul style={{
               margin: 0,
-              paddingLeft: '16px',
+              paddingLeft: 'clamp(10px, 2.5vw, 16px)',
               flex: 1,
               display: 'flex',
               flexDirection: 'column',

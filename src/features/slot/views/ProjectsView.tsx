@@ -4,8 +4,9 @@ import type { ProjectsSection } from '../types'
 const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect }: { section: ProjectsSection, focusIndex: number, onSelect?: (index: number) => void }) {
   const itemCount = section.featured.length
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 400
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
-  const columns = isMobile ? 2 : isTablet ? 3 : (itemCount <= 4 ? 2 : itemCount <= 6 ? 3 : 4)
+  const columns = isMobile ? (isNarrow ? 1 : 2) : isTablet ? 3 : (itemCount <= 4 ? 2 : itemCount <= 6 ? 3 : 4)
   const rows = Math.ceil(itemCount / columns)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
