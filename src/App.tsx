@@ -123,6 +123,9 @@ export function App() {
     // Hide splash
     setShowSplash(false)
 
+    // Push lounge history entry so back navigation returns to splash
+    history.pushState({ lounge: true }, '')
+
     // Always show intro on fresh load (new user, new session)
     // Intro can be skipped with ESC/ENTER but doesn't persist
     setShowIntro(true)
@@ -308,7 +311,13 @@ export function App() {
       }
       if (spinningSlot) {
         setSpinningSlot(null)
+        return
       }
+      // No slot open, no video → back to splash
+      setShowSplash(true)
+      setShowIntro(false)
+      setOverlayComplete(false)
+      setCameraComplete(false)
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)

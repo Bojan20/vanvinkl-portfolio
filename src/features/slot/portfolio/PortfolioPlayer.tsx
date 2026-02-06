@@ -440,29 +440,33 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     let rafId = 0
     let lastProgressUpdate = 0
+    let lastDriftCheck = 0
 
     const correctDrift = (audioEl: HTMLAudioElement, _label: string) => {
       const drift = audioEl.currentTime - video.currentTime // positive = audio ahead
       const absDrift = Math.abs(drift)
 
-      if (absDrift < 0.03) {
-        // Perfect sync — ensure normal rate
+      if (absDrift < 0.05) {
+        // Within 50ms — perfect sync, restore normal rate
         if (audioEl.playbackRate !== 1.0) audioEl.playbackRate = 1.0
         return
       }
 
-      if (absDrift <= 0.1) {
-        // Small drift — proportional playbackRate correction
-        // Stronger correction for larger drift: 30ms→0.97/1.03, 100ms→0.92/1.08
-        const correction = 0.03 + (absDrift - 0.03) * 0.7 // 0.03 to ~0.08
-        audioEl.playbackRate = drift > 0 ? (1.0 - correction) : (1.0 + correction)
+      if (absDrift <= 0.15) {
+        // 50-150ms drift — gentle proportional playbackRate correction
+        // Smaller correction range (0.97–1.03) to avoid audible artifacts
+        const correction = 0.01 + (absDrift - 0.05) * 0.2 // 0.01 to ~0.03
+        const newRate = drift > 0 ? (1.0 - correction) : (1.0 + correction)
+        // Hysteresis: only update if change is meaningful
+        if (Math.abs(audioEl.playbackRate - newRate) > 0.005) {
+          audioEl.playbackRate = newRate
+        }
         return
       }
 
-      // Large drift — hard seek
+      // >150ms drift — hard seek
       audioEl.playbackRate = 1.0
       audioEl.currentTime = video.currentTime
-      console.log(`[Sync] ${_label} hard corrected ${(drift * 1000).toFixed(0)}ms`)
     }
 
     const syncLoop = () => {
@@ -471,12 +475,16 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       if (playStateRef.current !== 'playing') return
       if (video.paused || video.ended) return
 
-      // Drift correction on every frame (~60Hz)
-      correctDrift(music, 'music')
-      correctDrift(sfx, 'sfx')
-
-      // Progress bar update throttled to ~10Hz (every 6 frames)
       const now = performance.now()
+
+      // Drift correction throttled to ~4Hz (every 250ms) — avoids audio stutter
+      if (now - lastDriftCheck > 250) {
+        lastDriftCheck = now
+        correctDrift(music, 'music')
+        correctDrift(sfx, 'sfx')
+      }
+
+      // Progress bar update throttled to ~10Hz
       if (now - lastProgressUpdate > 100) {
         lastProgressUpdate = now
         if (video.duration > 0) {
