@@ -721,7 +721,9 @@ export function SlotFullScreen({
       onClick={handleContainerClick}
       style={{
       position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
+      top: 0, left: 0,
+      width: '100dvw',
+      height: '100dvh',
       background: phase === 'intro' && introStep === 0
         ? '#000000'
         : 'linear-gradient(180deg, #03020a 0%, #08061a 30%, #0a0820 50%, #08061a 70%, #03020a 100%)',
@@ -734,7 +736,9 @@ export function SlotFullScreen({
       transition: 'background 0.5s ease',
       animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none',
       cursor: 'default',
-      outline: 'none' // Hide focus ring (fullscreen overlay)
+      outline: 'none', // Hide focus ring (fullscreen overlay)
+      willChange: 'transform',
+      transform: 'translateZ(0)' // Force GPU compositing — prevents black flash on orientation change
     }}>
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 
@@ -867,8 +871,8 @@ export function SlotFullScreen({
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
-            height: '100%',
+            width: '100dvw',
+            height: '100dvh',
             maxWidth: '1400px',
             margin: '0 auto',
             background: 'linear-gradient(180deg, #03020a 0%, #08061a 10%, #0c0a22 50%, #08061a 90%, #03020a 100%)',
@@ -882,9 +886,10 @@ export function SlotFullScreen({
             `,
             border: `2px solid ${primaryColor}30`,
             position: 'relative',
-            transform: inspectMode ? 'scale(0.97)' : 'scale(1)',
-            filter: inspectMode ? 'brightness(0.92)' : 'brightness(1)',
-            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), filter 0.5s ease'
+            transform: inspectMode ? 'scale(0.97) translateZ(0)' : 'translateZ(0)',
+            filter: inspectMode ? 'brightness(0.92)' : 'none',
+            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), filter 0.5s ease',
+            willChange: 'transform'
           }}>
             {/* Outer chrome frame */}
             <div style={{
@@ -1140,8 +1145,8 @@ export function SlotFullScreen({
         <div
           ref={containerRef}
           style={{
-            width: '100%',
-            height: '100%',
+            width: '100dvw',
+            height: '100dvh',
             overflow: 'hidden',
             padding: selectedProject ? '0' : 'clamp(16px, 3vh, 40px) clamp(12px, 3vw, 40px)',
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -1149,7 +1154,9 @@ export function SlotFullScreen({
             touchAction: selectedProject ? 'none' : 'pan-y',
             cursor: 'pointer',
             display: 'flex',
-            flexDirection: 'column' as const
+            flexDirection: 'column' as const,
+            willChange: 'transform',
+            transform: 'translateZ(0)'
           }}
         >
           {/* Epic light burst on entry */}
