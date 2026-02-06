@@ -57,10 +57,15 @@ next-env.d.ts
 # Claude
 .claude/
 
-# Portfolio media assets (too large for GitHub)
+# Portfolio media assets — source files (not deployed)
 audioSlotPortfolio/           # WAV source files (local backup)
-videoSlotPortfolio/           # Source video files
-public/videoSlotPortfolio/    # Deployed video
-public/audioSlotPortfolio/    # Deployed OPUS/AAC audio
-public/Piggy Portfolio Video.mp4
+videoSlotPortfolio/           # Source video files (pre-encode)
 audioSlotPortfolio/*.wav
+
+# Deployed media — tracked (needed for Vercel deploy via git)
+# public/videoSlotPortfolio/ — tracked (MP4 videos + poster JPGs)
+# public/audioSlotPortfolio/ — tracked (OPUS/M4A audio)
+
+# Skip originals/backups
+public/videoSlotPortfolio/*_ORIGINAL*
+public/videoSlotPortfolio/._*
