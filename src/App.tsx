@@ -216,8 +216,8 @@ export function App() {
         pullIndicator = null
       }
 
-      // Pull-to-refresh: pulled down >120px (skip when slot is open)
-      if (!spinningSlotRef.current && pulling && dy > 120 && dt < 1500) {
+      // Pull-to-refresh: pulled down >120px (works everywhere, including slots)
+      if (pulling && dy > 120 && dt < 1500) {
         window.location.reload()
         return
       }
