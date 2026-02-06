@@ -533,16 +533,20 @@ export function SlotFullScreen({
     // Swipe detection: minimum 60px, maximum 500ms, horizontal dominant
     if (Math.abs(dx) > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx > 0) {
-        // Swipe right = BACK (close slot, return to lounge)
         haptic.light()
         uaPlaySynth('back', 0.4)
-        onClose()
+        if (selectedProject) {
+          // Video/audio open → go back to project list (not lounge)
+          setSelectedProject(null)
+        } else {
+          // Content view → close slot, return to lounge
+          onClose()
+        }
       }
-      // Swipe left = no action (cards are tappable, no need for focus nav)
     }
 
     touchStartRef.current = null
-  }, [onClose])
+  }, [onClose, selectedProject])
 
   // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
@@ -744,55 +748,6 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* Back to Lounge button - HIDDEN when video player active */}
-      {!selectedProject && (() => {
-        const isTouch = window.matchMedia('(pointer: coarse)').matches
-        return (
-          <div
-            className="esc-exit-hint"
-            role="button"
-            style={{
-              position: 'fixed',
-              top: 'max(16px, env(safe-area-inset-top, 0px))',
-              left: isTouch ? 'max(16px, env(safe-area-inset-left, 0px))' : 'auto',
-              right: isTouch ? 'auto' : 'max(24px, env(safe-area-inset-right, 0px))',
-              padding: isTouch ? '12px 16px' : '10px 16px',
-              borderRadius: '8px',
-              background: 'rgba(0,0,0,0.8)',
-              border: `1px solid ${primaryColor}50`,
-              color: primaryColor,
-              fontSize: isTouch ? '14px' : '13px',
-              fontWeight: 600,
-              letterSpacing: '1px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              zIndex: 1001,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              WebkitTapHighlightColor: 'transparent',
-              userSelect: 'none' as const
-            }}
-            onClick={() => { uaPlaySynth('back', 0.4); onClose?.() }}
-            title="Return to casino floor"
-          >
-            {isTouch ? (
-              <>← LOUNGE</>
-            ) : (
-              <>
-                <span style={{
-                  padding: '4px 8px',
-                  background: `${primaryColor}20`,
-                  borderRadius: '4px',
-                  border: `1px solid ${primaryColor}60`,
-                  fontSize: '12px'
-                }}>ESC</span>
-                EXIT
-              </>
-            )}
-          </div>
-        )
-      })()}
 
       {/* Content navigation hint - desktop only (no keyboard on touch devices) */}
       {phase === 'content' && showContentHint && !selectedProject && !window.matchMedia('(pointer: coarse)').matches && (
@@ -1409,16 +1364,6 @@ export function SlotFullScreen({
         @keyframes contentHintFade {
           0% { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
-        }
-        /* ESC Exit Tooltip Hover */
-        .esc-exit-hint:hover {
-          opacity: 1 !important;
-          border-color: rgba(0, 255, 255, 0.6) !important;
-          box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-        }
-        .esc-exit-hint:hover .esc-tooltip {
-          opacity: 1 !important;
-          transform: translateY(0) !important;
         }
       `}</style>
     </div>
