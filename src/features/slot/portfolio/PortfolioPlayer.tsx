@@ -541,7 +541,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
 
   // Swipe right = back (mobile gesture)
-  // Native DOM listeners in capture phase — guaranteed to fire before React delegation
+  // SlotFullScreen does NOT have a swipe listener when selectedProject is active,
+  // so no stopPropagation is needed. This is the ONLY swipe handler during video playback.
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
   const containerDivRef = useRef<HTMLDivElement>(null)
   const onBackRef = useRef(onBack)
@@ -552,12 +553,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     if (!el) return
 
     const onTouchStart = (e: TouchEvent) => {
-      e.stopPropagation()
       touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
     }
 
     const onTouchEnd = (e: TouchEvent) => {
-      e.stopPropagation()
       if (!touchStartRef.current) return
       const dx = e.changedTouches[0].clientX - touchStartRef.current.x
       const dy = e.changedTouches[0].clientY - touchStartRef.current.y
@@ -566,16 +565,17 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
       if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
         uaPlaySynth('back', 0.4)
+        console.log('[PortfolioPlayer] Swipe right detected, calling onBack()')
         onBackRef.current()
       }
     }
 
-    el.addEventListener('touchstart', onTouchStart, true)
-    el.addEventListener('touchend', onTouchEnd, true)
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
 
     return () => {
-      el.removeEventListener('touchstart', onTouchStart, true)
-      el.removeEventListener('touchend', onTouchEnd, true)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
     }
   }, [])
 

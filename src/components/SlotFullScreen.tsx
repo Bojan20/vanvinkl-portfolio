@@ -515,18 +515,20 @@ export function SlotFullScreen({
     }
   }, [section])
 
-  // Touch/swipe for mobile — SKIPPED entirely when PortfolioPlayer/AudioOnlyPlayer is active.
-  // Uses ref for onClose to avoid re-registering listener on every render.
+  // Touch/swipe for mobile — COMPLETELY UNREGISTERED when PortfolioPlayer/AudioOnlyPlayer is active.
+  // When selectedProject is set, no swipe listener exists on SlotFullScreen at all.
+  // PortfolioPlayer has its own swipe handler that calls onBack().
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
   useEffect(() => {
+    // Do NOT register swipe listener when video/audio player is active
+    if (selectedProject) return
+
     const el = containerRef.current
     if (!el) return
 
     const onTouchStart = (e: TouchEvent) => {
-      // Skip when video/audio player is active — they own swipe
-      if (selectedProjectRef.current) return
       touchStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
@@ -536,10 +538,6 @@ export function SlotFullScreen({
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!touchStartRef.current) return
-      if (selectedProjectRef.current) {
-        touchStartRef.current = null
-        return
-      }
 
       const dx = e.changedTouches[0].clientX - touchStartRef.current.x
       const dy = e.changedTouches[0].clientY - touchStartRef.current.y
@@ -563,7 +561,7 @@ export function SlotFullScreen({
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
     }
-  }, [phase]) // re-register when phase changes (containerRef mounts/unmounts)
+  }, [phase, selectedProject]) // re-register when phase changes OR selectedProject changes
 
   // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
