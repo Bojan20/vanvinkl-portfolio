@@ -150,6 +150,91 @@ export function App() {
     setIsMobile(isMobileDevice())
   }, [])
 
+  // Mobile gestures: edge swipe back + pull-to-refresh
+  useEffect(() => {
+    if (!isMobile) return
+
+    let startX = 0
+    let startY = 0
+    let startTime = 0
+    let pulling = false
+    let pullIndicator: HTMLDivElement | null = null
+
+    const createPullIndicator = () => {
+      const el = document.createElement('div')
+      el.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, transparent, #00ff88, transparent);
+        transform: scaleX(0); transform-origin: center;
+        transition: transform 0.1s ease-out; z-index: 99999;
+        pointer-events: none;
+      `
+      document.body.appendChild(el)
+      return el
+    }
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      startX = touch.clientX
+      startY = touch.clientY
+      startTime = Date.now()
+      pulling = false
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      const dy = touch.clientY - startY
+      const dx = touch.clientX - startX
+
+      // Pull-to-refresh: vertical pull down, minimal horizontal movement
+      if (dy > 20 && Math.abs(dx) < dy * 0.5) {
+        pulling = true
+        if (!pullIndicator) pullIndicator = createPullIndicator()
+        const progress = Math.min(dy / 120, 1)
+        pullIndicator.style.transform = `scaleX(${progress})`
+        if (progress >= 1) {
+          pullIndicator.style.background = 'linear-gradient(90deg, transparent, #ff00aa, transparent)'
+        }
+      }
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0]
+      const dx = touch.clientX - startX
+      const dy = touch.clientY - startY
+      const dt = Date.now() - startTime
+
+      // Remove pull indicator
+      if (pullIndicator) {
+        pullIndicator.remove()
+        pullIndicator = null
+      }
+
+      // Pull-to-refresh: pulled down >120px
+      if (pulling && dy > 120 && dt < 1500) {
+        window.location.reload()
+        return
+      }
+
+      // Edge swipe back: started from left 30px edge, swiped right >80px
+      if (startX < 30 && dx > 80 && dt < 600 && Math.abs(dx) > Math.abs(dy) * 2) {
+        history.back()
+        return
+      }
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      if (pullIndicator) pullIndicator.remove()
+    }
+  }, [isMobile])
+
   // Global keyboard shortcuts (? for help)
   // Note: M for mute is handled by SoundToggle component
   useEffect(() => {
@@ -169,6 +254,23 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [showHelp])
 
+  // Browser back button / edge swipe closes slot via popstate
+  const closingViaEscRef = useRef(false)
+  useEffect(() => {
+    const handlePopState = () => {
+      // Skip if slot is already closing via ESC/onClose
+      if (closingViaEscRef.current) {
+        closingViaEscRef.current = false
+        return
+      }
+      if (spinningSlot) {
+        setSpinningSlot(null)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [spinningSlot])
+
   // Check WebGL support
   if (!isWebGLSupported()) {
     return <WebGLNotSupported />
@@ -176,6 +278,8 @@ export function App() {
 
   const handleSlotSpin = useCallback((machineId: string) => {
     setSpinningSlot(machineId)
+    // Push history entry so browser back closes the slot
+    history.pushState({ slot: machineId }, '')
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -284,6 +388,11 @@ export function App() {
             machineId={spinningSlot}
             onClose={() => {
               setSpinningSlot(null)
+              // Pop the history entry we pushed when slot opened
+              if (history.state?.slot) {
+                closingViaEscRef.current = true
+                history.back()
+              }
               // Reset quality to AUTO when returning to lounge (remove blur)
               const qualityStore = useQualityStore.getState()
               if (qualityStore.resolvedQuality === 'low') {
@@ -299,7 +408,11 @@ export function App() {
               uaVolume('music', musicVolume, 500) // Fade to stored volume over 500ms
               console.log(`[Music] Volume synced to ${musicVolume.toFixed(2)}`)
             }}
-            onNavigate={setSpinningSlot}
+            onNavigate={(machineId) => {
+              setSpinningSlot(machineId)
+              // Replace current history entry (don't stack multiple slot entries)
+              history.replaceState({ slot: machineId }, '')
+            }}
           />
         </Suspense>
       )}

@@ -27,7 +27,7 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
           overflow: 'hidden',
           background: 'rgba(255,255,255,0.015)',
           borderRadius: '14px',
-          padding: 'clamp(10px, 1.5vh, 20px) clamp(12px, 1.5vw, 20px)',
+          padding: isMobile ? 'clamp(6px, 1vh, 12px) clamp(8px, 1.2vw, 14px)' : 'clamp(10px, 1.5vh, 20px) clamp(12px, 1.5vw, 20px)',
           border: '1px solid rgba(255,255,255,0.06)'
         }}>
           {/* Category header */}
@@ -35,7 +35,7 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
             display: 'flex',
             alignItems: 'center',
             gap: 'clamp(6px, 1vw, 12px)',
-            marginBottom: 'clamp(8px, 1.2vh, 16px)',
+            marginBottom: isMobile ? 'clamp(4px, 0.6vh, 8px)' : 'clamp(8px, 1.2vh, 16px)',
             paddingBottom: 'clamp(6px, 0.8vh, 12px)',
             borderBottom: `2px solid ${cat.color}40`,
             flexShrink: 0

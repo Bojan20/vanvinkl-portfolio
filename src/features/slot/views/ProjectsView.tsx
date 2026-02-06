@@ -50,7 +50,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
                 ? `linear-gradient(135deg, ${accentBg}0.12), ${accentBg}0.04))`
                 : `linear-gradient(135deg, ${accentBg}0.04), ${accentBg}0.01))`,
               borderRadius: '14px',
-              padding: 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
+              padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
               border: (isFocused || isPressed) ? `2px solid ${accentColor}` : `1px solid ${accentBg}0.15)`,
               animation: `fadeSlideIn 0.4s ease-out ${i * 0.05}s both`,
               boxShadow: (isFocused || isPressed) ? `0 6px 20px ${accentBg}0.2)` : '0 2px 8px rgba(0,0,0,0.15)',
@@ -61,7 +61,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               flexDirection: 'column' as const,
               justifyContent: 'space-evenly',
               alignItems: 'center',
-              gap: 'clamp(6px, 1vh, 14px)',
+              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 14px)',
               minHeight: 0,
               cursor: hasMedia ? 'pointer' : 'default',
               transform: isPressed ? 'scale(0.96)' : 'scale(1)',
@@ -127,10 +127,10 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               margin: 0,
               color: (isFocused || isPressed) ? '#ccc' : '#aab',
               fontSize: 'clamp(12px, 1.5vh, 16px)',
-              lineHeight: 1.6,
+              lineHeight: isMobile ? 1.3 : 1.6,
               textAlign: 'center',
               display: '-webkit-box',
-              WebkitLineClamp: isMobile ? 3 : 5,
+              WebkitLineClamp: isMobile ? 2 : 5,
               WebkitBoxOrient: 'vertical' as const,
               overflow: 'hidden'
             }}>{proj.description}</p>

@@ -1228,10 +1228,12 @@ export function SlotFullScreen({
           ))}
 
           {/* Title section with icon */}
-          {!selectedProject && (
+          {!selectedProject && (() => {
+            const isTouch = window.matchMedia('(pointer: coarse)').matches
+            return (
             <div style={{
               textAlign: 'center',
-              marginBottom: 'clamp(12px, 2vh, 30px)',
+              marginBottom: isTouch ? 'clamp(6px, 1vh, 12px)' : 'clamp(12px, 2vh, 30px)',
               animation: 'contentTitleDrop 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both',
               flexShrink: 0
             }}>
@@ -1240,17 +1242,17 @@ export function SlotFullScreen({
                 fontWeight: 900,
                 color: primaryColor,
                 textShadow: `0 0 40px ${primaryColor}, 0 0 80px ${primaryColor}50`,
-                letterSpacing: '8px',
-                margin: '0 0 8px 0',
+                letterSpacing: isTouch ? '4px' : '8px',
+                margin: isTouch ? '0 0 4px 0' : '0 0 8px 0',
                 animation: 'contentTitleGlow 2s ease-in-out infinite'
               }}>
                 {section.type.toUpperCase()}
               </h1>
               <div style={{
-                width: '120px',
+                width: isTouch ? '80px' : '120px',
                 height: '2px',
                 background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
-                margin: '0 auto 8px',
+                margin: isTouch ? '0 auto 4px' : '0 auto 8px',
                 animation: 'contentUnderlineExpand 0.8s ease-out 0.5s both',
                 boxShadow: `0 0 15px ${primaryColor}`
               }} />
@@ -1260,7 +1262,7 @@ export function SlotFullScreen({
                   animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
                   color: primaryColor,
                   fontWeight: 600,
-                  letterSpacing: '3px',
+                  letterSpacing: isTouch ? '2px' : '3px',
                   opacity: 0.9,
                   textShadow: `0 0 20px ${primaryColor}50`
                 }}>
@@ -1268,7 +1270,7 @@ export function SlotFullScreen({
                 </div>
               ) : (
                 <div style={{
-                  fontSize: '32px',
+                  fontSize: isTouch ? 'clamp(20px, 5vw, 28px)' : '32px',
                   animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
                   filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
                   opacity: 0.8
@@ -1281,7 +1283,8 @@ export function SlotFullScreen({
                 </div>
               )}
             </div>
-          )}
+            )
+          })()}
 
           {/* Content */}
           <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any }}>

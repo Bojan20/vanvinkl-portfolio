@@ -28,7 +28,7 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
               background: isFocused
                 ? 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,255,136,0.03))'
                 : 'linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,255,136,0.01))',
-              padding: 'clamp(14px, 2vh, 24px) clamp(14px, 1.5vw, 22px)',
+              padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 24px) clamp(14px, 1.5vw, 22px)',
               borderRadius: '14px',
               border: isFocused ? '2px solid #00ff88' : '1px solid rgba(0,255,136,0.15)',
               boxShadow: isFocused ? '0 6px 20px rgba(0,255,136,0.15)' : '0 2px 10px rgba(0,0,0,0.15)',
@@ -38,7 +38,7 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
               justifyContent: 'center',
               overflow: 'hidden',
               minHeight: 0,
-              gap: 'clamp(6px, 1vh, 12px)'
+              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 12px)'
             }}
           >
             {/* Header */}
@@ -91,8 +91,12 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
                 <li key={j} style={{
                   color: isFocused ? '#ccc' : '#999aaa',
                   fontSize: 'clamp(11px, 1.3vh, 14px)',
-                  lineHeight: 1.4,
-                  marginBottom: 'clamp(2px, 0.3vh, 4px)'
+                  lineHeight: isMobile ? 1.2 : 1.4,
+                  marginBottom: 'clamp(2px, 0.3vh, 4px)',
+                  display: '-webkit-box',
+                  WebkitLineClamp: isMobile ? 2 : undefined,
+                  WebkitBoxOrient: 'vertical' as const,
+                  overflow: isMobile ? 'hidden' : undefined
                 }}>{h}</li>
               ))}
             </ul>

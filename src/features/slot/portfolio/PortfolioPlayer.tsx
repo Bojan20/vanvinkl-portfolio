@@ -51,8 +51,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   project,
   onBack
 }: PortfolioPlayerProps) {
-  // Portrait detection (evaluated at render time, not module load)
-  const isMobilePortrait = isMobile && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+  // Reactive portrait detection — updates on orientation change / resize
+  const [isMobilePortrait, setIsMobilePortrait] = useState(
+    () => isMobile && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+  )
 
   // SECURITY: Validate media paths before use
   const safeVideoPath = isValidMediaPath(project.videoPath) ? project.videoPath : undefined
@@ -100,6 +102,43 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100)
     return () => clearTimeout(timer)
+  }, [])
+
+  // Orientation / resize / visibility → HARD SYNC audio to video
+  useEffect(() => {
+    const forceSync = () => {
+      const video = videoRef.current
+      const music = musicRef.current
+      const sfx = sfxRef.current
+      if (!video || !music || !sfx) return
+      // Update portrait state
+      setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
+      // Hard sync audio to video timeline
+      if (!video.paused && !video.ended) {
+        music.currentTime = video.currentTime
+        sfx.currentTime = video.currentTime
+        // Re-ensure audio is playing
+        music.play().catch(() => {})
+        sfx.play().catch(() => {})
+      }
+      console.log('[PortfolioPlayer] Hard sync on orientation/resize/visibility')
+    }
+
+    // Orientation change (mobile)
+    window.addEventListener('orientationchange', forceSync)
+    // Resize fallback (desktop + some mobile browsers)
+    window.addEventListener('resize', forceSync)
+    // Tab switch / app background
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') forceSync()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('orientationchange', forceSync)
+      window.removeEventListener('resize', forceSync)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   // Lounge music is now handled by parent (selectedProject state change)
@@ -201,9 +240,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       // Only sync if video is still playing (not ended)
       if (video.ended) return
 
+      // Aggressive drift detection: 50ms mobile, 100ms desktop
       const drift = Math.abs(video.currentTime - music.currentTime)
-      if (drift > (isMobile ? 0.15 : 0.3)) {
+      if (drift > (isMobile ? 0.05 : 0.1)) {
         music.currentTime = video.currentTime
+        sfx.currentTime = video.currentTime
+      }
+      // Also check SFX drift independently
+      const sfxDrift = Math.abs(video.currentTime - sfx.currentTime)
+      if (sfxDrift > (isMobile ? 0.05 : 0.1)) {
         sfx.currentTime = video.currentTime
       }
     }
@@ -218,12 +263,30 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       console.log('[PortfolioPlayer] Video ended, audio continues')
     }
 
+    // When video stalls (buffering) — pause audio to prevent drift
+    const handleWaiting = () => {
+      music.pause()
+      sfx.pause()
+      console.log('[PortfolioPlayer] Video stalled, audio paused')
+    }
+
+    // When video resumes after stall — hard sync + resume audio
+    const handlePlaying = () => {
+      music.currentTime = video.currentTime
+      sfx.currentTime = video.currentTime
+      music.play().catch(() => {})
+      sfx.play().catch(() => {})
+      console.log('[PortfolioPlayer] Video resumed, audio hard-synced')
+    }
+
     video.addEventListener('play', handlePlay)
     video.addEventListener('pause', handlePause)
     video.addEventListener('seeked', handleSeeked)
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
+    video.addEventListener('waiting', handleWaiting)
+    video.addEventListener('playing', handlePlaying)
 
     return () => {
       video.removeEventListener('play', handlePlay)
@@ -232,6 +295,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('ended', handleEnded)
+      video.removeEventListener('waiting', handleWaiting)
+      video.removeEventListener('playing', handlePlaying)
     }
   }, [])
 

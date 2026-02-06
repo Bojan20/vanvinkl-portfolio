@@ -28,7 +28,7 @@ const ServicesView = memo(function ServicesView({ section, focusIndex }: { secti
                 ? 'linear-gradient(135deg, rgba(255,0,170,0.15), rgba(255,0,170,0.05))'
                 : 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
               borderRadius: '14px',
-              padding: 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
+              padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
               border: isFocused ? '2px solid #ff00aa' : '1px solid rgba(255,0,170,0.12)',
               animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
               boxShadow: isFocused ? '0 6px 20px rgba(255,0,170,0.2)' : '0 2px 10px rgba(0,0,0,0.15)',
@@ -37,7 +37,7 @@ const ServicesView = memo(function ServicesView({ section, focusIndex }: { secti
               flexDirection: 'column' as const,
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 'clamp(6px, 1vh, 14px)',
+              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 14px)',
               overflow: 'hidden',
               minHeight: 0
             }}
@@ -62,7 +62,7 @@ const ServicesView = memo(function ServicesView({ section, focusIndex }: { secti
               lineHeight: 1.5,
               textAlign: 'center',
               display: '-webkit-box',
-              WebkitLineClamp: 4,
+              WebkitLineClamp: isMobile ? 2 : 4,
               WebkitBoxOrient: 'vertical' as const,
               overflow: 'hidden'
             }}>{item.description}</p>
