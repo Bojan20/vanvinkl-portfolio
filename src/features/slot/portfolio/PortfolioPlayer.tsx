@@ -258,9 +258,6 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     video.pause()
     music.pause()
     sfx.pause()
-    // Reset playbackRate on pause so micro-correction doesn't persist
-    music.playbackRate = 1.0
-    sfx.playbackRate = 1.0
 
     playStateRef.current = 'paused'
     setIsPlaying(false)
@@ -350,11 +347,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Orientation / resize / visibility → resume paused media (debounced)
+  // Orientation / visibility → resume paused media + update portrait state
+  // NO resize listener — it fires too often and causes audio seeks
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-    const forceSync = () => {
+    const handleResume = () => {
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         const video = videoRef.current
@@ -365,32 +363,27 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
 
         if (playStateRef.current === 'playing') {
+          // Only resume if paused by browser (tab switch, orientation)
           if (video.paused) video.play().catch(() => {})
           if (music.paused) music.play().catch(() => {})
           if (sfx.paused) sfx.play().catch(() => {})
-
-          // Hard sync after orientation change — always reset rate and position
-          music.playbackRate = 1.0
-          sfx.playbackRate = 1.0
+          // Sync only after tab return — position may have diverged while suspended
           music.currentTime = video.currentTime
           sfx.currentTime = video.currentTime
-          console.log('[Transport] Orientation/visibility sync: hard resync')
         }
-      }, 300)
+      }, 500)
     }
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') forceSync()
+      if (document.visibilityState === 'visible') handleResume()
     }
 
-    window.addEventListener('orientationchange', forceSync)
-    window.addEventListener('resize', forceSync)
+    window.addEventListener('orientationchange', handleResume)
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer)
-      window.removeEventListener('orientationchange', forceSync)
-      window.removeEventListener('resize', forceSync)
+      window.removeEventListener('orientationchange', handleResume)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
@@ -419,12 +412,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [release, prepare])
 
   // ============================================================
-  // RAF-BASED SYNC ENGINE — seek-only drift correction
+  // EVENT-DRIVEN SYNC — NO periodic drift correction
   // ============================================================
   //
-  // ZERO playbackRate changes — they cause audible stutter/artifacts.
-  // Instead: check drift every 500ms. If >150ms, hard-seek audio to video.
-  // Below 150ms drift is imperceptible and self-corrects naturally.
+  // Any periodic correction (playbackRate OR seek) causes audible stutter.
+  // Instead: sync ONLY on discrete events (start, seeked, stall recovery).
+  // Browser media decoders share the same system clock — natural drift is
+  // typically <50ms over minutes of playback. Imperceptible.
   //
   useEffect(() => {
     const video = videoRef.current
@@ -434,33 +428,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     let rafId = 0
     let lastProgressUpdate = 0
-    let lastDriftCheck = 0
 
-    const correctDrift = (audioEl: HTMLAudioElement, label: string) => {
-      const drift = Math.abs(audioEl.currentTime - video.currentTime)
-      // Only correct if drift exceeds 150ms — below that is imperceptible
-      if (drift > 0.15) {
-        audioEl.currentTime = video.currentTime
-        console.log(`[Sync] ${label} drift ${(drift * 1000).toFixed(0)}ms → hard seek`)
-      }
-    }
-
-    const syncLoop = () => {
-      rafId = requestAnimationFrame(syncLoop)
+    // Progress bar only — no drift correction in RAF loop
+    const progressLoop = () => {
+      rafId = requestAnimationFrame(progressLoop)
 
       if (playStateRef.current !== 'playing') return
       if (video.paused || video.ended) return
 
       const now = performance.now()
-
-      // Drift check every 500ms — lightweight, no playbackRate mutation
-      if (now - lastDriftCheck > 500) {
-        lastDriftCheck = now
-        correctDrift(music, 'music')
-        correctDrift(sfx, 'sfx')
-      }
-
-      // Progress bar update throttled to ~10Hz
       if (now - lastProgressUpdate > 100) {
         lastProgressUpdate = now
         if (video.duration > 0) {
@@ -469,15 +445,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
     }
 
-    // Start sync loop immediately
-    rafId = requestAnimationFrame(syncLoop)
+    rafId = requestAnimationFrame(progressLoop)
 
-    // Standard video event handlers
+    // Sync on user-initiated seek
     const handleSeeked = () => {
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
-      music.playbackRate = 1.0
-      sfx.playbackRate = 1.0
     }
 
     const handleLoadedMetadata = () => {
@@ -489,11 +462,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       playStateRef.current = 'paused'
       setIsPlaying(false)
       setBufferState('paused')
-      music.playbackRate = 1.0
-      sfx.playbackRate = 1.0
       console.log('[Transport] Video ended → Paused')
     }
 
+    // Stall handling: pause audio when video buffers, resume+sync when it plays again
     let stalled = false
 
     const handleWaiting = () => {
@@ -509,9 +481,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       if (!stalled) return
       if (playStateRef.current !== 'playing') return
       stalled = false
-      // Hard sync after stall — reset rate and position
-      music.playbackRate = 1.0
-      sfx.playbackRate = 1.0
+      // Sync after stall — only moment we touch currentTime during playback
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
       music.play().catch(() => {})
