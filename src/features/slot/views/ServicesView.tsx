@@ -1,30 +1,65 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useEffect } from 'react'
 import type { ServicesSection } from '../types'
 
-const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
-
 const ServicesView = memo(function ServicesView({ section, focusIndex, onSelect }: { section: ServicesSection, focusIndex: number, onSelect?: (index: number) => void }) {
+  // Reactive viewport dimensions for orientation changes
+  const [dims, setDims] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    h: typeof window !== 'undefined' ? window.innerHeight : 768
+  }))
+
+  useEffect(() => {
+    let rafId = 0
+    const update = () => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        setDims({ w: window.innerWidth, h: window.innerHeight })
+      })
+    }
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+
+  const { w, h } = dims
+  const isMobile = Math.min(w, h) < 600
+  const isLandscape = w > h
   const itemCount = section.items.length
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const isLandscape = isMobile && window.innerWidth > window.innerHeight
-  const columns = isMobile ? (isLandscape ? 2 : 1) : (itemCount <= 2 ? itemCount : 2)
-  const rows = Math.ceil(itemCount / columns)
+  const columns = isMobile
+    ? (isLandscape ? 2 : 1)
+    : (itemCount <= 2 ? itemCount : 2)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
   const handleTap = useCallback((index: number) => {
     if (onSelect) onSelect(index)
   }, [onSelect])
 
+  // Responsive sizes based on actual pixels, not vh
+  const iconSize = isMobile ? (isLandscape ? 28 : 34) : 42
+  const titleSize = isMobile ? (isLandscape ? 14 : 16) : 20
+  const descSize = isMobile ? (isLandscape ? 12 : 13) : 14
+  const chipSize = isMobile ? 11 : 12
+  const cardPadX = isMobile ? (isLandscape ? 12 : 14) : 20
+  const cardPadY = isMobile ? (isLandscape ? 8 : 12) : 18
+  const cardGap = isMobile ? (isLandscape ? 4 : 6) : 10
+  const descLines = isMobile ? (isLandscape ? 2 : 3) : 5
+
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gridTemplateRows: `repeat(${rows}, 1fr)`,
-      gap: 'clamp(10px, 1.5vh, 18px)',
+      gap: isMobile ? '8px' : '14px',
       maxWidth: '1000px',
       width: '100%',
       height: '100%',
-      margin: '0 auto'
+      margin: '0 auto',
+      alignContent: 'start',
+      overflow: 'auto',
+      WebkitOverflowScrolling: 'touch' as any
     }}>
       {section.items.map((item, i) => {
         const isFocused = focusIndex === i
@@ -41,81 +76,91 @@ const ServicesView = memo(function ServicesView({ section, focusIndex, onSelect 
             style={{
               background: isActive
                 ? 'linear-gradient(135deg, rgba(255,0,170,0.15), rgba(255,0,170,0.05))'
-                : 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
-              borderRadius: '14px',
-              padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
+                : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+              borderRadius: '12px',
+              padding: `${cardPadY}px ${cardPadX}px`,
               border: isActive ? '2px solid #ff00aa' : '1px solid rgba(255,0,170,0.12)',
-              animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-              boxShadow: isActive ? '0 6px 20px rgba(255,0,170,0.2)' : '0 2px 10px rgba(0,0,0,0.15)',
+              animation: `fadeSlideIn 0.5s ease-out ${i * 0.08}s both`,
+              boxShadow: isActive ? '0 6px 20px rgba(255,0,170,0.2)' : '0 2px 8px rgba(0,0,0,0.15)',
               transition: 'all 0.15s ease',
               display: 'flex',
-              flexDirection: 'column' as const,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 14px)',
+              flexDirection: isMobile && !isLandscape ? 'column' as const : 'row' as const,
+              alignItems: isMobile && !isLandscape ? 'center' : 'flex-start',
+              gap: `${cardGap}px`,
               overflow: 'hidden',
-              minHeight: 0,
               cursor: 'pointer',
-              transform: pressedIndex === i ? 'scale(0.96)' : 'scale(1)',
+              transform: pressedIndex === i ? 'scale(0.97)' : 'scale(1)',
               WebkitTapHighlightColor: 'transparent',
               userSelect: 'none' as const
             }}
           >
+            {/* Icon area */}
             <div style={{
-              fontSize: 'clamp(28px, 3.5vh, 48px)',
-              filter: isActive ? 'drop-shadow(0 0 12px rgba(255,0,170,0.5))' : 'none',
-              lineHeight: 1
-            }}>{item.icon}</div>
-            <h3 style={{
-              margin: 0,
-              color: '#ff00aa',
-              fontSize: 'clamp(16px, 2vh, 22px)',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              letterSpacing: '0.5px'
-            }}>{item.title}</h3>
-            <p style={{
-              margin: 0,
-              color: isActive ? '#ccc' : '#999aaa',
-              fontSize: 'clamp(12px, 1.4vh, 15px)',
-              lineHeight: 1.5,
-              textAlign: 'center',
-              display: '-webkit-box',
-              WebkitLineClamp: isMobile ? 2 : 4,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden'
-            }}>{item.description}</p>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 'clamp(4px, 0.6vh, 8px)',
-              justifyContent: 'center',
-              marginTop: 'auto',
-              paddingTop: 'clamp(4px, 0.6vh, 8px)'
+              fontSize: `${iconSize}px`,
+              lineHeight: 1,
+              flexShrink: 0,
+              filter: isActive ? 'drop-shadow(0 0 10px rgba(255,0,170,0.5))' : 'none',
+              ...(isMobile && !isLandscape ? {} : { paddingTop: '2px' })
             }}>
-              {item.features.map((f) => (
-                <span key={f} style={{
-                  fontSize: 'clamp(10px, 1.2vh, 13px)',
-                  padding: 'clamp(3px, 0.4vh, 6px) clamp(8px, 1vw, 12px)',
-                  background: isActive ? 'rgba(255,0,170,0.15)' : 'rgba(255,0,170,0.08)',
-                  borderRadius: '8px',
-                  color: '#ff00aa',
-                  fontWeight: '600',
-                  border: '1px solid rgba(255,0,170,0.15)',
-                  letterSpacing: '0.3px'
-                }}>{f}</span>
-              ))}
+              {item.icon}
             </div>
-            {isTouch && (
-              <div style={{
-                fontSize: '10px',
+
+            {/* Content area */}
+            <div style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column' as const,
+              gap: `${Math.max(3, cardGap - 2)}px`,
+              alignItems: isMobile && !isLandscape ? 'center' : 'flex-start'
+            }}>
+              {/* Title */}
+              <h3 style={{
+                margin: 0,
                 color: '#ff00aa',
-                opacity: 0.5,
-                letterSpacing: '1px',
-                textTransform: 'uppercase' as const,
-                marginTop: 'clamp(2px, 0.3vh, 4px)'
-              }}>TAP FOR DETAILS</div>
-            )}
+                fontSize: `${titleSize}px`,
+                fontWeight: 'bold',
+                textAlign: isMobile && !isLandscape ? 'center' : 'left',
+                letterSpacing: '0.3px',
+                lineHeight: 1.2
+              }}>{item.title}</h3>
+
+              {/* Description */}
+              <p style={{
+                margin: 0,
+                color: isActive ? '#ccc' : '#999',
+                fontSize: `${descSize}px`,
+                lineHeight: 1.5,
+                textAlign: isMobile && !isLandscape ? 'center' : 'left',
+                display: '-webkit-box',
+                WebkitLineClamp: descLines,
+                WebkitBoxOrient: 'vertical' as const,
+                overflow: 'hidden'
+              }}>{item.description}</p>
+
+              {/* Feature chips */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: isMobile ? '4px' : '6px',
+                justifyContent: isMobile && !isLandscape ? 'center' : 'flex-start',
+                marginTop: '2px'
+              }}>
+                {item.features.map((f) => (
+                  <span key={f} style={{
+                    fontSize: `${chipSize}px`,
+                    padding: isMobile ? '3px 8px' : '4px 10px',
+                    background: isActive ? 'rgba(255,0,170,0.15)' : 'rgba(255,0,170,0.08)',
+                    borderRadius: '6px',
+                    color: isActive ? '#ff44cc' : '#ff00aa',
+                    fontWeight: 600,
+                    border: '1px solid rgba(255,0,170,0.15)',
+                    letterSpacing: '0.2px',
+                    whiteSpace: 'nowrap' as const
+                  }}>{f}</span>
+                ))}
+              </div>
+            </div>
           </div>
         )
       })}
