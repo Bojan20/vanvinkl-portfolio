@@ -222,6 +222,9 @@ export function SlotFullScreen({
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mainContainerRef = useRef<HTMLDivElement>(null)
+  // Ref mirror for selectedProject — avoids stale closure in touch handlers
+  const selectedProjectRef = useRef(selectedProject)
+  selectedProjectRef.current = selectedProject
 
   // Music fade RAF tracking (cancellable)
   const fadeRafRef = useRef<number | null>(null)
@@ -513,7 +516,11 @@ export function SlotFullScreen({
   }, [section])
 
   // Touch/swipe handlers for mobile navigation
+  // IMPORTANT: PortfolioPlayer has its own swipe handler that calls onBack().
+  // We must NOT handle swipe here when a project is open — PortfolioPlayer owns it.
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Skip when PortfolioPlayer is active — it handles its own swipe
+    if (selectedProjectRef.current) return
     const touch = e.touches[0]
     touchStartRef.current = {
       x: touch.clientX,
@@ -524,29 +531,28 @@ export function SlotFullScreen({
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current) return
+    // Double-check: skip if project opened between touchstart and touchend
+    if (selectedProjectRef.current) {
+      touchStartRef.current = null
+      return
+    }
 
     const touch = e.changedTouches[0]
     const dx = touch.clientX - touchStartRef.current.x
     const dy = touch.clientY - touchStartRef.current.y
     const dt = Date.now() - touchStartRef.current.time
 
-    // Swipe detection: minimum 60px, maximum 500ms, horizontal dominant
+    // Swipe right = close slot (back to lounge)
     if (Math.abs(dx) > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx > 0) {
         haptic.light()
         uaPlaySynth('back', 0.4)
-        if (selectedProject) {
-          // Video/audio open → go back to project list (not lounge)
-          setSelectedProject(null)
-        } else {
-          // Content view → close slot, return to lounge
-          onClose()
-        }
+        onClose()
       }
     }
 
     touchStartRef.current = null
-  }, [onClose, selectedProject])
+  }, [onClose])
 
   // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
