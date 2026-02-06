@@ -31,7 +31,6 @@ import { uaPlaySynth } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-const isMobilePortrait = isMobile && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
 
 interface PortfolioPlayerProps {
   project: {
@@ -52,6 +51,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   project,
   onBack
 }: PortfolioPlayerProps) {
+  // Portrait detection (evaluated at render time, not module load)
+  const isMobilePortrait = isMobile && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+
   // SECURITY: Validate media paths before use
   const safeVideoPath = isValidMediaPath(project.videoPath) ? project.videoPath : undefined
   const safePosterPath = isValidMediaPath(project.posterPath) ? project.posterPath : undefined
