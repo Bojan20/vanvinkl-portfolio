@@ -2,7 +2,7 @@
  * ClickToEnterSplash - First thing user sees, enables audio before intro starts
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FullscreenToggle } from './FullscreenToggle'
 
 // Inline mobile detection
@@ -90,6 +90,33 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleEnter, isLoaded])
+
+  // Mobile swipe left/right → exit app (history.back)
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!isMobile) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!swipeStartRef.current) return
+      const dx = e.changedTouches[0].clientX - swipeStartRef.current.x
+      const dy = e.changedTouches[0].clientY - swipeStartRef.current.y
+      swipeStartRef.current = null
+      // Horizontal swipe >80px, dominant horizontal direction
+      if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        history.back()
+      }
+    }
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [isMobile])
 
   return (
     <div

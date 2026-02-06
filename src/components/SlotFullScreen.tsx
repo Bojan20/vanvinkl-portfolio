@@ -871,36 +871,20 @@ export function SlotFullScreen({
           <div style={{
             display: 'flex',
             flexDirection: 'column',
+            position: 'fixed',
+            top: 0,
+            left: 0,
             width: '100dvw',
             height: '100dvh',
-            maxWidth: '1400px',
-            margin: '0 auto',
-            background: 'linear-gradient(180deg, #03020a 0%, #08061a 10%, #0c0a22 50%, #08061a 90%, #03020a 100%)',
-            borderRadius: '24px',
+            background: '#060414',
             overflow: 'hidden',
-            boxShadow: `
-              0 0 120px rgba(0,0,0,0.95),
-              inset 0 0 60px ${primaryColor}08,
-              0 0 2px ${primaryColor}40,
-              0 0 80px ${primaryColor}15
-            `,
             border: `2px solid ${primaryColor}30`,
-            position: 'relative',
             transform: inspectMode ? 'scale(0.97) translateZ(0)' : 'translateZ(0)',
-            filter: inspectMode ? 'brightness(0.92)' : 'none',
-            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), filter 0.5s ease',
-            willChange: 'transform'
-          }}>
-            {/* Outer chrome frame */}
-            <div style={{
-              position: 'absolute',
-              top: -3, left: -3, right: -3, bottom: -3,
-              borderRadius: '28px',
-              background: 'linear-gradient(180deg, #3a3a4a 0%, #1a1a2a 50%, #2a2a3a 100%)',
-              zIndex: -1,
-              boxShadow: '0 0 30px rgba(0,0,0,0.8)'
-            }} />
-
+            transition: inspectMode ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+            willChange: 'transform',
+            containIntrinsicSize: 'auto',
+            contain: 'layout style paint'
+          } as React.CSSProperties}>
             {/* Game Title Marquee */}
             <GameMarquee
               title={segmentConfig.title}

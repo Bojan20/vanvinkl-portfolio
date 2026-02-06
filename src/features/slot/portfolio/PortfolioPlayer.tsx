@@ -186,10 +186,39 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       const sfx = sfxRef.current
       if (!video || !music || !sfx) return
 
-      // Hard sync: set all to same position BEFORE play
+      // Hard sync: force all to EXACT same position BEFORE play
       const syncTime = video.currentTime
       music.currentTime = syncTime
       sfx.currentTime = syncTime
+
+      // Reset any residual playbackRate from previous session
+      music.playbackRate = 1.0
+      sfx.playbackRate = 1.0
+
+      // Verify audio elements have buffer at sync point
+      // If not buffered, wait briefly for buffer to catch up
+      const ensureBuffered = async (el: HTMLMediaElement, label: string) => {
+        if (el.readyState >= 3) return // HAVE_FUTURE_DATA or better
+        console.log(`[Transport] ${label} not ready (readyState: ${el.readyState}), waiting...`)
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => { resolve() }, 3000)
+          const onReady = () => {
+            clearTimeout(timeout)
+            el.removeEventListener('canplay', onReady)
+            resolve()
+          }
+          el.addEventListener('canplay', onReady)
+        })
+      }
+
+      await Promise.all([
+        ensureBuffered(music, 'music'),
+        ensureBuffered(sfx, 'sfx')
+      ])
+
+      // Re-sync after buffer wait (positions may have shifted)
+      music.currentTime = video.currentTime
+      sfx.currentTime = video.currentTime
 
       // Fire all three .play() calls simultaneously — no await gap between them.
       // Video is muted so we don't need to wait for it before starting audio.
@@ -340,15 +369,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (music.paused) music.play().catch(() => {})
           if (sfx.paused) sfx.play().catch(() => {})
 
-          // Hard sync after orientation change — reset rate and position
+          // Hard sync after orientation change — always reset rate and position
           music.playbackRate = 1.0
           sfx.playbackRate = 1.0
-          const drift = Math.abs(music.currentTime - video.currentTime)
-          if (drift > 0.05) {
-            music.currentTime = video.currentTime
-            sfx.currentTime = video.currentTime
-            console.log(`[Transport] Orientation sync: corrected ${(drift * 1000).toFixed(0)}ms drift`)
-          }
+          music.currentTime = video.currentTime
+          sfx.currentTime = video.currentTime
+          console.log('[Transport] Orientation/visibility sync: hard resync')
         }
       }, 300)
     }
@@ -392,59 +418,82 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
   }, [release, prepare])
 
-  // Video event listeners
+  // ============================================================
+  // RAF-BASED SYNC ENGINE — 60Hz drift correction (replaces timeupdate ~4Hz)
+  // ============================================================
+  //
+  // Why RAF instead of timeupdate:
+  // - timeupdate fires ~4Hz on mobile, ~15Hz on desktop → 250ms blind spots
+  // - RAF fires at display refresh rate (60Hz) → checks every ~16ms
+  // - Drift never accumulates beyond one frame before correction
+  //
+  // Drift correction strategy (3-tier):
+  // - < 30ms: perfect sync, do nothing
+  // - 30-100ms: proportional playbackRate correction (0.92–1.08)
+  // - > 100ms: hard seek (instant resync, tiny audio pop)
+  //
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
     const sfx = sfxRef.current
     if (!video || !music || !sfx) return
 
-    const handleSeeked = () => {
-      music.currentTime = video.currentTime
-      sfx.currentTime = video.currentTime
-    }
+    let rafId = 0
+    let lastProgressUpdate = 0
 
-    // Drift correction strategy:
-    // - < 50ms: perfect, do nothing
-    // - 50-150ms: playbackRate micro-correction (no audible gap, smooth catch-up)
-    // - > 150ms: hard seek (instant but may cause tiny audio click)
-    //
-    // timeupdate fires ~4Hz on mobile, ~15Hz on desktop.
-    // We check every event — no throttle — to keep sync tight.
-
-    const correctDrift = (audioEl: HTMLAudioElement, label: string) => {
+    const correctDrift = (audioEl: HTMLAudioElement, _label: string) => {
       const drift = audioEl.currentTime - video.currentTime // positive = audio ahead
       const absDrift = Math.abs(drift)
 
-      if (absDrift < 0.05) {
-        // In sync — ensure normal playback rate
-        if (audioEl.playbackRate !== 1.0) {
-          audioEl.playbackRate = 1.0
-        }
+      if (absDrift < 0.03) {
+        // Perfect sync — ensure normal rate
+        if (audioEl.playbackRate !== 1.0) audioEl.playbackRate = 1.0
         return
       }
 
-      if (absDrift <= 0.15) {
-        // Small drift — use playbackRate to gently catch up or slow down
-        // Audio ahead: slow down slightly. Audio behind: speed up slightly.
-        audioEl.playbackRate = drift > 0 ? 0.95 : 1.05
+      if (absDrift <= 0.1) {
+        // Small drift — proportional playbackRate correction
+        // Stronger correction for larger drift: 30ms→0.97/1.03, 100ms→0.92/1.08
+        const correction = 0.03 + (absDrift - 0.03) * 0.7 // 0.03 to ~0.08
+        audioEl.playbackRate = drift > 0 ? (1.0 - correction) : (1.0 + correction)
         return
       }
 
-      // Large drift — hard seek (reset rate first to avoid compounding)
+      // Large drift — hard seek
       audioEl.playbackRate = 1.0
       audioEl.currentTime = video.currentTime
-      console.log(`[Sync] ${label} hard corrected ${(drift * 1000).toFixed(0)}ms drift`)
+      console.log(`[Sync] ${_label} hard corrected ${(drift * 1000).toFixed(0)}ms`)
     }
 
-    const handleTimeUpdate = () => {
-      if (video.duration > 0) {
-        setVideoProgress((video.currentTime / video.duration) * 100)
-      }
-      if (video.ended || playStateRef.current !== 'playing') return
+    const syncLoop = () => {
+      rafId = requestAnimationFrame(syncLoop)
 
+      if (playStateRef.current !== 'playing') return
+      if (video.paused || video.ended) return
+
+      // Drift correction on every frame (~60Hz)
       correctDrift(music, 'music')
       correctDrift(sfx, 'sfx')
+
+      // Progress bar update throttled to ~10Hz (every 6 frames)
+      const now = performance.now()
+      if (now - lastProgressUpdate > 100) {
+        lastProgressUpdate = now
+        if (video.duration > 0) {
+          setVideoProgress((video.currentTime / video.duration) * 100)
+        }
+      }
+    }
+
+    // Start sync loop immediately
+    rafId = requestAnimationFrame(syncLoop)
+
+    // Standard video event handlers
+    const handleSeeked = () => {
+      music.currentTime = video.currentTime
+      sfx.currentTime = video.currentTime
+      music.playbackRate = 1.0
+      sfx.playbackRate = 1.0
     }
 
     const handleLoadedMetadata = () => {
@@ -456,6 +505,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       playStateRef.current = 'paused'
       setIsPlaying(false)
       setBufferState('paused')
+      music.playbackRate = 1.0
+      sfx.playbackRate = 1.0
       console.log('[Transport] Video ended → Paused')
     }
 
@@ -467,7 +518,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       music.pause()
       sfx.pause()
       setBufferState('loading')
-      console.log('[Transport] Video stalled, showing buffer indicator')
+      console.log('[Transport] Video stalled, pausing audio')
     }
 
     const handlePlaying = () => {
@@ -491,12 +542,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       if (video.buffered.length > 0 && video.duration > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1)
         const pct = Math.round((bufferedEnd / video.duration) * 100)
-        setBufferProgress(prev => Math.max(prev, Math.min(pct, 99))) // Cap at 99 until fully ready
+        setBufferProgress(prev => Math.max(prev, Math.min(pct, 99)))
       }
     }
 
     video.addEventListener('seeked', handleSeeked)
-    video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
     video.addEventListener('waiting', handleWaiting)
@@ -504,8 +554,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     video.addEventListener('progress', handleProgress)
 
     return () => {
+      cancelAnimationFrame(rafId)
       video.removeEventListener('seeked', handleSeeked)
-      video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('ended', handleEnded)
       video.removeEventListener('waiting', handleWaiting)

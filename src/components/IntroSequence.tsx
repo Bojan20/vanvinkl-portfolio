@@ -245,12 +245,26 @@ export function IntroCamera({
       }
     }, INTRO_DURATION * 1000)
 
+    // Listen for skip event from IntroOverlay (mobile tap or ESC/ENTER)
+    const handleSkip = () => {
+      if (!completed.current) {
+        completed.current = true
+        // Snap camera to final position immediately
+        camera.position.set(0, 4, 20)
+        camera.lookAt(0, 1.5, 7)
+        setFadeOutParticles(true)
+        onComplete()
+      }
+    }
+    window.addEventListener('intro:skip', handleSkip)
+
     return () => {
       clearTimeout(particleTimer)
       clearTimeout(fadeTimer)
       clearTimeout(endTimer)
+      window.removeEventListener('intro:skip', handleSkip)
     }
-  }, [onComplete])
+  }, [onComplete, camera])
 
   useFrame(() => {
     if (completed.current) return
@@ -313,22 +327,27 @@ export function IntroOverlay({
     return () => clearTimeout(timer)
   }, [active])
 
-  // Keyboard skip: ESC or ENTER - ALWAYS available, sets permanent skip flag
+  // Skip intro: ESC/ENTER (desktop) or tap (mobile) — dispatches global event so IntroCamera also skips
+  const skipIntro = useCallback(() => {
+    console.log('[Intro] User skipped intro - completing immediately')
+    setPhase('done')
+    onComplete()
+    // Notify IntroCamera to also complete immediately
+    window.dispatchEvent(new CustomEvent('intro:skip'))
+  }, [onComplete])
+
   useEffect(() => {
     if (!active) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter') {
         e.preventDefault()
-        console.log('[Intro] User skipped intro - completing immediately')
-        // Skip intro for this session only (no localStorage persistence)
-        setPhase('done')
-        onComplete()
+        skipIntro()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [active, onComplete])
+  }, [active, skipIntro])
 
   useEffect(() => {
     if (!active) return
@@ -471,7 +490,9 @@ export function IntroOverlay({
   if (!active || phase === 'done') return null
 
   return (
-    <div style={{
+    <div
+      onClick={isMobile ? skipIntro : undefined}
+      style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -483,9 +504,10 @@ export function IntroOverlay({
       // Dark background that fades out during intro
       backgroundColor: `rgba(5, 3, 10, ${bgOpacity})`,
       zIndex: 10000, // Above preloader (9999)
-      pointerEvents: 'none',
+      pointerEvents: isMobile ? 'auto' : 'none', // Mobile: tappable to skip
       opacity: opacity,
-      transition: 'opacity 0.7s ease-out' // Slower fade
+      transition: 'opacity 0.7s ease-out', // Slower fade
+      cursor: isMobile ? 'pointer' : 'default'
     }}>
       {/* Subtle vignette for focus */}
       <div style={{
@@ -603,41 +625,63 @@ export function IntroOverlay({
         pointerEvents: 'none'
       }} />
 
-      {/* Skip hint - desktop only (mobile has tap to skip) */}
-      {showSkipHint && !isMobile && (
-        <div style={{
-          position: 'absolute',
-          bottom: '40px',
-          right: '40px',
-          background: 'rgba(10, 10, 20, 0.8)',
-          border: '1px solid rgba(0, 255, 255, 0.3)',
-          color: 'rgba(255,255,255,0.7)',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          pointerEvents: 'none',
-          animation: 'skipHintFadeIn 0.5s ease-out'
-        }}>
-          <kbd style={{
-            background: 'rgba(0,255,255,0.2)',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            marginRight: '8px',
-            color: '#00ffff',
-            fontFamily: 'monospace'
-          }}>ESC</kbd>
-          or
-          <kbd style={{
-            background: 'rgba(0,255,255,0.2)',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            marginLeft: '8px',
-            marginRight: '8px',
-            color: '#00ffff',
-            fontFamily: 'monospace'
-          }}>ENTER</kbd>
-          to skip (never show again)
-        </div>
+      {/* Skip hint - different for mobile vs desktop */}
+      {showSkipHint && (
+        isMobile ? (
+          <div style={{
+            position: 'absolute',
+            bottom: 'max(40px, env(safe-area-inset-bottom, 0px))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(10, 10, 20, 0.8)',
+            border: '1px solid rgba(0, 255, 255, 0.3)',
+            color: 'rgba(255,255,255,0.7)',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            letterSpacing: '2px',
+            pointerEvents: 'none',
+            animation: 'skipHintFadeIn 0.5s ease-out',
+            textTransform: 'uppercase'
+          }}>
+            <span style={{ color: '#00ffff' }}>TAP</span> TO SKIP
+          </div>
+        ) : (
+          <div style={{
+            position: 'absolute',
+            bottom: '40px',
+            right: '40px',
+            background: 'rgba(10, 10, 20, 0.8)',
+            border: '1px solid rgba(0, 255, 255, 0.3)',
+            color: 'rgba(255,255,255,0.7)',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            pointerEvents: 'none',
+            animation: 'skipHintFadeIn 0.5s ease-out'
+          }}>
+            <kbd style={{
+              background: 'rgba(0,255,255,0.2)',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              marginRight: '8px',
+              color: '#00ffff',
+              fontFamily: 'monospace'
+            }}>ESC</kbd>
+            or
+            <kbd style={{
+              background: 'rgba(0,255,255,0.2)',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              marginLeft: '8px',
+              marginRight: '8px',
+              color: '#00ffff',
+              fontFamily: 'monospace'
+            }}>ENTER</kbd>
+            to skip
+          </div>
+        )
       )}
 
       {/* WOW Burst Effect - particle explosion when text completes */}
