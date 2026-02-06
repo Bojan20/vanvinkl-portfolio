@@ -186,16 +186,20 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       const sfx = sfxRef.current
       if (!video || !music || !sfx) return
 
-      // Sync audio timeline to video
-      music.currentTime = video.currentTime
-      sfx.currentTime = video.currentTime
+      // Hard sync: set all to same position BEFORE play
+      const syncTime = video.currentTime
+      music.currentTime = syncTime
+      sfx.currentTime = syncTime
 
-      // Start video (muted — audio comes from <audio> elements only)
-      await video.play()
-
-      // Start audio tracks
-      music.play().catch(() => {})
-      sfx.play().catch(() => {})
+      // Fire all three .play() calls simultaneously — no await gap between them.
+      // Video is muted so we don't need to wait for it before starting audio.
+      // This eliminates the 10-50ms gap that caused initial desync.
+      const playPromises = [
+        video.play(),
+        music.play().catch(() => {}),
+        sfx.play().catch(() => {})
+      ]
+      await Promise.all(playPromises)
 
       // Transition state
       playStateRef.current = 'playing'
@@ -225,6 +229,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     video.pause()
     music.pause()
     sfx.pause()
+    // Reset playbackRate on pause so micro-correction doesn't persist
+    music.playbackRate = 1.0
+    sfx.playbackRate = 1.0
 
     playStateRef.current = 'paused'
     setIsPlaying(false)
@@ -247,11 +254,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
     if (music) {
       music.pause()
+      music.playbackRate = 1.0
       music.removeAttribute('src')
       music.load()
     }
     if (sfx) {
       sfx.pause()
+      sfx.playbackRate = 1.0
       sfx.removeAttribute('src')
       sfx.load()
     }
@@ -331,11 +340,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           if (music.paused) music.play().catch(() => {})
           if (sfx.paused) sfx.play().catch(() => {})
 
+          // Hard sync after orientation change — reset rate and position
+          music.playbackRate = 1.0
+          sfx.playbackRate = 1.0
           const drift = Math.abs(music.currentTime - video.currentTime)
-          if (drift > 0.3) {
+          if (drift > 0.05) {
             music.currentTime = video.currentTime
             sfx.currentTime = video.currentTime
-            console.log(`[Transport] Orientation sync: corrected ${drift.toFixed(1)}s drift`)
+            console.log(`[Transport] Orientation sync: corrected ${(drift * 1000).toFixed(0)}ms drift`)
           }
         }
       }, 300)
@@ -392,7 +404,38 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.currentTime = video.currentTime
     }
 
-    let lastSyncTime = 0
+    // Drift correction strategy:
+    // - < 50ms: perfect, do nothing
+    // - 50-150ms: playbackRate micro-correction (no audible gap, smooth catch-up)
+    // - > 150ms: hard seek (instant but may cause tiny audio click)
+    //
+    // timeupdate fires ~4Hz on mobile, ~15Hz on desktop.
+    // We check every event — no throttle — to keep sync tight.
+
+    const correctDrift = (audioEl: HTMLAudioElement, label: string) => {
+      const drift = audioEl.currentTime - video.currentTime // positive = audio ahead
+      const absDrift = Math.abs(drift)
+
+      if (absDrift < 0.05) {
+        // In sync — ensure normal playback rate
+        if (audioEl.playbackRate !== 1.0) {
+          audioEl.playbackRate = 1.0
+        }
+        return
+      }
+
+      if (absDrift <= 0.15) {
+        // Small drift — use playbackRate to gently catch up or slow down
+        // Audio ahead: slow down slightly. Audio behind: speed up slightly.
+        audioEl.playbackRate = drift > 0 ? 0.95 : 1.05
+        return
+      }
+
+      // Large drift — hard seek (reset rate first to avoid compounding)
+      audioEl.playbackRate = 1.0
+      audioEl.currentTime = video.currentTime
+      console.log(`[Sync] ${label} hard corrected ${(drift * 1000).toFixed(0)}ms drift`)
+    }
 
     const handleTimeUpdate = () => {
       if (video.duration > 0) {
@@ -400,18 +443,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
       if (video.ended || playStateRef.current !== 'playing') return
 
-      const now = performance.now()
-      if (now - lastSyncTime < 1000) return
-      lastSyncTime = now
-
-      const musicDrift = Math.abs(video.currentTime - music.currentTime)
-      if (musicDrift > 0.3) {
-        music.currentTime = video.currentTime
-      }
-      const sfxDrift = Math.abs(video.currentTime - sfx.currentTime)
-      if (sfxDrift > 0.3) {
-        sfx.currentTime = video.currentTime
-      }
+      correctDrift(music, 'music')
+      correctDrift(sfx, 'sfx')
     }
 
     const handleLoadedMetadata = () => {
@@ -441,6 +474,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       if (!stalled) return
       if (playStateRef.current !== 'playing') return
       stalled = false
+      // Hard sync after stall — reset rate and position
+      music.playbackRate = 1.0
+      sfx.playbackRate = 1.0
       music.currentTime = video.currentTime
       sfx.currentTime = video.currentTime
       music.play().catch(() => {})
