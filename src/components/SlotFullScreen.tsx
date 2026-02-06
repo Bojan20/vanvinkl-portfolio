@@ -229,8 +229,6 @@ export function SlotFullScreen({
   // Music fade RAF tracking (cancellable)
   const fadeRafRef = useRef<number | null>(null)
 
-  // DEBUG: persistent swipe debug (survives PortfolioPlayer unmount)
-  const [swipeDebug, setSwipeDebug] = useState('')
 
   // ========== DERIVED STATE ==========
   const section = SLOT_CONTENT[machineId]
@@ -370,6 +368,19 @@ export function SlotFullScreen({
     ;(window as any).__videoPlayerActive = !!selectedProject
     return () => { ;(window as any).__videoPlayerActive = false }
   }, [selectedProject])
+
+  // Listen for slot:closeVideo from App.tsx popstate handler.
+  // iOS Safari native back gesture fires popstate but never fires touch events,
+  // so the PortfolioPlayer swipe handler can't catch it. App.tsx catches the
+  // popstate and dispatches this event instead of closing the entire slot.
+  useEffect(() => {
+    const handleCloseVideo = () => {
+      console.log('[SlotFullScreen] slot:closeVideo received, closing video player')
+      setSelectedProject(null)
+    }
+    window.addEventListener('slot:closeVideo', handleCloseVideo)
+    return () => window.removeEventListener('slot:closeVideo', handleCloseVideo)
+  }, [])
 
   // Lounge music: instant stop on video open, RAF fade-in on video close
   useEffect(() => {
@@ -723,18 +734,6 @@ export function SlotFullScreen({
       cursor: 'default',
       outline: 'none' // Hide focus ring (fullscreen overlay)
     }}>
-      {/* DEBUG: persistent swipe overlay */}
-      {swipeDebug && (
-        <div style={{
-          position: 'fixed', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'rgba(0,200,0,0.95)', color: '#000', padding: '20px 30px',
-          borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', fontFamily: 'monospace',
-          zIndex: 99999, textAlign: 'center', maxWidth: '90vw'
-        }}>
-          {swipeDebug}
-        </div>
-      )}
-
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 
       {/* CRT Scanlines Overlay */}
@@ -1270,8 +1269,7 @@ export function SlotFullScreen({
               focusIndex={focusIndex}
               selectedProject={selectedProject}
               onBackFromProject={() => {
-                console.log('[SlotFullScreen] onBackFromProject called, setting selectedProject to null')
-                setSwipeDebug(`BACK @ ${new Date().toLocaleTimeString()}`)
+                console.log('[SlotFullScreen] onBackFromProject called')
                 setSelectedProject(null)
               }}
               onActivate={handleActivate}

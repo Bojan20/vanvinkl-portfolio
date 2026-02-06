@@ -271,11 +271,12 @@ export function App() {
         return
       }
       // When video/audio player is active inside a slot, popstate should NOT
-      // close the entire slot. Instead, just ignore it — the player's own
-      // swipe handler or BACK button handles navigation back to project list.
-      // SlotFullScreen sets __videoPlayerActive when selectedProject is set.
+      // close the entire slot. Instead, dispatch a custom event so SlotFullScreen
+      // closes just the video player and returns to the project list.
+      // This handles iOS Safari native back gesture which never fires touch events.
       if ((window as any).__videoPlayerActive) {
-        console.log('[App] popstate ignored — video player active inside slot')
+        console.log('[App] popstate → dispatching slot:closeVideo (video player active)')
+        window.dispatchEvent(new CustomEvent('slot:closeVideo'))
         // Re-push the slot history entry so the next back still works
         if (spinningSlot) {
           history.pushState({ slot: spinningSlot }, '')
