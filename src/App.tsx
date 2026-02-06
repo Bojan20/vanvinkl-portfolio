@@ -144,6 +144,10 @@ export function App() {
     }
   }, [konamiActive])
 
+  // Track spinningSlot as ref for gesture handlers (avoids stale closures)
+  const spinningSlotRef = useRef(spinningSlot)
+  spinningSlotRef.current = spinningSlot
+
   // Mobile movement ref - updated by joystick
   const mobileMovementRef = useRef({ x: 0, y: 0 })
 
@@ -212,14 +216,15 @@ export function App() {
         pullIndicator = null
       }
 
-      // Pull-to-refresh: pulled down >120px
-      if (pulling && dy > 120 && dt < 1500) {
+      // Pull-to-refresh: pulled down >120px (skip when slot is open)
+      if (!spinningSlotRef.current && pulling && dy > 120 && dt < 1500) {
         window.location.reload()
         return
       }
 
       // Edge swipe back: started from left 30px edge, swiped right >80px
-      if (startX < 30 && dx > 80 && dt < 600 && Math.abs(dx) > Math.abs(dy) * 2) {
+      // Skip when slot is open — SlotFullScreen has its own swipe handler
+      if (!spinningSlotRef.current && startX < 30 && dx > 80 && dt < 600 && Math.abs(dx) > Math.abs(dy) * 2) {
         history.back()
         return
       }

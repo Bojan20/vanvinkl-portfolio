@@ -519,10 +519,34 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
 
+  // Swipe right = back (mobile gesture)
+  const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y
+    const dt = Date.now() - touchStartRef.current.time
+    touchStartRef.current = null
+
+    // Swipe right = back
+    if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      uaPlaySynth('back', 0.4)
+      onBack()
+    }
+  }, [onBack])
+
   const isFocused = (index: number) => focusIndex === index
 
   return (
-    <div style={{
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{
       position: 'relative',
       width: '100%',
       height: '100dvh',

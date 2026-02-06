@@ -533,31 +533,26 @@ export function SlotFullScreen({
   }, [])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current || !section) return
+    if (!touchStartRef.current) return
 
     const touch = e.changedTouches[0]
     const dx = touch.clientX - touchStartRef.current.x
     const dy = touch.clientY - touchStartRef.current.y
     const dt = Date.now() - touchStartRef.current.time
 
-    // Swipe detection: minimum 50px, maximum 500ms
-    if (Math.abs(dx) > 50 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 2) {
-      const itemCount = getItemCount(section)
+    // Swipe detection: minimum 60px, maximum 500ms, horizontal dominant
+    if (Math.abs(dx) > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx > 0) {
-        // Swipe right
+        // Swipe right = BACK (close slot, return to lounge)
         haptic.light()
-        uaPlaySynth('tick', 0.3)
-        setFocusIndex(prev => (prev - 1 + itemCount) % itemCount)
-      } else {
-        // Swipe left
-        haptic.light()
-        uaPlaySynth('tick', 0.3)
-        setFocusIndex(prev => (prev + 1) % itemCount)
+        uaPlaySynth('back', 0.4)
+        onClose()
       }
+      // Swipe left = no action (cards are tappable, no need for focus nav)
     }
 
     touchStartRef.current = null
-  }, [section])
+  }, [onClose])
 
   // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
