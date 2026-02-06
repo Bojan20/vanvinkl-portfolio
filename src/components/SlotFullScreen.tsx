@@ -511,6 +511,8 @@ export function SlotFullScreen({
             sfxPath: proj.sfxPath,
             audioTracks: proj.audioTracks
           })
+          // Push history entry for video — back gesture/button pops this, not the slot entry
+          history.pushState({ video: true, slot: machineId }, '')
         }
         break
       }
@@ -1269,8 +1271,8 @@ export function SlotFullScreen({
               focusIndex={focusIndex}
               selectedProject={selectedProject}
               onBackFromProject={() => {
-                console.log('[SlotFullScreen] onBackFromProject called')
-                setSelectedProject(null)
+                console.log('[SlotFullScreen] onBackFromProject → history.back()')
+                history.back()
               }}
               onActivate={handleActivate}
             />
@@ -1281,8 +1283,8 @@ export function SlotFullScreen({
             <AudioOnlyPlayer
               project={selectedProject as any}
               onBack={() => {
-                console.log('[SlotFullScreen] AudioOnlyPlayer onBack, setting selectedProject to null')
-                setSelectedProject(null)
+                console.log('[SlotFullScreen] AudioOnlyPlayer onBack → history.back()')
+                history.back()
               }}
             />
           )}
