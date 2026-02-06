@@ -541,17 +541,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
 
   // Swipe right = back (mobile gesture)
-  // SlotFullScreen does NOT have a swipe listener when selectedProject is active,
-  // so no stopPropagation is needed. This is the ONLY swipe handler during video playback.
+  // Listener on WINDOW to guarantee capture regardless of scrollable containers or overlays.
+  // SlotFullScreen has NO swipe listener when selectedProject is active, so this is the only one.
   const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
   const containerDivRef = useRef<HTMLDivElement>(null)
   const onBackRef = useRef(onBack)
   onBackRef.current = onBack
 
   useEffect(() => {
-    const el = containerDivRef.current
-    if (!el) return
-
     const onTouchStart = (e: TouchEvent) => {
       touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
     }
@@ -570,12 +567,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
-    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
 
     return () => {
-      el.removeEventListener('touchstart', onTouchStart)
-      el.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchend', onTouchEnd)
     }
   }, [])
 
