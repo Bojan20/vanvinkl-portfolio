@@ -157,7 +157,7 @@ const InfoPanel = memo(function InfoPanel({
 function ContentView({ section, focusIndex, selectedProject, onBackFromProject, onActivate }: {
   section: SlotSection
   focusIndex: number
-  selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null
+  selectedProject?: { icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, posterPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null
   onBackFromProject?: () => void
   onActivate?: (index: number) => void
 }) {
@@ -210,7 +210,7 @@ export function SlotFullScreen({
   const [forceStop, setForceStop] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
-  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null>(null)
+  const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, posterPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null>(null)
 
   // Content onboarding hint - show once per visit session
   const [showContentHint, setShowContentHint] = useState(() => {
@@ -447,31 +447,32 @@ export function SlotFullScreen({
   const handleActivate = useCallback((index: number) => {
     if (!section) return
 
-    // Play UI click sound
-    uaPlaySynth('click', 0.4)
     haptic.medium()
     markVisited(section.id)
 
     switch (section.type) {
       case 'skills': {
+        uaPlaySynth('click', 0.4)
         const skill = (section as SkillsSection).categories[index]
         if (skill) setDetailItem({ type: 'skill', index, data: skill })
         break
       }
       case 'services': {
+        uaPlaySynth('click', 0.4)
         const service = (section as ServicesSection).items[index]
         if (service) setDetailItem({ type: 'service', index, data: service })
         break
       }
       case 'about': {
+        uaPlaySynth('click', 0.4)
         const stat = (section as AboutSection).stats[index]
         if (stat) setDetailItem({ type: 'stat', index, data: { ...stat, bio: (stat as any).description || (section as AboutSection).bio } })
         break
       }
       case 'projects': {
+        // No click synth — video/audio auto-plays, avoids double sound
         const proj = (section as ProjectsSection).featured[index]
         if (proj && (proj.videoPath || proj.audioTracks?.length)) {
-          // Show video/audio player for selected project
           setSelectedProject({
             icon: proj.icon,
             title: proj.title,
@@ -479,6 +480,7 @@ export function SlotFullScreen({
             year: proj.year,
             tags: proj.tags,
             videoPath: proj.videoPath,
+            posterPath: proj.posterPath,
             musicPath: proj.musicPath,
             sfxPath: proj.sfxPath,
             audioTracks: proj.audioTracks
@@ -487,11 +489,13 @@ export function SlotFullScreen({
         break
       }
       case 'experience': {
+        uaPlaySynth('click', 0.4)
         const exp = (section as ExperienceSection).timeline[index]
         if (exp) setDetailItem({ type: 'experience', index, data: exp })
         break
       }
       case 'contact': {
+        uaPlaySynth('click', 0.4)
         const methods = (section as ContactSection).methods
         const method = methods[index]
         if (method?.action === 'email' && method.url) {

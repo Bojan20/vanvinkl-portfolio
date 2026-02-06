@@ -101,7 +101,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
   // Lounge music is now handled by parent (selectedProject state change)
 
-  // Reset video and audio to beginning when component mounts
+  // Auto-play video when component mounts (smooth start, no second click needed)
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
@@ -109,8 +109,25 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
     if (video) {
       video.currentTime = 0
-      video.pause()
       video.loop = false // Video stops at last frame, doesn't loop
+
+      // Wait for enough data to play smoothly, then auto-start
+      const tryAutoPlay = () => {
+        video.play().then(() => {
+          console.log('[PortfolioPlayer] Auto-play started')
+        }).catch(e => {
+          // Browser blocked autoplay — user will need to tap
+          console.warn('[PortfolioPlayer] Auto-play blocked:', e.message)
+        })
+      }
+
+      // If video already has data, play immediately
+      if (video.readyState >= 3) { // HAVE_FUTURE_DATA
+        tryAutoPlay()
+      } else {
+        // Wait for canplay event (enough data buffered)
+        video.addEventListener('canplay', tryAutoPlay, { once: true })
+      }
     }
     if (music) {
       music.currentTime = 0
@@ -121,7 +138,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.pause()
     }
 
-    console.log('[PortfolioPlayer] Video and audio reset to start, video.loop = false')
+    console.log('[PortfolioPlayer] Video auto-play queued, video.loop = false')
 
     // Cleanup on unmount - prevent memory leaks
     return () => {
@@ -395,7 +412,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
         playsInline
-        preload="metadata"
+        preload="auto"
         poster={safePosterPath || '/logo_van.png'}
         onContextMenu={(e) => e.preventDefault()}
         className="portfolio-video-player"
@@ -442,181 +459,191 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
       </audio>
 
-      {/* Controls Overlay - Bottom */}
+      {/* Controls Overlay - Bottom
+           Desktop: single row [MuteBtn][Slider][MuteBtn][Slider]
+           Mobile portrait: two rows, each [MuteBtn][Slider] full width */}
       <div style={{
         position: 'fixed',
         bottom: '0',
         left: '0',
         right: '0',
         display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-        padding: `12px max(20px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-right, 0px))`,
-        background: 'rgba(0,0,0,0.8)',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '6px' : '8px',
+        alignItems: isMobile ? 'stretch' : 'center',
+        padding: isMobile
+          ? `8px max(12px, env(safe-area-inset-left, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px))`
+          : `12px max(20px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-right, 0px))`,
+        background: 'rgba(0,0,0,0.85)',
         borderTop: '1px solid rgba(255,215,0,0.2)',
-        zIndex: 1000,
-        cursor: 'pointer'
+        zIndex: 1000
       }}>
-        {/* Music Mute Button (focus 1) */}
-        <button
-          onClick={() => setMusicMuted(!musicMuted)}
-          aria-label={musicMuted ? 'Unmute music track' : 'Mute music track'}
-          aria-pressed={musicMuted}
-          role="button"
-          tabIndex={0}
-          style={{
-            width: '48px',
-            height: '48px',
-            padding: '0',
-            border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
-            borderRadius: '6px',
-            background: musicMuted ? 'rgba(255,0,0,0.2)' : (isFocused(1) ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.5)'),
-            color: musicMuted ? '#ff4444' : (isFocused(1) ? '#ffd700' : '#999'),
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: isFocused(1) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          {musicMuted ? '🔇' : '🎵'}
-        </button>
-
-        {/* Music Slider (focus 2) */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 10px',
-          border: isFocused(2) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
-          borderRadius: '6px',
-          background: isFocused(2) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.5)',
-          boxShadow: isFocused(2) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
-          transition: 'all 0.2s ease'
-        }}>
-          <span style={{
-            fontSize: '11px',
-            color: isFocused(2) ? '#ffd700' : '#ccc',
-            fontFamily: 'monospace',
-            whiteSpace: 'nowrap'
-          }}>
-            🎵 {Math.round(musicVolume * 100)}%
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={musicVolume * 100}
-            onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
-            aria-label="Music volume"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(musicVolume * 100)}
-            role="slider"
+        {/* Music row */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobile ? undefined : 1 }}>
+          {/* Music Mute Button (focus 1) */}
+          <button
+            onClick={() => setMusicMuted(!musicMuted)}
+            aria-label={musicMuted ? 'Unmute music track' : 'Mute music track'}
+            aria-pressed={musicMuted}
             tabIndex={0}
             style={{
-              flex: 1,
-              height: isMobile ? '20px' : '4px',
-              borderRadius: isMobile ? '10px' : '2px',
-              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.3) ${musicVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
-              outline: 'none',
+              width: isMobile ? '40px' : '48px',
+              height: isMobile ? '40px' : '48px',
+              padding: '0',
+              border: isFocused(1) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
+              borderRadius: '6px',
+              background: musicMuted ? 'rgba(255,0,0,0.2)' : (isFocused(1) ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.5)'),
+              color: musicMuted ? '#ff4444' : (isFocused(1) ? '#ffd700' : '#999'),
+              fontSize: '14px',
+              fontWeight: '600',
               cursor: 'pointer',
-              WebkitAppearance: 'none',
-              appearance: 'none'
+              flexShrink: 0,
+              boxShadow: isFocused(1) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
-          />
+          >
+            {musicMuted ? '🔇' : '🎵'}
+          </button>
+
+          {/* Music Slider (focus 2) */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: isMobile ? '4px 8px' : '6px 10px',
+            border: isFocused(2) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
+            borderRadius: '6px',
+            background: isFocused(2) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.5)',
+            boxShadow: isFocused(2) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
+            transition: 'all 0.2s ease'
+          }}>
+            <span style={{
+              fontSize: '11px',
+              color: isFocused(2) ? '#ffd700' : '#ccc',
+              fontFamily: 'monospace',
+              whiteSpace: 'nowrap'
+            }}>
+              🎵 {Math.round(musicVolume * 100)}%
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={musicVolume * 100}
+              onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+              aria-label="Music volume"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(musicVolume * 100)}
+              role="slider"
+              tabIndex={0}
+              style={{
+                flex: 1,
+                height: isMobile ? '20px' : '4px',
+                borderRadius: isMobile ? '10px' : '2px',
+                background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.3) ${musicVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
+                outline: 'none',
+                cursor: 'pointer',
+                WebkitAppearance: 'none',
+                appearance: 'none'
+              }}
+            />
+          </div>
         </div>
 
-        {/* SFX Mute Button (focus 3) */}
-        <button
-          onClick={() => setSfxMuted(!sfxMuted)}
-          aria-label={sfxMuted ? 'Unmute sound effects track' : 'Mute sound effects track'}
-          aria-pressed={sfxMuted}
-          role="button"
-          tabIndex={0}
-          style={{
-            width: '48px',
-            height: '48px',
-            padding: '0',
-            border: isFocused(3) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
-            borderRadius: '6px',
-            background: sfxMuted ? 'rgba(255,0,0,0.2)' : (isFocused(3) ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.5)'),
-            color: sfxMuted ? '#ff4444' : (isFocused(3) ? '#ffd700' : '#999'),
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: isFocused(3) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          {sfxMuted ? '🔇' : '🔊'}
-        </button>
-
-        {/* SFX Slider (focus 4) */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 10px',
-          border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
-          borderRadius: '6px',
-          background: isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.5)',
-          boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
-          transition: 'all 0.2s ease'
-        }}>
-          <span style={{
-            fontSize: '11px',
-            color: isFocused(4) ? '#ffd700' : '#ccc',
-            fontFamily: 'monospace',
-            whiteSpace: 'nowrap'
-          }}>
-            🔊 {Math.round(sfxVolume * 100)}%
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sfxVolume * 100}
-            onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
-            aria-label="Sound effects volume"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(sfxVolume * 100)}
-            role="slider"
+        {/* SFX row */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobile ? undefined : 1 }}>
+          {/* SFX Mute Button (focus 3) */}
+          <button
+            onClick={() => setSfxMuted(!sfxMuted)}
+            aria-label={sfxMuted ? 'Unmute sound effects track' : 'Mute sound effects track'}
+            aria-pressed={sfxMuted}
             tabIndex={0}
             style={{
-              flex: 1,
-              height: isMobile ? '20px' : '4px',
-              borderRadius: isMobile ? '10px' : '2px',
-              background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.3) ${sfxVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
-              outline: 'none',
+              width: isMobile ? '40px' : '48px',
+              height: isMobile ? '40px' : '48px',
+              padding: '0',
+              border: isFocused(3) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
+              borderRadius: '6px',
+              background: sfxMuted ? 'rgba(255,0,0,0.2)' : (isFocused(3) ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.5)'),
+              color: sfxMuted ? '#ff4444' : (isFocused(3) ? '#ffd700' : '#999'),
+              fontSize: '14px',
+              fontWeight: '600',
               cursor: 'pointer',
-              WebkitAppearance: 'none',
-              appearance: 'none'
+              flexShrink: 0,
+              boxShadow: isFocused(3) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
-          />
+          >
+            {sfxMuted ? '🔇' : '🔊'}
+          </button>
+
+          {/* SFX Slider (focus 4) */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: isMobile ? '4px 8px' : '6px 10px',
+            border: isFocused(4) ? '2px solid #ffd700' : '1px solid rgba(255,215,0,0.3)',
+            borderRadius: '6px',
+            background: isFocused(4) ? 'rgba(255,215,0,0.15)' : 'rgba(0,0,0,0.5)',
+            boxShadow: isFocused(4) ? '0 0 15px rgba(255,215,0,0.5)' : 'none',
+            transition: 'all 0.2s ease'
+          }}>
+            <span style={{
+              fontSize: '11px',
+              color: isFocused(4) ? '#ffd700' : '#ccc',
+              fontFamily: 'monospace',
+              whiteSpace: 'nowrap'
+            }}>
+              🔊 {Math.round(sfxVolume * 100)}%
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={sfxVolume * 100}
+              onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+              aria-label="Sound effects volume"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(sfxVolume * 100)}
+              role="slider"
+              tabIndex={0}
+              style={{
+                flex: 1,
+                height: isMobile ? '20px' : '4px',
+                borderRadius: isMobile ? '10px' : '2px',
+                background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.3) ${sfxVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
+                outline: 'none',
+                cursor: 'pointer',
+                WebkitAppearance: 'none',
+                appearance: 'none'
+              }}
+            />
+          </div>
         </div>
       </div>
 
       {/* Video Progress Bar - Thin overlay above controls */}
       <div style={{
         position: 'fixed',
-        bottom: '62px', // Above controls bar
+        bottom: isMobile ? '108px' : '62px',
         left: 0,
         width: `${videoProgress}%`,
         height: isMobile ? '6px' : '4px',
         background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
         boxShadow: '0 0 10px rgba(255,215,0,0.6)',
         transition: 'width 0.1s linear',
-        zIndex: 1001, // Above controls bar (1000)
+        zIndex: 1001,
         pointerEvents: 'none'
       }} />
 
