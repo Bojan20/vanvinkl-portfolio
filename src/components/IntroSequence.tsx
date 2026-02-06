@@ -491,7 +491,7 @@ export function IntroOverlay({
 
   return (
     <div
-      onClick={isMobile ? skipIntro : undefined}
+      onClick={skipIntro}
       style={{
       position: 'fixed',
       top: 0,
@@ -504,10 +504,10 @@ export function IntroOverlay({
       // Dark background that fades out during intro
       backgroundColor: `rgba(5, 3, 10, ${bgOpacity})`,
       zIndex: 10000, // Above preloader (9999)
-      pointerEvents: isMobile ? 'auto' : 'none', // Mobile: tappable to skip
+      pointerEvents: 'auto',
       opacity: opacity,
       transition: 'opacity 0.7s ease-out', // Slower fade
-      cursor: isMobile ? 'pointer' : 'default'
+      cursor: 'pointer'
     }}>
       {/* Subtle vignette for focus */}
       <div style={{
@@ -625,63 +625,27 @@ export function IntroOverlay({
         pointerEvents: 'none'
       }} />
 
-      {/* Skip hint - different for mobile vs desktop */}
+      {/* Skip hint */}
       {showSkipHint && (
-        isMobile ? (
-          <div style={{
-            position: 'absolute',
-            bottom: 'max(40px, env(safe-area-inset-bottom, 0px))',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(10, 10, 20, 0.8)',
-            border: '1px solid rgba(0, 255, 255, 0.3)',
-            color: 'rgba(255,255,255,0.7)',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            letterSpacing: '2px',
-            pointerEvents: 'none',
-            animation: 'skipHintFadeIn 0.5s ease-out',
-            textTransform: 'uppercase'
-          }}>
-            <span style={{ color: '#00ffff' }}>TAP</span> TO SKIP
-          </div>
-        ) : (
-          <div style={{
-            position: 'absolute',
-            bottom: '40px',
-            right: '40px',
-            background: 'rgba(10, 10, 20, 0.8)',
-            border: '1px solid rgba(0, 255, 255, 0.3)',
-            color: 'rgba(255,255,255,0.7)',
-            padding: '12px 20px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            pointerEvents: 'none',
-            animation: 'skipHintFadeIn 0.5s ease-out'
-          }}>
-            <kbd style={{
-              background: 'rgba(0,255,255,0.2)',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              marginRight: '8px',
-              color: '#00ffff',
-              fontFamily: 'monospace'
-            }}>ESC</kbd>
-            or
-            <kbd style={{
-              background: 'rgba(0,255,255,0.2)',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              marginLeft: '8px',
-              marginRight: '8px',
-              color: '#00ffff',
-              fontFamily: 'monospace'
-            }}>ENTER</kbd>
-            to skip
-          </div>
-        )
+        <div style={{
+          position: 'absolute',
+          bottom: isMobile ? 'max(40px, env(safe-area-inset-bottom, 0px))' : '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(10, 10, 20, 0.8)',
+          border: '1px solid rgba(0, 255, 255, 0.3)',
+          color: 'rgba(255,255,255,0.7)',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 600,
+          letterSpacing: '2px',
+          pointerEvents: 'none',
+          animation: 'skipHintFadeIn 0.5s ease-out',
+          textTransform: 'uppercase' as const
+        }}>
+          <span style={{ color: '#00ffff' }}>{isMobile ? 'TAP' : 'CLICK'}</span> TO SKIP
+        </div>
       )}
 
       {/* WOW Burst Effect - particle explosion when text completes */}
