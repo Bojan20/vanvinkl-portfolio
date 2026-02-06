@@ -15,6 +15,7 @@ const shortcuts = [
   { key: 'SPACE', desc: 'Interact with slot machine' },
   { key: 'M', desc: 'Toggle sound' },
   { key: 'A', desc: 'Audio settings' },
+  { key: 'F', desc: 'Toggle fullscreen' },
   { key: 'ESC', desc: 'Close modal / Skip intro' },
   { key: '?', desc: 'Show this help' },
 ]

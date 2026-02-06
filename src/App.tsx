@@ -10,6 +10,7 @@ import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
 // UI Components (extracted for maintainability)
 import {
   SoundToggle,
+  FullscreenToggle,
   SpectrumVisualizer,
   KeyboardShortcutsModal,
   AchievementToast,
@@ -244,6 +245,9 @@ export function App() {
 
       {/* Sound Toggle - always visible after intro */}
       {!showIntro && <SoundToggle />}
+
+      {/* Fullscreen Toggle - top-right corner */}
+      {!showIntro && <FullscreenToggle />}
 
       {/* Audio Settings - keyboard-controlled panel (A key to open) */}
       {!showIntro && <AudioSettings disabled={!!spinningSlot} isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}

@@ -3,6 +3,7 @@
  */
 
 export { SoundToggle } from './SoundToggle'
+export { FullscreenToggle } from './FullscreenToggle'
 export { SpectrumVisualizer } from './SpectrumVisualizer'
 export { KeyboardShortcutsModal } from './KeyboardShortcutsModal'
 export { AchievementToast } from './AchievementToast'
