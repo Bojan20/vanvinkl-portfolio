@@ -440,6 +440,24 @@ export function App() {
 
       {/* Onboarding tooltip removed - controls hint already shown at bottom of screen */}
 
+      {/* Permanent ownership overlay — always visible, cannot be removed */}
+      <div style={{
+        position: 'fixed',
+        bottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
+        right: 'max(10px, env(safe-area-inset-right, 0px))',
+        fontSize: '10px',
+        fontWeight: 600,
+        letterSpacing: '1px',
+        color: 'rgba(255, 255, 255, 0.2)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        pointerEvents: 'none',
+        zIndex: 99999,
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
+      }}>
+        © VanVinkl Studio
+      </div>
+
       {/* Click to Enter Splash - first thing user sees */}
       {showSplash && <ClickToEnterSplash onEnter={handleSplashEnter} />}
     </WebGLErrorBoundary>

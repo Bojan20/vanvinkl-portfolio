@@ -298,7 +298,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           <span>SOUND ON FOR BEST EXPERIENCE</span>
         </div>
 
-        {/* CASINO LOUNGE - at the very bottom */}
+        {/* CASINO LOUNGE */}
         <div style={{
           fontSize: '14px',
           fontWeight: 600,
@@ -309,6 +309,34 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           opacity: 0.85
         }}>
           CASINO LOUNGE
+        </div>
+
+        {/* Ownership notice */}
+        <div style={{
+          marginTop: '40px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <div style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            letterSpacing: '2px',
+            color: 'rgba(255, 255, 255, 0.45)'
+          }}>
+            © 2026 VanVinkl Studio. All rights reserved.
+          </div>
+          <div style={{
+            fontSize: '10px',
+            letterSpacing: '1px',
+            color: 'rgba(255, 255, 255, 0.25)',
+            textAlign: 'center',
+            maxWidth: '340px',
+            lineHeight: 1.4
+          }}>
+            All content is the exclusive intellectual property of VanVinkl Studio.
+          </div>
         </div>
       </div>
 

@@ -705,8 +705,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
       </audio>
 
-      {/* Controls Overlay - Bottom */}
-      <div style={{
+      {/* Controls Overlay - Bottom (hidden in fullscreen) */}
+      {!isFullscreen && <div style={{
         position: 'fixed',
         bottom: '0',
         left: '0',
@@ -871,89 +871,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             />
           </div>
 
-          {/* Play/Pause button (mobile) */}
-          {isMobile && (
-            <button
-              onClick={togglePlayPause}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              style={{
-                width: '40px',
-                height: '40px',
-                padding: '0',
-                border: '1px solid rgba(255,215,0,0.4)',
-                borderRadius: '6px',
-                background: 'rgba(255,215,0,0.15)',
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              {isPlaying ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffd700">
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffd700">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              )}
-            </button>
-          )}
-
-          {/* Fullscreen button */}
-          <button
-            onClick={toggleVideoFullscreen}
-            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            style={{
-              width: isMobile ? '40px' : '48px',
-              height: isMobile ? '40px' : '48px',
-              padding: '0',
-              border: '1px solid rgba(255,215,0,0.3)',
-              borderRadius: '6px',
-              background: isFullscreen ? 'rgba(0,255,136,0.15)' : 'rgba(0,0,0,0.5)',
-              cursor: 'pointer',
-              flexShrink: 0,
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              WebkitTapHighlightColor: 'transparent'
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={isFullscreen ? '#00ff88' : '#ffd700'}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {isFullscreen ? (
-                <>
-                  <polyline points="4 14 8 14 8 18" />
-                  <polyline points="20 10 16 10 16 6" />
-                  <polyline points="14 4 14 8 18 8" />
-                  <polyline points="10 20 10 16 6 16" />
-                </>
-              ) : (
-                <>
-                  <polyline points="15 3 21 3 21 9" />
-                  <polyline points="9 21 3 21 3 15" />
-                  <polyline points="21 3 14 10" />
-                  <polyline points="3 21 10 14" />
-                </>
-              )}
-            </svg>
-          </button>
         </div>
-      </div>
+      </div>}
 
       {/* Video Progress Bar */}
       <div style={{
