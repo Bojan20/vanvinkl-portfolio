@@ -43,18 +43,18 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
   }, [onSelect])
 
   // Pixel-based responsive sizes
-  const iconSize = isMobile ? (isLandscape ? 26 : 32) : 40
-  const titleSize = isMobile ? (isLandscape ? 13 : 16) : 20
-  const badgeSize = isMobile ? (isLandscape ? 9 : 10) : 12
-  const badgeIconSize = isMobile ? (isLandscape ? 10 : 11) : 13
-  const cardPadX = isMobile ? (isLandscape ? 8 : 10) : 20
-  const cardPadY = isMobile ? (isLandscape ? 8 : 12) : 24
-  const cardGap = isMobile ? (isLandscape ? 3 : 5) : 12
-  const gridGap = isMobile ? (isLandscape ? 5 : 8) : 14
-  const badgePadX = isMobile ? (isLandscape ? 5 : 6) : 9
-  const badgePadY = isMobile ? (isLandscape ? 2 : 3) : 5
-  const badgeTop = isMobile ? (isLandscape ? 4 : 6) : 9
-  const badgeRight = isMobile ? (isLandscape ? 4 : 6) : 9
+  const iconSize = isMobile ? (isLandscape ? 20 : 28) : 40
+  const titleSize = isMobile ? (isLandscape ? 11 : 14) : 20
+  const badgeSize = isMobile ? (isLandscape ? 8 : 9) : 12
+  const badgeIconSize = isMobile ? (isLandscape ? 9 : 10) : 13
+  const cardPadX = isMobile ? (isLandscape ? 5 : 8) : 20
+  const cardPadY = isMobile ? (isLandscape ? 4 : 8) : 24
+  const cardGap = isMobile ? (isLandscape ? 2 : 4) : 12
+  const gridGap = isMobile ? (isLandscape ? 4 : 6) : 14
+  const badgePadX = isMobile ? (isLandscape ? 4 : 5) : 9
+  const badgePadY = isMobile ? (isLandscape ? 1 : 2) : 5
+  const badgeTop = isMobile ? (isLandscape ? 3 : 5) : 9
+  const badgeRight = isMobile ? (isLandscape ? 3 : 5) : 9
 
   return (
     <div style={{

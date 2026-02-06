@@ -43,20 +43,22 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
   const isMobile = Math.min(w, h) < 600
   const isLandscape = w > h
   const itemCount = section.methods.length
-  const columns = isMobile ? (isLandscape ? 2 : 1) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
+  // Mobile portrait: 2x2; landscape: 4 cols single row
+  const columns = isMobile ? (isLandscape ? 4 : 2) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
+  const rows = Math.ceil(itemCount / columns)
 
   // Pixel-based responsive sizes
-  const iconSize = isMobile ? (isLandscape ? 28 : 34) : 46
-  const labelSize = isMobile ? (isLandscape ? 14 : 16) : 20
-  const valueSize = isMobile ? (isLandscape ? 11 : 13) : 15
-  const cardPadX = isMobile ? (isLandscape ? 10 : 12) : 22
-  const cardPadY = isMobile ? (isLandscape ? 10 : 14) : 30
-  const cardGap = isMobile ? (isLandscape ? 6 : 8) : 12
-  const gridGap = isMobile ? (isLandscape ? 6 : 8) : 16
-  const sectionGap = isMobile ? (isLandscape ? 8 : 12) : 24
-  const availSize = isMobile ? (isLandscape ? 12 : 14) : 18
-  const availPadX = isMobile ? (isLandscape ? 14 : 18) : 36
-  const availPadY = isMobile ? (isLandscape ? 6 : 10) : 16
+  const iconSize = isMobile ? (isLandscape ? 22 : 28) : 46
+  const labelSize = isMobile ? (isLandscape ? 11 : 14) : 20
+  const valueSize = isMobile ? (isLandscape ? 9 : 11) : 15
+  const cardPadX = isMobile ? (isLandscape ? 6 : 10) : 22
+  const cardPadY = isMobile ? (isLandscape ? 5 : 10) : 30
+  const cardGap = isMobile ? (isLandscape ? 3 : 5) : 12
+  const gridGap = isMobile ? (isLandscape ? 4 : 6) : 16
+  const sectionGap = isMobile ? (isLandscape ? 4 : 8) : 24
+  const availSize = isMobile ? (isLandscape ? 10 : 12) : 18
+  const availPadX = isMobile ? (isLandscape ? 10 : 14) : 36
+  const availPadY = isMobile ? (isLandscape ? 4 : 6) : 16
 
   return (
     <div style={{
@@ -71,10 +73,13 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
       <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`,
         gap: `${gridGap}px`,
         maxWidth: columns === 2 ? '700px' : '1000px',
         width: '100%',
-        margin: '0 auto'
+        margin: '0 auto',
+        flex: 1,
+        minHeight: 0
       }}>
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i
@@ -88,7 +93,7 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
                   ? 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))'
                   : 'linear-gradient(135deg, rgba(255,68,68,0.06), rgba(255,68,68,0.02))',
                 border: isFocused ? '2px solid #ff4444' : '1px solid rgba(255,68,68,0.12)',
-                borderRadius: isMobile ? '10px' : '14px',
+                borderRadius: isMobile ? '8px' : '14px',
                 padding: `${cardPadY}px ${cardPadX}px`,
                 textAlign: 'center',
                 cursor: 'pointer',
@@ -101,6 +106,8 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: `${cardGap}px`,
+                minHeight: 0,
+                overflow: 'hidden',
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
@@ -113,12 +120,16 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
                 color: isFocused ? '#ff6666' : '#ff4444',
                 fontWeight: 'bold',
                 fontSize: `${labelSize}px`,
-                letterSpacing: '0.5px'
+                letterSpacing: '0.3px'
               }}>{method.label}</div>
               <div style={{
                 color: isFocused ? '#bbb' : '#888899',
                 fontSize: `${valueSize}px`,
-                fontWeight: isCopied ? 600 : 400
+                fontWeight: isCopied ? 600 : 400,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%'
               }}>
                 {isCopied ? '✓ Copied!' : method.value}
               </div>
@@ -132,7 +143,7 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
           display: 'inline-block',
           background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))',
           padding: `${availPadY}px ${availPadX}px`,
-          borderRadius: isMobile ? '12px' : '16px',
+          borderRadius: isMobile ? '10px' : '16px',
           border: '1px solid rgba(0,255,136,0.3)'
         }}>
           <p style={{
@@ -141,7 +152,7 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
             fontWeight: 600,
             margin: 0,
             textShadow: '0 0 15px rgba(0,255,136,0.4)',
-            letterSpacing: '0.5px'
+            letterSpacing: '0.3px'
           }}>
             {section.availability}
           </p>

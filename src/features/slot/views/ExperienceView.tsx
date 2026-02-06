@@ -31,7 +31,8 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSel
   const isMobile = Math.min(w, h) < 600
   const isLandscape = w > h
   const itemCount = section.timeline.length
-  const columns = isMobile ? (isLandscape ? 2 : 1) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
+  // Mobile portrait: 2x2 grid; landscape: 4 cols single row
+  const columns = isMobile ? (isLandscape ? 4 : 2) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
   const rows = Math.ceil(itemCount / columns)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
@@ -39,17 +40,17 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSel
     if (onSelect) onSelect(index)
   }, [onSelect])
 
-  // Pixel-based responsive sizes
-  const roleSize = isMobile ? (isLandscape ? 13 : 15) : 19
-  const companySize = isMobile ? (isLandscape ? 11 : 13) : 15
-  const periodSize = isMobile ? (isLandscape ? 9 : 10) : 12
-  const highlightSize = isMobile ? (isLandscape ? 10 : 12) : 14
-  const cardPadX = isMobile ? (isLandscape ? 10 : 12) : 20
-  const cardPadY = isMobile ? (isLandscape ? 8 : 10) : 20
-  const cardGap = isMobile ? (isLandscape ? 3 : 5) : 10
-  const gridGap = isMobile ? (isLandscape ? 6 : 8) : 16
-  const highlightLines = isMobile ? (isLandscape ? 1 : 2) : undefined
-  const highlightLineHeight = isMobile ? 1.2 : 1.4
+  // Pixel-based responsive sizes — very compact for landscape
+  const roleSize = isMobile ? (isLandscape ? 10 : 13) : 19
+  const companySize = isMobile ? (isLandscape ? 9 : 11) : 15
+  const periodSize = isMobile ? (isLandscape ? 8 : 9) : 12
+  const highlightSize = isMobile ? (isLandscape ? 8 : 10) : 14
+  const cardPadX = isMobile ? (isLandscape ? 6 : 10) : 20
+  const cardPadY = isMobile ? (isLandscape ? 5 : 8) : 20
+  const cardGap = isMobile ? (isLandscape ? 2 : 4) : 10
+  const gridGap = isMobile ? (isLandscape ? 4 : 6) : 16
+  // Landscape: show only 2 highlights, 1 line each. Portrait: 3 highlights, 1 line each
+  const maxHighlights = isMobile ? (isLandscape ? 2 : 3) : 4
 
   return (
     <div style={{
@@ -80,13 +81,12 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSel
                 ? 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,255,136,0.03))'
                 : 'linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,255,136,0.01))',
               padding: `${cardPadY}px ${cardPadX}px`,
-              borderRadius: isMobile ? '10px' : '14px',
+              borderRadius: isMobile ? '8px' : '14px',
               border: isActive ? '2px solid #00ff88' : '1px solid rgba(0,255,136,0.15)',
               boxShadow: isActive ? '0 6px 20px rgba(0,255,136,0.15)' : '0 2px 10px rgba(0,0,0,0.15)',
               transition: 'all 0.15s ease',
               display: 'flex',
               flexDirection: 'column' as const,
-              justifyContent: 'center',
               overflow: 'hidden',
               minHeight: 0,
               gap: `${cardGap}px`,
@@ -96,76 +96,69 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSel
               userSelect: 'none' as const
             }}
           >
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-              gap: '4px'
-            }}>
-              <div style={{ flex: '1 1 auto' }}>
-                <div style={{
-                  color: '#ffffff',
-                  fontWeight: 'bold',
-                  fontSize: `${roleSize}px`,
-                  marginBottom: '2px',
-                  lineHeight: 1.2,
-                  letterSpacing: '0.3px'
-                }}>{item.role}</div>
-                <div style={{
+            {/* Header — role + period */}
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                color: '#ffffff',
+                fontWeight: 'bold',
+                fontSize: `${roleSize}px`,
+                lineHeight: 1.2,
+                letterSpacing: '0.2px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>{item.role}</div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '4px',
+                marginTop: '1px'
+              }}>
+                <span style={{
                   color: isActive ? '#00ff88' : '#999aaa',
                   fontSize: `${companySize}px`,
-                  fontWeight: 500
-                }}>{item.company}</div>
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>{item.company}</span>
+                <span style={{
+                  color: '#00ff88',
+                  fontSize: `${periodSize}px`,
+                  fontWeight: 600,
+                  letterSpacing: '0.3px',
+                  padding: `${isMobile ? 2 : 3}px ${isMobile ? 5 : 8}px`,
+                  background: 'rgba(0,255,136,0.1)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(0,255,136,0.3)',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
+                }}>{item.period}</span>
               </div>
-              <div style={{
-                color: '#00ff88',
-                fontSize: `${periodSize}px`,
-                fontWeight: 600,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-                padding: `${isMobile ? 3 : 4}px ${isMobile ? 7 : 10}px`,
-                background: 'rgba(0,255,136,0.1)',
-                borderRadius: '8px',
-                border: '1px solid rgba(0,255,136,0.3)',
-                whiteSpace: 'nowrap',
-                flex: '0 0 auto'
-              }}>{item.period}</div>
             </div>
-            {/* Highlights */}
-            <ul style={{
-              margin: 0,
-              paddingLeft: `${isMobile ? 12 : 16}px`,
+            {/* Highlights — limited count, single line each */}
+            <div style={{
               flex: 1,
+              minHeight: 0,
+              overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-evenly'
             }}>
-              {item.highlights.map((hl, j) => (
-                <li key={j} style={{
+              {item.highlights.slice(0, maxHighlights).map((hl, j) => (
+                <div key={j} style={{
                   color: isActive ? '#ccc' : '#999aaa',
                   fontSize: `${highlightSize}px`,
-                  lineHeight: highlightLineHeight,
-                  marginBottom: `${isMobile ? 1 : 3}px`,
-                  display: highlightLines ? '-webkit-box' : undefined,
-                  WebkitLineClamp: highlightLines,
-                  WebkitBoxOrient: highlightLines ? 'vertical' as const : undefined,
-                  overflow: highlightLines ? 'hidden' : undefined
-                }}>{hl}</li>
+                  lineHeight: 1.3,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  paddingLeft: `${isMobile ? 6 : 10}px`,
+                  borderLeft: `2px solid rgba(0,255,136,${isActive ? '0.4' : '0.15'})`
+                }}>{hl}</div>
               ))}
-            </ul>
-            {isTouch && (
-              <div style={{
-                fontSize: '9px',
-                color: '#00ff88',
-                opacity: 0.4,
-                letterSpacing: '1px',
-                textTransform: 'uppercase' as const,
-                textAlign: 'center' as const,
-                marginTop: `${isMobile ? 1 : 3}px`
-              }}>TAP FOR DETAILS</div>
-            )}
+            </div>
           </div>
         )
       })}

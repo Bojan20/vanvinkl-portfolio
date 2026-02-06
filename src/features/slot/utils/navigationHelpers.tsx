@@ -157,29 +157,31 @@ export function getItemCount(section: SlotSection): number {
  * Used for ArrowUp/ArrowDown to jump by column count
  */
 export function getGridColumns(section: SlotSection): number {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 400
-  const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
-  const isLandscape = isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const h = typeof window !== 'undefined' ? window.innerHeight : 768
+  const isMobile = Math.min(w, h) < 600
+  const isNarrow = w < 400
+  const isTablet = w < 900 && !isMobile
+  const isLandscape = w > h
 
   switch (section.type) {
     case 'skills': {
       // Skills navigate per individual skill — flat list, vertical navigation
       return 1
     }
-    case 'services': return isMobile ? (isLandscape ? 2 : 1) : 2
-    case 'about': return isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
+    case 'services': return isMobile ? (isLandscape ? 4 : 2) : 2
+    case 'about': return isMobile ? 3 : Math.min(section.stats.length, 3)
     case 'projects': {
       const count = section.featured.length
-      return isMobile ? (isNarrow ? 1 : 2) : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
+      return isMobile ? (isLandscape ? 4 : isNarrow ? 1 : 2) : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
     }
     case 'experience': {
       const count = section.timeline.length
-      return isMobile ? (isLandscape ? 2 : 1) : (count <= 2 ? count : count <= 4 ? 2 : 3)
+      return isMobile ? (isLandscape ? 4 : 2) : (count <= 2 ? count : count <= 4 ? 2 : 3)
     }
     case 'contact': {
       const count = section.methods.length
-      return isMobile ? (isLandscape ? 2 : 1) : (count <= 2 ? count : count <= 4 ? 2 : 3)
+      return isMobile ? (isLandscape ? 4 : 2) : (count <= 2 ? count : count <= 4 ? 2 : 3)
     }
     default: return 1
   }

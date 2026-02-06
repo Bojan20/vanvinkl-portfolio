@@ -1132,7 +1132,7 @@ export function SlotFullScreen({
             width: '100dvw',
             height: '100dvh',
             overflow: 'hidden',
-            padding: selectedProject ? '0' : 'clamp(16px, 3vh, 40px) clamp(12px, 3vw, 40px)',
+            padding: selectedProject ? '0' : (window.matchMedia('(pointer: coarse)').matches ? 'clamp(8px, 1.5vh, 16px) clamp(8px, 2vw, 16px)' : 'clamp(16px, 3vh, 40px) clamp(12px, 3vw, 40px)'),
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             position: 'relative',
             touchAction: selectedProject ? 'none' : 'pan-y',
@@ -1202,36 +1202,36 @@ export function SlotFullScreen({
             return (
             <div style={{
               textAlign: 'center',
-              marginBottom: isTouch ? 'clamp(6px, 1vh, 12px)' : 'clamp(12px, 2vh, 30px)',
+              marginBottom: isTouch ? 'clamp(4px, 0.8vh, 8px)' : 'clamp(12px, 2vh, 30px)',
               animation: 'contentTitleDrop 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both',
               flexShrink: 0
             }}>
               <h1 style={{
-                fontSize: 'clamp(24px, 5vw, 48px)',
+                fontSize: isTouch ? 'clamp(18px, 4vw, 28px)' : 'clamp(24px, 5vw, 48px)',
                 fontWeight: 900,
                 color: primaryColor,
                 textShadow: `0 0 40px ${primaryColor}, 0 0 80px ${primaryColor}50`,
                 letterSpacing: isTouch ? 'clamp(1px, 0.8vw, 4px)' : '8px',
-                margin: isTouch ? '0 0 4px 0' : '0 0 8px 0',
+                margin: isTouch ? '0 0 2px 0' : '0 0 8px 0',
                 animation: 'contentTitleGlow 2s ease-in-out infinite'
               }}>
                 {section.type.toUpperCase()}
               </h1>
               <div style={{
-                width: isTouch ? '80px' : '120px',
+                width: isTouch ? '60px' : '120px',
                 height: '2px',
                 background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
-                margin: isTouch ? '0 auto 4px' : '0 auto 8px',
+                margin: isTouch ? '0 auto 2px' : '0 auto 8px',
                 animation: 'contentUnderlineExpand 0.8s ease-out 0.5s both',
                 boxShadow: `0 0 15px ${primaryColor}`
               }} />
               {section.type === 'about' ? (
                 <div style={{
-                  fontSize: 'clamp(20px, 3vw, 32px)',
+                  fontSize: isTouch ? 'clamp(14px, 2.5vw, 20px)' : 'clamp(20px, 3vw, 32px)',
                   animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
                   color: primaryColor,
                   fontWeight: 600,
-                  letterSpacing: isTouch ? '2px' : '3px',
+                  letterSpacing: isTouch ? '1px' : '3px',
                   opacity: 0.9,
                   textShadow: `0 0 20px ${primaryColor}50`
                 }}>
@@ -1239,7 +1239,7 @@ export function SlotFullScreen({
                 </div>
               ) : (
                 <div style={{
-                  fontSize: isTouch ? 'clamp(20px, 5vw, 28px)' : '32px',
+                  fontSize: isTouch ? 'clamp(16px, 4vw, 22px)' : '32px',
                   animation: 'contentWowEntrance 0.8s ease-out 0.3s both',
                   filter: `drop-shadow(0 0 20px ${primaryColor}50)`,
                   opacity: 0.8
@@ -1256,7 +1256,7 @@ export function SlotFullScreen({
           })()}
 
           {/* Content */}
-          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any }}>
+          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <ContentView
               section={section}
               focusIndex={focusIndex}

@@ -31,31 +31,33 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
   const isMobile = Math.min(w, h) < 600
   const isLandscape = w > h
   const catCount = section.categories.length
-  const columns = isMobile ? (isLandscape ? 2 : 1) : (catCount <= 2 ? catCount : 2)
+  // 2x2 grid always on mobile (fits 4 categories), desktop 2 cols
+  const columns = isMobile ? 2 : (catCount <= 2 ? catCount : 2)
+  const rows = Math.ceil(catCount / columns)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
   const handleTap = useCallback((index: number) => {
     if (onSelect) onSelect(index)
   }, [onSelect])
 
-  // Pixel-based responsive sizes
-  const iconSize = isMobile ? (isLandscape ? 18 : 22) : 28
-  const catNameSize = isMobile ? (isLandscape ? 13 : 15) : 20
-  const skillSize = isMobile ? (isLandscape ? 11 : 13) : 15
-  const catPadX = isMobile ? (isLandscape ? 8 : 10) : 18
-  const catPadY = isMobile ? (isLandscape ? 6 : 8) : 16
-  const catGap = isMobile ? (isLandscape ? 6 : 8) : 14
-  const skillGap = isMobile ? (isLandscape ? 4 : 5) : 8
-  const skillPadX = isMobile ? (isLandscape ? 8 : 10) : 16
-  const skillPadY = isMobile ? (isLandscape ? 4 : 6) : 9
-  const headerMb = isMobile ? (isLandscape ? 4 : 6) : 12
-  const headerPb = isMobile ? (isLandscape ? 4 : 6) : 10
+  // Pixel-based responsive sizes — aggressive for landscape fit
+  const iconSize = isMobile ? (isLandscape ? 14 : 18) : 28
+  const catNameSize = isMobile ? (isLandscape ? 11 : 13) : 20
+  const skillSize = isMobile ? (isLandscape ? 9 : 11) : 15
+  const catPadX = isMobile ? (isLandscape ? 5 : 8) : 18
+  const catPadY = isMobile ? (isLandscape ? 4 : 6) : 16
+  const catGap = isMobile ? (isLandscape ? 4 : 6) : 14
+  const skillGap = isMobile ? (isLandscape ? 3 : 4) : 8
+  const skillPadX = isMobile ? (isLandscape ? 5 : 8) : 16
+  const skillPadY = isMobile ? (isLandscape ? 2 : 4) : 9
+  const headerMb = isMobile ? (isLandscape ? 3 : 4) : 12
+  const headerPb = isMobile ? (isLandscape ? 3 : 4) : 10
 
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gridTemplateRows: `repeat(${Math.ceil(catCount / columns)}, 1fr)`,
+      gridTemplateRows: `repeat(${rows}, 1fr)`,
       gap: `${catGap}px`,
       maxWidth: '1200px',
       width: '100%',
@@ -70,7 +72,7 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
           minHeight: 0,
           overflow: 'hidden',
           background: 'rgba(255,255,255,0.015)',
-          borderRadius: isMobile ? '10px' : '14px',
+          borderRadius: isMobile ? '8px' : '14px',
           padding: `${catPadY}px ${catPadX}px`,
           border: '1px solid rgba(255,255,255,0.06)'
         }}>
@@ -78,7 +80,7 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: `${isMobile ? 6 : 10}px`,
+            gap: `${isMobile ? 4 : 10}px`,
             marginBottom: `${headerMb}px`,
             paddingBottom: `${headerPb}px`,
             borderBottom: `2px solid ${cat.color}40`,
@@ -93,19 +95,18 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
               color: cat.color,
               fontWeight: 'bold',
               fontSize: `${catNameSize}px`,
-              letterSpacing: '0.5px',
+              letterSpacing: '0.3px',
               textShadow: `0 0 12px ${cat.color}50`
             }}>{cat.name}</span>
           </div>
-          {/* Skills list */}
+          {/* Skills list — no scroll, overflow hidden */}
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
             gap: `${skillGap}px`,
             flex: 1,
             alignContent: 'flex-start',
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch' as any
+            overflow: 'hidden'
           }}>
             {(() => {
               let baseIndex = 0
@@ -125,7 +126,7 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
                     onTouchCancel={() => setPressedIndex(-1)}
                     style={{
                       padding: `${skillPadY}px ${skillPadX}px`,
-                      borderRadius: '8px',
+                      borderRadius: '6px',
                       background: isActive ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.04)',
                       border: isActive ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.08)',
                       boxShadow: isActive ? `0 4px 16px ${cat.color}25` : 'none',
@@ -133,11 +134,12 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
                       color: isActive ? '#fff' : '#c0c0d8',
                       fontSize: `${skillSize}px`,
                       fontWeight: isActive ? 600 : 400,
-                      letterSpacing: '0.3px',
+                      letterSpacing: '0.2px',
                       cursor: 'pointer',
                       transform: pressedIndex === currentIndex ? 'scale(0.96)' : 'scale(1)',
                       WebkitTapHighlightColor: 'transparent',
-                      userSelect: 'none' as const
+                      userSelect: 'none' as const,
+                      lineHeight: 1.1
                     }}
                   >
                     {skill.name}
@@ -146,18 +148,6 @@ const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: {
               })
             })()}
           </div>
-          {isTouch && (
-            <div style={{
-              fontSize: '9px',
-              color: cat.color,
-              opacity: 0.4,
-              letterSpacing: '1px',
-              textTransform: 'uppercase' as const,
-              textAlign: 'center' as const,
-              marginTop: `${isMobile ? 3 : 6}px`,
-              flexShrink: 0
-            }}>TAP FOR DETAILS</div>
-          )}
         </div>
       ))}
     </div>

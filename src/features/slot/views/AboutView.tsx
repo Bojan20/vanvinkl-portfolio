@@ -30,7 +30,8 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
   const { w, h } = dims
   const isMobile = Math.min(w, h) < 600
   const isLandscape = w > h
-  const statColumns = isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
+  // Landscape mobile: hide bio, show 6 stats in 3x2; Portrait: bio + 3x2 stats
+  const statColumns = isMobile ? 3 : Math.min(section.stats.length, 3)
   const statRows = Math.ceil(section.stats.length / statColumns)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
@@ -39,18 +40,18 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
   }, [onSelect])
 
   // Pixel-based responsive sizes
-  const bioSize = isMobile ? (isLandscape ? 12 : 14) : 17
-  const bioPadX = isMobile ? (isLandscape ? 10 : 14) : 32
-  const bioPadY = isMobile ? (isLandscape ? 6 : 10) : 24
-  const bioLines = isMobile ? (isLandscape ? 2 : 3) : undefined
-  const statIconSize = isMobile ? (isLandscape ? 20 : 24) : 36
-  const statValueSize = isMobile ? (isLandscape ? 16 : 20) : 32
-  const statLabelSize = isMobile ? (isLandscape ? 9 : 10) : 13
-  const statPadX = isMobile ? (isLandscape ? 6 : 8) : 18
-  const statPadY = isMobile ? (isLandscape ? 6 : 10) : 20
-  const statGap = isMobile ? (isLandscape ? 3 : 4) : 8
-  const gridGap = isMobile ? (isLandscape ? 6 : 8) : 14
-  const sectionGap = isMobile ? (isLandscape ? 6 : 10) : 20
+  const bioSize = isMobile ? (isLandscape ? 11 : 12) : 17
+  const bioPadX = isMobile ? (isLandscape ? 8 : 10) : 32
+  const bioPadY = isMobile ? (isLandscape ? 4 : 6) : 24
+  const bioLines = isMobile ? (isLandscape ? 1 : 2) : undefined
+  const statIconSize = isMobile ? (isLandscape ? 16 : 20) : 36
+  const statValueSize = isMobile ? (isLandscape ? 14 : 18) : 32
+  const statLabelSize = isMobile ? (isLandscape ? 8 : 9) : 13
+  const statPadX = isMobile ? (isLandscape ? 4 : 6) : 18
+  const statPadY = isMobile ? (isLandscape ? 4 : 6) : 20
+  const statGap = isMobile ? (isLandscape ? 2 : 3) : 8
+  const gridGap = isMobile ? (isLandscape ? 4 : 6) : 14
+  const sectionGap = isMobile ? (isLandscape ? 4 : 6) : 20
 
   return (
     <div style={{
@@ -60,33 +61,35 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
       flexDirection: 'column',
       gap: `${sectionGap}px`
     }}>
-      {/* Bio */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(136,68,255,0.08), rgba(136,68,255,0.02))',
-        borderRadius: isMobile ? '10px' : '14px',
-        padding: `${bioPadY}px ${bioPadX}px`,
-        border: '1px solid rgba(136,68,255,0.15)',
-        maxWidth: '1000px',
-        width: '100%',
-        margin: '0 auto',
-        flexShrink: 0
-      }}>
-        <p style={{
-          color: '#ddddf0',
-          fontSize: `${bioSize}px`,
-          lineHeight: 1.5,
-          textAlign: 'center',
-          margin: 0,
-          textShadow: '0 2px 15px rgba(0,0,0,0.4)',
-          letterSpacing: '0.2px',
-          display: bioLines ? '-webkit-box' : undefined,
-          WebkitLineClamp: bioLines,
-          WebkitBoxOrient: bioLines ? 'vertical' as const : undefined,
-          overflow: bioLines ? 'hidden' : undefined
+      {/* Bio — hidden in landscape mobile to save space */}
+      {!(isMobile && isLandscape) && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(136,68,255,0.08), rgba(136,68,255,0.02))',
+          borderRadius: isMobile ? '8px' : '14px',
+          padding: `${bioPadY}px ${bioPadX}px`,
+          border: '1px solid rgba(136,68,255,0.15)',
+          maxWidth: '1000px',
+          width: '100%',
+          margin: '0 auto',
+          flexShrink: 0
         }}>
-          {section.bio}
-        </p>
-      </div>
+          <p style={{
+            color: '#ddddf0',
+            fontSize: `${bioSize}px`,
+            lineHeight: 1.4,
+            textAlign: 'center',
+            margin: 0,
+            textShadow: '0 2px 15px rgba(0,0,0,0.4)',
+            letterSpacing: '0.2px',
+            display: bioLines ? '-webkit-box' : undefined,
+            WebkitLineClamp: bioLines,
+            WebkitBoxOrient: bioLines ? 'vertical' as const : undefined,
+            overflow: bioLines ? 'hidden' : undefined
+          }}>
+            {section.bio}
+          </p>
+        </div>
+      )}
       {/* Stats grid */}
       <div style={{
         display: 'grid',
@@ -115,7 +118,7 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
                 background: isActive
                   ? 'linear-gradient(135deg, rgba(136,68,255,0.18), rgba(136,68,255,0.06))'
                   : 'linear-gradient(135deg, rgba(136,68,255,0.06), rgba(136,68,255,0.02))',
-                borderRadius: isMobile ? '10px' : '14px',
+                borderRadius: isMobile ? '8px' : '14px',
                 padding: `${statPadY}px ${statPadX}px`,
                 textAlign: 'center',
                 border: isActive ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.12)',
@@ -152,20 +155,10 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
                 color: isActive ? '#bbb' : '#777799',
                 fontSize: `${statLabelSize}px`,
                 textTransform: 'uppercase',
-                letterSpacing: '0.8px',
+                letterSpacing: '0.5px',
                 fontWeight: 600,
                 lineHeight: 1.2
               }}>{stat.label}</div>
-              {isTouch && (
-                <div style={{
-                  fontSize: '9px',
-                  color: '#8844ff',
-                  opacity: 0.4,
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase' as const,
-                  marginTop: `${isMobile ? 1 : 3}px`
-                }}>TAP FOR DETAILS</div>
-              )}
             </div>
           )
         })}
