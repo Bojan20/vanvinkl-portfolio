@@ -46,7 +46,7 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 // Unified Audio System
-import { initUnifiedAudio, unifiedAudio, uaPlay, uaVolume, uaIsPlaying } from './audio'
+import { initUnifiedAudio, unifiedAudio, uaPlay, uaStop, uaVolume, uaIsPlaying } from './audio'
 import { useAudioStore } from './store/audio'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
@@ -313,7 +313,8 @@ export function App() {
         setSpinningSlot(null)
         return
       }
-      // No slot open, no video → back to splash
+      // No slot open, no video → back to splash (full reset like first visit)
+      uaStop('lounge')
       setShowSplash(true)
       setShowIntro(false)
       setOverlayComplete(false)
