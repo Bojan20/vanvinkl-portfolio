@@ -20,5 +20,7 @@ export {
   uaPlaySynth,
   uaGetFrequencyData,
   uaGetBassLevel,
+  uaSuspend,
+  uaResume,
   uaDispose
 } from './UnifiedAudioSystem'

@@ -5,9 +5,7 @@
  * Performance Target: 60fps smooth gameplay
  */
 
-import { Canvas } from '@react-three/fiber'
 import { Suspense, useState, useCallback, useEffect, useRef, lazy } from 'react'
-import { CasinoScene } from './components/CasinoScene'
 
 // UI Components (extracted for maintainability)
 import {
@@ -24,6 +22,7 @@ import {
 
 // Hooks
 import { useKonamiCode } from './hooks/useKonamiCode'
+import { usePageVisibility } from './hooks/usePageVisibility'
 
 // Inline mobile detection (avoid importing MobileControls module)
 function isMobileDevice(): boolean {
@@ -31,8 +30,9 @@ function isMobileDevice(): boolean {
 }
 
 // Lazy load components (reduce initial bundle - load on demand)
+// PERFORMANCE POLICY §4-5: Three.js/R3F/postprocessing deferred via CasinoCanvas
+const CasinoCanvas = lazy(() => import('./components/CasinoCanvas').then(m => ({ default: m.CasinoCanvas })))
 const SlotFullScreen = lazy(() => import('./components/SlotFullScreen').then(m => ({ default: m.SlotFullScreen })))
-const IntroCamera = lazy(() => import('./components/IntroSequence').then(m => ({ default: m.IntroCamera })))
 const IntroOverlay = lazy(() => import('./components/IntroSequence').then(m => ({ default: m.IntroOverlay })))
 const MobileControls = lazy(() => import('./components/MobileControls').then(m => ({ default: m.MobileControls })))
 const AudioVolumeSync = lazy(() => import('./components/AudioVolumeSync').then(m => ({ default: m.AudioVolumeSync })))
@@ -64,7 +64,14 @@ export function App() {
   const [isMobile, setIsMobile] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [konamiActive, resetKonami] = useKonamiCode()
+  const [tabVisible, setTabVisible] = useState(true)
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
+
+  // LIFECYCLE POLICY §6 — Suspend on tab hidden, resume on visible
+  usePageVisibility({
+    onHidden: () => setTabVisible(false),
+    onVisible: () => setTabVisible(true)
+  })
   const [_isSitting, setIsSitting] = useState(false)
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
@@ -219,55 +226,21 @@ export function App() {
       {/* Global audio volume synchronization */}
       <AudioVolumeSync />
 
-      <Canvas
-        shadows={false}
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
-        gl={{
-          antialias: !isMobile,
-          alpha: false,
-          powerPreference: isMobile ? 'low-power' : 'high-performance',
-          stencil: false,
-          depth: true,
-          logarithmicDepthBuffer: false,
-          precision: 'highp',
-          failIfMajorPerformanceCaveat: false
-        }}
-        camera={{
-          fov: 55,
-          near: 0.5,
-          far: 80,
-          position: [0, 5, 18]
-        }}
-        performance={{
-          min: 0.5,
-          max: 1,
-          debounce: 200
-        }}
-        frameloop="always"
-        flat
-        onCreated={({ gl }) => {
-          // Listen for context loss
-          gl.domElement.addEventListener('webglcontextlost', handleContextLost)
-        }}
-      >
-        <Suspense fallback={<LoadingScreen />}>
-          {showIntro && (
-            <IntroCamera
-              onComplete={handleIntroCameraComplete}
-              avatarSpawnPosition={[0, 0, 10]}
-            />
-          )}
-
-          <CasinoScene
-            onSlotSpin={handleSlotSpin}
-            onSitChange={setIsSitting}
-            introActive={showIntro}
-            slotOpen={!!spinningSlot}
-            audioSettingsOpen={audioSettingsOpen}
-            mobileMovementRef={mobileMovementRef}
-          />
-        </Suspense>
-      </Canvas>
+      {/* 3D Scene — lazy loaded (PERFORMANCE POLICY §4-5: Three.js deferred from initial bundle) */}
+      <Suspense fallback={<LoadingScreen />}>
+        <CasinoCanvas
+          isMobile={isMobile}
+          tabVisible={tabVisible}
+          showIntro={showIntro}
+          spinningSlot={spinningSlot}
+          audioSettingsOpen={audioSettingsOpen}
+          mobileMovementRef={mobileMovementRef}
+          onSlotSpin={handleSlotSpin}
+          onSitChange={setIsSitting}
+          onIntroCameraComplete={handleIntroCameraComplete}
+          onContextLost={handleContextLost}
+        />
+      </Suspense>
 
       {/* Sound Toggle - always visible after intro */}
       {!showIntro && <SoundToggle />}

@@ -38,6 +38,7 @@ interface PortfolioPlayerProps {
     year: string
     tags: string[]
     videoPath?: string
+    posterPath?: string
     musicPath?: string
     sfxPath?: string
   }
@@ -50,6 +51,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 }: PortfolioPlayerProps) {
   // SECURITY: Validate media paths before use
   const safeVideoPath = isValidMediaPath(project.videoPath) ? project.videoPath : undefined
+  const safePosterPath = isValidMediaPath(project.posterPath) ? project.posterPath : undefined
   const safeMusicPath = isValidMediaPath(project.musicPath) ? project.musicPath : undefined
   const safeSfxPath = isValidMediaPath(project.sfxPath) ? project.sfxPath : undefined
 
@@ -363,6 +365,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controls={false}
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
+        preload="metadata"
+        poster={safePosterPath || '/logo_van.png'}
         onContextMenu={(e) => e.preventDefault()}
         className="portfolio-video-player"
         style={{
@@ -393,7 +397,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           }
         }}
       >
-        <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=5`} type="video/mp4" />
+        <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=6`} type="video/mp4" />
         Your browser does not support video playback.
       </video>
 

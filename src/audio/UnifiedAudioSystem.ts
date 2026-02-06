@@ -1036,6 +1036,26 @@ class UnifiedAudioSystem {
   }
 
   /**
+   * Suspend audio context (for visibility/focus loss — LIFECYCLE POLICY §6)
+   */
+  async suspend(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'running') {
+      await this.ctx.suspend()
+      console.log('[UnifiedAudio] Context suspended (tab hidden)')
+    }
+  }
+
+  /**
+   * Resume audio context (for visibility/focus regain — LIFECYCLE POLICY §6)
+   */
+  async resume(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume()
+      console.log('[UnifiedAudio] Context resumed (tab visible)')
+    }
+  }
+
+  /**
    * Check if initialized
    */
   isInitialized(): boolean {
@@ -1140,6 +1160,20 @@ export function uaGetFrequencyData(): Uint8Array | null {
  */
 export function uaGetBassLevel(): number {
   return unifiedAudio.getBassLevel()
+}
+
+/**
+ * Suspend audio (tab hidden — LIFECYCLE POLICY §6)
+ */
+export async function uaSuspend(): Promise<void> {
+  await unifiedAudio.suspend()
+}
+
+/**
+ * Resume audio (tab visible — LIFECYCLE POLICY §6)
+ */
+export async function uaResume(): Promise<void> {
+  await unifiedAudio.resume()
 }
 
 /**

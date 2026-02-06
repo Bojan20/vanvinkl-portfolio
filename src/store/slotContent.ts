@@ -44,6 +44,7 @@ export interface ProjectItem {
   description: string
   year: string
   videoPath?: string
+  posterPath?: string  // Poster/thumbnail for video (PERFORMANCE POLICY §3)
   musicPath?: string
   sfxPath?: string
   audioTracks?: AudioTrack[]  // For audio-only projects
@@ -281,6 +282,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         description: 'Interactive slot game portfolio featuring synchronized video and audio presentation. Complete production showcase with background music and sound effects.',
         year: '2025',
         videoPath: '/videoSlotPortfolio/Piggy Portfolio Video.mp4',
+        posterPath: '/videoSlotPortfolio/Piggy-poster.jpg',
         musicPath: '/audioSlotPortfolio/music/Piggy-Plunger-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'
       },
@@ -291,6 +293,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         description: 'High-energy slot game audio production with dynamic soundscape. Features explosive sound design and driving music tracks synchronized with gameplay mechanics.',
         year: '2025',
         videoPath: '/videoSlotPortfolio/Smash Portfolio Video.mp4',
+        posterPath: '/videoSlotPortfolio/Smash-poster.jpg',
         musicPath: '/audioSlotPortfolio/music/Smash-Factory-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Smash-Factory-SFX'
       },
@@ -301,6 +304,7 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         description: 'Cosmic-themed slot game audio with ethereal soundscapes and atmospheric music. Immersive space exploration experience with layered audio design.',
         year: '2025',
         videoPath: '/videoSlotPortfolio/Starlight Portfolio Video.mp4',
+        posterPath: '/videoSlotPortfolio/Starlight-poster.jpg',
         musicPath: '/audioSlotPortfolio/music/Starlight-Travelers-Music',
         sfxPath: '/audioSlotPortfolio/sfx/Starlight-Travelers-SFX'
       },

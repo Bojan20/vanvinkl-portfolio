@@ -382,6 +382,303 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 
 ---
 
+## ABSOLUTE QUALITY, PERFORMANCE, AUDIO & GAME LIFECYCLE POLICY (LOCKED)
+
+This project is a high-end professional audio, game, and cinematic portfolio.
+It must operate at AAA-grade standards comparable to game engines and middleware.
+
+Visual fidelity, audio fidelity, deterministic behavior, and controlled UX
+are NON-NEGOTIABLE.
+
+This is NOT a bandwidth-optimized marketing website.
+This is a quality-first interactive showcase.
+
+====================================================================
+SECTION 1 — VIDEO & MEDIA QUALITY (HARD LOCK)
+====================================================================
+
+### 1.1 Compression Rules
+- CRF values ABOVE **20** are NOT allowed.
+- **CRF 28 is EXPLICITLY FORBIDDEN.**
+- Allowed CRF range: **18–20**
+  - Default: **CRF 19**
+  - CRF 18 for dark scenes, gradients, cinematic or slow-motion footage
+  - CRF 20 ONLY if many videos appear simultaneously
+
+Any suggestion using CRF > 20 is INVALID and must be rejected.
+
+### 1.2 Approved Formats
+- Container: **MP4**
+- Video codec: **H.264 (libx264)**
+- Profile: `High`
+- Level: `4.1`
+- Pixel format: `yuv420p`
+- Max resolution: **1920×1080**
+- Frame rate: **30 fps** unless visually required otherwise
+- Audio codec: **AAC**
+- Audio bitrate: **128–160 kbps**, stereo
+
+Disallowed as primary delivery:
+- ProRes / MOV masters
+- HEVC-only / AV1-only
+- Uncompressed or near-lossless exports
+
+### 1.3 Mandatory MP4 Optimization
+All MP4 files MUST include:
+- `-movflags +faststart`
+
+Videos without fast-start optimization are INVALID.
+
+### 1.4 Authoritative Encoding Preset
+This preset is the ONLY allowed reference:
+
+```
+ffmpeg -i input.mov \
+  -c:v libx264 \
+  -profile:v high \
+  -level 4.1 \
+  -pix_fmt yuv420p \
+  -crf 19 \
+  -preset slow \
+  -movflags +faststart \
+  -c:a aac \
+  -b:a 160k \
+  -ar 48000 \
+  output.mp4
+```
+
+====================================================================
+SECTION 2 — PERFORMANCE & LOADING STRATEGY (UX FIRST)
+====================================================================
+
+### 2.1 Core Rule
+Performance MUST be achieved via:
+- Lazy loading
+- Progressive initialization
+- Deferred systems
+- UX-driven loading flow
+
+Performance MUST NOT be achieved via:
+- Quality reduction
+- Aggressive compression
+- Fidelity loss
+
+### 2.2 First-Load Behavior (MANDATORY)
+On initial entry:
+1. Display a lightweight loading screen (logo / minimal animation)
+2. Load ONLY critical UI
+3. Defer ALL heavy systems (video, Three.js, audio engines)
+4. Remove loading screen ONLY when core UI is ready
+
+Uncontrolled asset loading on first paint is FORBIDDEN.
+
+### 2.3 Video Loading
+- NO global autoplay
+- All videos MUST:
+  - Use `preload="metadata"`
+  - Have a poster / thumbnail
+- Video data loads ONLY on:
+  - User interaction
+  - OR viewport visibility
+
+====================================================================
+SECTION 3 — GAME / SLOT DEMO LIFECYCLE (ENGINE-GRADE)
+====================================================================
+
+### 3.1 Mandatory Lifecycle States
+Every demo MUST implement ALL states below:
+
+1) IDLE
+   - No assets loaded
+   - No render loop
+   - No audio context
+
+2) PRELOAD
+   - Metadata + thumbnails only
+   - No engine init
+   - No audio buffers
+
+3) INIT
+   - Engine setup
+   - Scene graph creation
+   - Audio context created but MUTED
+
+4) ACTIVE
+   - Render loop running
+   - Audio enabled
+   - Full interaction
+
+5) SUSPENDED
+   - Render loop paused
+   - Audio suspended
+   - State preserved
+
+6) DESTROYED
+   - Render loop disposed
+   - Audio context closed
+   - GPU + memory released
+
+Skipping lifecycle stages is FORBIDDEN.
+
+### 3.2 Navigation Rules
+- ONLY ONE demo may be ACTIVE at any time
+- Leaving a demo MUST suspend or destroy it
+- Background demos MUST NOT render or play audio
+
+====================================================================
+SECTION 4 — AUDIO ENGINE & WEB AUDIO POLICY
+====================================================================
+
+- Audio contexts MUST NOT start on page load
+- Audio unlock ONLY after explicit user interaction
+- On SUSPEND: audio paused or context suspended
+- On DESTROY: audio context CLOSED
+- No background audio leakage is allowed
+
+Any audio playing without intent is a BUG.
+
+====================================================================
+SECTION 5 — CODE SPLITTING & BUNDLE CONTROL
+====================================================================
+
+### 5.1 Initial Bundle Rules
+Initial bundle MUST NOT contain:
+- Three.js / R3F
+- Postprocessing
+- Audio engines
+- Game logic
+- Media-heavy code
+
+Initial bundle may contain ONLY:
+- Navigation
+- Landing UI
+- Minimal interaction logic
+
+### 5.2 Dynamic Imports
+All heavy systems MUST be dynamically imported
+and loaded ONLY on user intent or navigation.
+
+====================================================================
+SECTION 6 — VISIBILITY & FOCUS HANDLING
+====================================================================
+
+- On tab blur or navigation away:
+  - Transition demo to SUSPENDED
+- Resume ONLY after explicit user intent
+
+====================================================================
+SECTION 7 — MOBILE & LOW-END FAILSAFE
+====================================================================
+
+- Detect low-end devices and mobile
+- Reduce scene complexity, NOT media quality
+- Disable heavy effects before lowering fidelity
+- Never reduce video/audio quality as first measure
+
+====================================================================
+SECTION 8 — SELF-AUDIT & ENFORCEMENT
+====================================================================
+
+Claude MUST self-audit all changes against this document.
+
+If a proposal violates ANY rule:
+- The proposal must be rejected
+- A compliant alternative must be provided
+
+Performance issues MUST be solved architecturally,
+NOT by reducing quality.
+
+This document is FINAL and NON-NEGOTIABLE.
+
+---
+
+## DEPLOYMENT & ASSET MANAGEMENT (LOCKED)
+
+### 1. Deployment Pipeline
+- **Platform:** Vercel (manual CLI deploy, no GitHub connection)
+- **Command:** `vercel --prod`
+- **Build:** `npm run build` (Vite 6)
+- **Output:** `dist/`
+- **Live URL:** https://www.vanvinkl.design
+
+### 2. Media Asset Architecture
+Media files are NOT in git — they deploy directly via Vercel CLI from `public/`.
+
+```
+public/
+├── videoSlotPortfolio/          # Portfolio videos (CRF 19, 1080p, faststart)
+│   ├── Piggy Portfolio Video.mp4
+│   ├── Smash Portfolio Video.mp4
+│   └── Starlight Portfolio Video.mp4
+├── audioSlotPortfolio/          # Portfolio audio (dual-format: opus + m4a)
+│   ├── music/                   # Background music per project
+│   ├── sfx/                     # Sound effects per project
+│   └── portfolio/               # Audio-only project tracks
+└── audio/                       # Lounge/UI audio
+    ├── ambient/                 # Lounge music
+    ├── player/                  # Footsteps, interaction
+    ├── slots/                   # Slot machine sounds
+    └── ui/                      # UI feedback sounds
+```
+
+### 3. Source vs Deployed Media
+| Location | Purpose | In Git |
+|----------|---------|--------|
+| `videoSlotPortfolio/` (root) | Source video masters | NO |
+| `public/videoSlotPortfolio/` | Deployed optimized videos | NO |
+| `audioSlotPortfolio/` (root) | Source WAV files | NO |
+| `public/audioSlotPortfolio/` | Deployed opus/m4a files | NO |
+| `public/audio/` | Lounge/UI audio | NO |
+
+**CRITICAL:** Never commit media files to git. They deploy via `vercel --prod` which uploads the entire `public/` folder.
+
+### 4. Before Every Deploy
+1. Verify all videos exist in `public/videoSlotPortfolio/`
+2. Verify all audio exists in `public/audioSlotPortfolio/`
+3. Run `npm run build` — must succeed with zero errors
+4. Run `vercel --prod`
+5. Test on https://www.vanvinkl.design after deploy
+
+### 5. Cache Strategy (vercel.json)
+| Asset Type | Cache Duration | Notes |
+|------------|---------------|-------|
+| `/assets/*` (JS/CSS) | 1 year, immutable | Vite hashed filenames |
+| `.mp4` | 7 days | + Accept-Ranges: bytes for seeking |
+| `.opus/.m4a/.mp3/.ogg/.wav` | 7 days | Audio files |
+
+---
+
+## ARCHITECTURAL DECISIONS LOG
+
+### Three.js Performance Tuning (Applied)
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| MeshReflectorMaterial blur | [100, 40] | Halved from [200, 80] — reduces GPU reflection passes |
+| MeshReflectorMaterial resolution | 128 | Down from 256 — 4x fewer reflection pixels |
+| ContactShadows frames | 1 | Static shadows — render once, not every frame |
+| ContactShadows resolution | 64 | Down from 128 — shadow map size reduction |
+| Mobile post-FX | Bloom + Vignette only | Removed FXAA + ChromaticAberration for mobile GPU budget |
+| Desktop multisampling | 0 (medium), 2 (high) | Down from 2/4 — MSAA is expensive |
+
+### Audio Architecture
+- **Unified Audio System:** Single AudioContext for all audio (lounge, UI, portfolio)
+- **Dual-format delivery:** `.opus` primary (modern browsers), `.m4a` fallback (Safari)
+- **Synth sounds:** Generated via Web Audio API (no file load needed)
+- **Volume sync:** Independent per-track volume (music, SFX) in portfolio player
+
+### State Management
+- **Zustand stores:** audio, quality, achievements
+- **Quality system:** Auto-detects device tier, adapts post-processing
+- **FPS monitoring:** Ring buffer averaging, auto-downgrade below 35fps
+
+### Component Architecture
+- **SlotFullScreen:** Orchestrator (<800 LOC), all views extracted to `features/slot/`
+- **DetailModal:** Routes to SkillDetail/ServiceDetail/ProjectDetail/ExperienceDetail/StatDetail
+- **PortfolioPlayer:** Video + dual audio sync with drift correction (<0.3s tolerance)
+- **AudioOnlyPlayer:** Multi-track player with waveform visualization
+
+---
+
 Za detaljne specifikacije, vidi:
 - **VanVinkl:** `.claude/projects/vanvinkl-casino.md`
 - **ReelForge:** `.claude/projects/reelforge-standalone.md`

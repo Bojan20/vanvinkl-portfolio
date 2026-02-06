@@ -335,22 +335,22 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 5]}>
         <planeGeometry args={[70, 55]} />
         <MeshReflectorMaterial
-          blur={[200, 80]}
-          resolution={256}
+          blur={[100, 40]}
+          resolution={128}
           mixBlur={1}
-          mixStrength={0.4}
-          roughness={0.85}
-          depthScale={1.0}
+          mixStrength={0.3}
+          roughness={0.9}
+          depthScale={0.8}
           minDepthThreshold={0.5}
           maxDepthThreshold={1.2}
           color="#1a1520"
-          metalness={0.4}
-          mirror={0.2}
+          metalness={0.3}
+          mirror={0.15}
         />
       </mesh>
 
       {/* ===== CONTACT SHADOWS ===== */}
-      <ContactShadows position={[0, 0.01, 5]} opacity={0.3} scale={80} blur={2} far={15} resolution={128} color="#000000" />
+      <ContactShadows position={[0, 0.01, 5]} opacity={0.25} scale={80} blur={1.5} far={12} resolution={64} color="#000000" frames={1} />
 
       {/* Floor neon grid */}
       {[-20, -10, 0, 10, 20].map(x => (
@@ -502,9 +502,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       {/* ===== POST-PROCESSING ===== */}
       {isMobile ? (
         <EffectComposer multisampling={0}>
-          <FXAA />
-          <Bloom intensity={0.6} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={3} />
-          <ChromaticAberration offset={[0.001, 0.001]} />
+          <Bloom intensity={0.4} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={2} />
           <Vignette offset={0.3} darkness={0.5} />
         </EffectComposer>
       ) : (

@@ -13,6 +13,7 @@ interface ProjectData {
   description: string
   year: string
   tags: string[]
+  posterPath?: string
 }
 
 interface ProjectDetailProps {
@@ -147,7 +148,7 @@ export const ProjectDetail = memo(function ProjectDetail({
             boxShadow: '0 8px 40px rgba(255,215,0,0.2)',
             backgroundColor: '#000'
           }}
-          poster="/logo_van.png"
+          poster={proj.posterPath || '/logo_van.png'}
         >
           <source src="/videoSlotPortfolio/Piggy Portfolio Video.mp4?v=5" type="video/mp4" />
           Your browser does not support video playback.
