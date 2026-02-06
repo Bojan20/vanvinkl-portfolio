@@ -42,12 +42,26 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
     if (onSelect) onSelect(index)
   }, [onSelect])
 
+  // Pixel-based responsive sizes
+  const iconSize = isMobile ? (isLandscape ? 26 : 32) : 40
+  const titleSize = isMobile ? (isLandscape ? 13 : 16) : 20
+  const badgeSize = isMobile ? (isLandscape ? 9 : 10) : 12
+  const badgeIconSize = isMobile ? (isLandscape ? 10 : 11) : 13
+  const cardPadX = isMobile ? (isLandscape ? 8 : 10) : 20
+  const cardPadY = isMobile ? (isLandscape ? 8 : 12) : 24
+  const cardGap = isMobile ? (isLandscape ? 3 : 5) : 12
+  const gridGap = isMobile ? (isLandscape ? 5 : 8) : 14
+  const badgePadX = isMobile ? (isLandscape ? 5 : 6) : 9
+  const badgePadY = isMobile ? (isLandscape ? 2 : 3) : 5
+  const badgeTop = isMobile ? (isLandscape ? 4 : 6) : 9
+  const badgeRight = isMobile ? (isLandscape ? 4 : 6) : 9
+
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
       gridTemplateRows: `repeat(${rows}, 1fr)`,
-      gap: 'clamp(8px, 1.2vh, 16px)',
+      gap: `${gridGap}px`,
       maxWidth: '1400px',
       width: '100%',
       height: '100%',
@@ -78,8 +92,8 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               background: (isFocused || isPressed)
                 ? `linear-gradient(135deg, ${accentBg}0.12), ${accentBg}0.04))`
                 : `linear-gradient(135deg, ${accentBg}0.04), ${accentBg}0.01))`,
-              borderRadius: '14px',
-              padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 28px) clamp(14px, 1.5vw, 24px)',
+              borderRadius: isMobile ? '10px' : '14px',
+              padding: `${cardPadY}px ${cardPadX}px`,
               border: (isFocused || isPressed) ? `2px solid ${accentColor}` : `1px solid ${accentBg}0.15)`,
               animation: `fadeSlideIn 0.4s ease-out ${i * 0.05}s both`,
               boxShadow: (isFocused || isPressed) ? `0 6px 20px ${accentBg}0.2)` : '0 2px 8px rgba(0,0,0,0.15)',
@@ -90,7 +104,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               flexDirection: 'column' as const,
               justifyContent: 'space-evenly',
               alignItems: 'center',
-              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 14px)',
+              gap: `${cardGap}px`,
               minHeight: 0,
               cursor: hasMedia ? 'pointer' : 'default',
               transform: isPressed ? 'scale(0.96)' : 'scale(1)',
@@ -102,22 +116,22 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
             {(hasVideo || hasAudioOnly) && (
               <div style={{
                 position: 'absolute',
-                top: 'clamp(6px, 1vh, 10px)',
-                right: 'clamp(6px, 1vw, 10px)',
+                top: `${badgeTop}px`,
+                right: `${badgeRight}px`,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: 'clamp(3px, 0.4vh, 5px) clamp(6px, 0.8vw, 10px)',
-                borderRadius: '8px',
+                gap: '3px',
+                padding: `${badgePadY}px ${badgePadX}px`,
+                borderRadius: '6px',
                 background: hasVideo ? 'rgba(0,204,255,0.15)' : 'rgba(255,136,0,0.15)',
                 border: `1px solid ${hasVideo ? 'rgba(0,204,255,0.3)' : 'rgba(255,136,0,0.3)'}`,
-                fontSize: 'clamp(10px, 1.2vh, 12px)',
+                fontSize: `${badgeSize}px`,
                 fontWeight: 700,
                 color: accentColor,
                 letterSpacing: '0.5px',
                 zIndex: 1
               }}>
-                <span style={{ fontSize: 'clamp(11px, 1.3vh, 14px)' }}>{hasVideo ? '🎬' : '🎧'}</span>
+                <span style={{ fontSize: `${badgeIconSize}px` }}>{hasVideo ? '🎬' : '🎧'}</span>
                 {hasVideo ? 'VIDEO' : 'AUDIO'}
               </div>
             )}
@@ -127,17 +141,17 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               display: 'flex',
               flexDirection: 'column' as const,
               alignItems: 'center',
-              gap: 'clamp(4px, 0.6vh, 8px)'
+              gap: `${isMobile ? 3 : 6}px`
             }}>
               <span style={{
-                fontSize: 'clamp(28px, 3.5vh, 44px)',
+                fontSize: `${iconSize}px`,
                 filter: (isFocused || isPressed) ? `drop-shadow(0 0 10px ${accentBg}0.5))` : 'none',
                 lineHeight: 1
               }}>{proj.icon}</span>
               <h3 style={{
                 margin: 0,
                 color: accentColor,
-                fontSize: 'clamp(16px, 2vh, 22px)',
+                fontSize: `${titleSize}px`,
                 fontWeight: 'bold',
                 textAlign: 'center',
                 lineHeight: 1.2,
@@ -148,9 +162,9 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
             {/* Tap hint on mobile for media cards */}
             {hasMedia && isMobile && (
               <div style={{
-                fontSize: '10px',
+                fontSize: '9px',
                 color: accentColor,
-                opacity: 0.5,
+                opacity: 0.4,
                 letterSpacing: '1px',
                 textTransform: 'uppercase' as const
               }}>TAP TO PLAY</div>

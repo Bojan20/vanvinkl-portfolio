@@ -1,11 +1,35 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useEffect } from 'react'
 import type { AboutSection } from '../types'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
 const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { section: AboutSection, focusIndex: number, onSelect?: (index: number) => void }) {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const isLandscape = isMobile && window.innerWidth > window.innerHeight
+  // Reactive viewport dimensions for orientation changes
+  const [dims, setDims] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    h: typeof window !== 'undefined' ? window.innerHeight : 768
+  }))
+
+  useEffect(() => {
+    let rafId = 0
+    const update = () => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        setDims({ w: window.innerWidth, h: window.innerHeight })
+      })
+    }
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+
+  const { w, h } = dims
+  const isMobile = Math.min(w, h) < 600
+  const isLandscape = w > h
   const statColumns = isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
   const statRows = Math.ceil(section.stats.length / statColumns)
   const [pressedIndex, setPressedIndex] = useState(-1)
@@ -14,19 +38,33 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
     if (onSelect) onSelect(index)
   }, [onSelect])
 
+  // Pixel-based responsive sizes
+  const bioSize = isMobile ? (isLandscape ? 12 : 14) : 17
+  const bioPadX = isMobile ? (isLandscape ? 10 : 14) : 32
+  const bioPadY = isMobile ? (isLandscape ? 6 : 10) : 24
+  const bioLines = isMobile ? (isLandscape ? 2 : 3) : undefined
+  const statIconSize = isMobile ? (isLandscape ? 20 : 24) : 36
+  const statValueSize = isMobile ? (isLandscape ? 16 : 20) : 32
+  const statLabelSize = isMobile ? (isLandscape ? 9 : 10) : 13
+  const statPadX = isMobile ? (isLandscape ? 6 : 8) : 18
+  const statPadY = isMobile ? (isLandscape ? 6 : 10) : 20
+  const statGap = isMobile ? (isLandscape ? 3 : 4) : 8
+  const gridGap = isMobile ? (isLandscape ? 6 : 8) : 14
+  const sectionGap = isMobile ? (isLandscape ? 6 : 10) : 20
+
   return (
     <div style={{
       animation: 'fadeSlideIn 0.5s ease-out',
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      gap: 'clamp(12px, 1.8vh, 22px)'
+      gap: `${sectionGap}px`
     }}>
       {/* Bio */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(136,68,255,0.08), rgba(136,68,255,0.02))',
-        borderRadius: '14px',
-        padding: 'clamp(16px, 2.5vh, 32px) clamp(18px, 3vw, 36px)',
+        borderRadius: isMobile ? '10px' : '14px',
+        padding: `${bioPadY}px ${bioPadX}px`,
         border: '1px solid rgba(136,68,255,0.15)',
         maxWidth: '1000px',
         width: '100%',
@@ -35,16 +73,16 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
       }}>
         <p style={{
           color: '#ddddf0',
-          fontSize: 'clamp(14px, 1.8vh, 18px)',
-          lineHeight: 1.6,
+          fontSize: `${bioSize}px`,
+          lineHeight: 1.5,
           textAlign: 'center',
           margin: 0,
           textShadow: '0 2px 15px rgba(0,0,0,0.4)',
           letterSpacing: '0.2px',
-          display: isMobile ? '-webkit-box' : undefined,
-          WebkitLineClamp: isMobile ? 4 : undefined,
-          WebkitBoxOrient: isMobile ? 'vertical' as const : undefined,
-          overflow: isMobile ? 'hidden' : undefined
+          display: bioLines ? '-webkit-box' : undefined,
+          WebkitLineClamp: bioLines,
+          WebkitBoxOrient: bioLines ? 'vertical' as const : undefined,
+          overflow: bioLines ? 'hidden' : undefined
         }}>
           {section.bio}
         </p>
@@ -54,7 +92,7 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
         display: 'grid',
         gridTemplateColumns: `repeat(${statColumns}, 1fr)`,
         gridTemplateRows: `repeat(${statRows}, 1fr)`,
-        gap: 'clamp(8px, 1.2vh, 16px)',
+        gap: `${gridGap}px`,
         maxWidth: '1000px',
         width: '100%',
         margin: '0 auto',
@@ -77,8 +115,8 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
                 background: isActive
                   ? 'linear-gradient(135deg, rgba(136,68,255,0.18), rgba(136,68,255,0.06))'
                   : 'linear-gradient(135deg, rgba(136,68,255,0.06), rgba(136,68,255,0.02))',
-                borderRadius: '14px',
-                padding: 'clamp(12px, 1.5vh, 24px) clamp(10px, 1.2vw, 20px)',
+                borderRadius: isMobile ? '10px' : '14px',
+                padding: `${statPadY}px ${statPadX}px`,
                 textAlign: 'center',
                 border: isActive ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.12)',
                 animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
@@ -88,7 +126,7 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
                 flexDirection: 'column' as const,
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 'clamp(4px, 0.6vh, 10px)',
+                gap: `${statGap}px`,
                 minHeight: 0,
                 overflow: 'hidden',
                 cursor: 'pointer',
@@ -98,23 +136,23 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
               }}
             >
               <div style={{
-                fontSize: 'clamp(24px, 3vh, 40px)',
+                fontSize: `${statIconSize}px`,
                 filter: isActive ? 'drop-shadow(0 0 12px rgba(136,68,255,0.6))' : 'none',
                 lineHeight: 1
               }}>{stat.icon}</div>
               <div style={{
                 color: '#8844ff',
                 fontWeight: 'bold',
-                fontSize: 'clamp(20px, 2.8vh, 34px)',
+                fontSize: `${statValueSize}px`,
                 fontFamily: 'monospace',
                 textShadow: isActive ? '0 0 15px rgba(136,68,255,0.4)' : 'none',
                 lineHeight: 1.1
               }}>{stat.value}</div>
               <div style={{
                 color: isActive ? '#bbb' : '#777799',
-                fontSize: 'clamp(10px, 1.3vh, 14px)',
+                fontSize: `${statLabelSize}px`,
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
+                letterSpacing: '0.8px',
                 fontWeight: 600,
                 lineHeight: 1.2
               }}>{stat.label}</div>
@@ -122,10 +160,10 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
                 <div style={{
                   fontSize: '9px',
                   color: '#8844ff',
-                  opacity: 0.5,
+                  opacity: 0.4,
                   letterSpacing: '1px',
                   textTransform: 'uppercase' as const,
-                  marginTop: 'clamp(2px, 0.3vh, 4px)'
+                  marginTop: `${isMobile ? 1 : 3}px`
                 }}>TAP FOR DETAILS</div>
               )}
             </div>
