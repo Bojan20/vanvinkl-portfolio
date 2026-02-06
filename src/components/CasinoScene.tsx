@@ -501,10 +501,16 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
 
       {/* ===== POST-PROCESSING ===== */}
       {isMobile ? (
-        <EffectComposer multisampling={0}>
-          <Bloom intensity={0.4} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={2} />
-          <Vignette offset={0.3} darkness={0.5} />
-        </EffectComposer>
+        (() => {
+          const q = getEffectiveQuality()
+          // LOW: only Vignette (cheapest). MEDIUM+: add light Bloom
+          return (
+            <EffectComposer multisampling={0}>
+              {q !== 'low' && <Bloom intensity={0.3} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={2} />}
+              <Vignette offset={0.3} darkness={0.5} />
+            </EffectComposer>
+          )
+        })()
       ) : (
         <PostProcessing
           quality={getEffectiveQuality()}

@@ -7,10 +7,11 @@
  * - Offline fallback: Show cached content
  */
 
-const CACHE_NAME = 'vanvinkl-v1'
+const CACHE_NAME = 'vanvinkl-v2'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/offline.html',
   '/manifest.json',
   '/favicon.ico',
   '/favicon.svg'
@@ -102,7 +103,12 @@ function isStaticAsset(pathname) {
     pathname.endsWith('.svg') ||
     pathname.endsWith('.ico') ||
     pathname.endsWith('.glb') ||
-    pathname.endsWith('.gltf')
+    pathname.endsWith('.gltf') ||
+    pathname.endsWith('.mp3') ||
+    pathname.endsWith('.wav') ||
+    pathname.endsWith('.opus') ||
+    pathname.endsWith('.m4a') ||
+    pathname.endsWith('.mp4')
   )
 }
 

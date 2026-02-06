@@ -46,7 +46,7 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 // Unified Audio System
-import { initUnifiedAudio, uaPlay, uaVolume, uaIsPlaying } from './audio'
+import { initUnifiedAudio, unifiedAudio, uaPlay, uaVolume, uaIsPlaying } from './audio'
 import { useAudioStore } from './store/audio'
 import { achievementStore, type Achievement } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
@@ -110,7 +110,9 @@ export function App() {
   const handleSplashEnter = useCallback(async () => {
     // Initialize Unified Audio System (single AudioContext - replaces legacy systems)
     await initUnifiedAudio()
-    console.log('[Audio] Unified system initialized, starting lounge music...')
+    // Preload critical sounds (lounge already plays, preload UI + slot sounds)
+    unifiedAudio.preload(['footstep1', 'footstep2', 'reelStop1', 'reelStop2', 'reelStop3', 'winSmall', 'spinLoop'])
+    console.log('[Audio] Unified system initialized, critical sounds preloading...')
 
     // Always try to play music (mute state is handled by masterGain)
     uaPlay('lounge')
