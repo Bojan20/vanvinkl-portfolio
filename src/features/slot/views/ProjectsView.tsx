@@ -1,12 +1,40 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useEffect } from 'react'
 import type { ProjectsSection } from '../types'
 
 const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect }: { section: ProjectsSection, focusIndex: number, onSelect?: (index: number) => void }) {
+  // Track viewport dimensions for orientation change responsiveness
+  const [dims, setDims] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    h: typeof window !== 'undefined' ? window.innerHeight : 768
+  }))
+
+  useEffect(() => {
+    let rafId = 0
+    const update = () => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        setDims({ w: window.innerWidth, h: window.innerHeight })
+      })
+    }
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+
   const itemCount = section.featured.length
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 400
-  const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
-  const columns = isMobile ? (isNarrow ? 1 : 2) : isTablet ? 3 : (itemCount <= 4 ? 2 : itemCount <= 6 ? 3 : 4)
+  const { w, h } = dims
+  const isLandscape = w > h
+  const isMobile = Math.min(w, h) < 600
+  const isNarrow = w < 400
+  const isTablet = w < 900 && !isMobile
+  // Landscape mobile: 4 cols to fit cards compactly; portrait mobile: 2 cols (or 1 if very narrow)
+  const columns = isMobile
+    ? (isLandscape ? 4 : isNarrow ? 1 : 2)
+    : isTablet ? 3 : (itemCount <= 4 ? 2 : itemCount <= 6 ? 3 : 4)
   const rows = Math.ceil(itemCount / columns)
   const [pressedIndex, setPressedIndex] = useState(-1)
 
@@ -94,7 +122,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               </div>
             )}
 
-            {/* Icon + Title */}
+            {/* Icon + Title (name only, no description) */}
             <div style={{
               display: 'flex',
               flexDirection: 'column' as const,
@@ -115,26 +143,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
                 lineHeight: 1.2,
                 letterSpacing: '0.3px'
               }}>{proj.title}</h3>
-              <span style={{
-                color: accentColor,
-                fontSize: 'clamp(11px, 1.2vh, 13px)',
-                opacity: 0.7,
-                fontWeight: 600
-              }}>{proj.year}</span>
             </div>
-
-            {/* Description */}
-            <p style={{
-              margin: 0,
-              color: (isFocused || isPressed) ? '#ccc' : '#aab',
-              fontSize: 'clamp(12px, 1.5vh, 16px)',
-              lineHeight: isMobile ? 1.3 : 1.6,
-              textAlign: 'center',
-              display: '-webkit-box',
-              WebkitLineClamp: isMobile ? 2 : 5,
-              WebkitBoxOrient: 'vertical' as const,
-              overflow: 'hidden'
-            }}>{proj.description}</p>
 
             {/* Tap hint on mobile for media cards */}
             {hasMedia && isMobile && (
