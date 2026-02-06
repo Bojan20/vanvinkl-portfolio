@@ -1,11 +1,19 @@
-import { memo } from 'react'
+import { memo, useState, useCallback } from 'react'
 import type { ExperienceSection } from '../types'
 
-const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { section: ExperienceSection, focusIndex: number }) {
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+const ExperienceView = memo(function ExperienceView({ section, focusIndex, onSelect }: { section: ExperienceSection, focusIndex: number, onSelect?: (index: number) => void }) {
   const itemCount = section.timeline.length
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const columns = isMobile ? 1 : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
+  const isLandscape = isMobile && window.innerWidth > window.innerHeight
+  const columns = isMobile ? (isLandscape ? 2 : 1) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
   const rows = Math.ceil(itemCount / columns)
+  const [pressedIndex, setPressedIndex] = useState(-1)
+
+  const handleTap = useCallback((index: number) => {
+    if (onSelect) onSelect(index)
+  }, [onSelect])
 
   return (
     <div style={{
@@ -20,25 +28,36 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
     }}>
       {section.timeline.map((item, i) => {
         const isFocused = focusIndex === i
+        const isActive = isFocused || pressedIndex === i
         return (
           <div
             key={item.period}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleTap(i)}
+            onTouchStart={() => setPressedIndex(i)}
+            onTouchEnd={() => setPressedIndex(-1)}
+            onTouchCancel={() => setPressedIndex(-1)}
             style={{
               animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-              background: isFocused
+              background: isActive
                 ? 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,255,136,0.03))'
                 : 'linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,255,136,0.01))',
               padding: isMobile ? 'clamp(8px, 1.2vh, 14px) clamp(10px, 1.5vw, 16px)' : 'clamp(14px, 2vh, 24px) clamp(14px, 1.5vw, 22px)',
               borderRadius: '14px',
-              border: isFocused ? '2px solid #00ff88' : '1px solid rgba(0,255,136,0.15)',
-              boxShadow: isFocused ? '0 6px 20px rgba(0,255,136,0.15)' : '0 2px 10px rgba(0,0,0,0.15)',
-              transition: 'all 0.3s ease',
+              border: isActive ? '2px solid #00ff88' : '1px solid rgba(0,255,136,0.15)',
+              boxShadow: isActive ? '0 6px 20px rgba(0,255,136,0.15)' : '0 2px 10px rgba(0,0,0,0.15)',
+              transition: 'all 0.15s ease',
               display: 'flex',
               flexDirection: 'column' as const,
               justifyContent: 'center',
               overflow: 'hidden',
               minHeight: 0,
-              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 12px)'
+              gap: isMobile ? 'clamp(3px, 0.5vh, 6px)' : 'clamp(6px, 1vh, 12px)',
+              cursor: 'pointer',
+              transform: pressedIndex === i ? 'scale(0.96)' : 'scale(1)',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none' as const
             }}
           >
             {/* Header */}
@@ -59,7 +78,7 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
                   letterSpacing: '0.3px'
                 }}>{item.role}</div>
                 <div style={{
-                  color: isFocused ? '#00ff88' : '#999aaa',
+                  color: isActive ? '#00ff88' : '#999aaa',
                   fontSize: 'clamp(13px, 1.5vh, 16px)',
                   fontWeight: '500'
                 }}>{item.company}</div>
@@ -89,7 +108,7 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
             }}>
               {item.highlights.map((h, j) => (
                 <li key={j} style={{
-                  color: isFocused ? '#ccc' : '#999aaa',
+                  color: isActive ? '#ccc' : '#999aaa',
                   fontSize: 'clamp(11px, 1.3vh, 14px)',
                   lineHeight: isMobile ? 1.2 : 1.4,
                   marginBottom: 'clamp(2px, 0.3vh, 4px)',
@@ -100,6 +119,17 @@ const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { s
                 }}>{h}</li>
               ))}
             </ul>
+            {isTouch && (
+              <div style={{
+                fontSize: '10px',
+                color: '#00ff88',
+                opacity: 0.5,
+                letterSpacing: '1px',
+                textTransform: 'uppercase' as const,
+                textAlign: 'center' as const,
+                marginTop: 'clamp(2px, 0.3vh, 4px)'
+              }}>TAP FOR DETAILS</div>
+            )}
           </div>
         )
       })}

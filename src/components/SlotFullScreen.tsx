@@ -178,11 +178,11 @@ function ContentView({ section, focusIndex, selectedProject, onBackFromProject, 
   console.log('[ContentView] Rendering section view:', section.type)
 
   switch (section.type) {
-    case 'skills': return <SkillsView section={section} focusIndex={focusIndex} />
-    case 'services': return <ServicesView section={section} focusIndex={focusIndex} />
-    case 'about': return <AboutView section={section} focusIndex={focusIndex} />
+    case 'skills': return <SkillsView section={section} focusIndex={focusIndex} onSelect={onActivate} />
+    case 'services': return <ServicesView section={section} focusIndex={focusIndex} onSelect={onActivate} />
+    case 'about': return <AboutView section={section} focusIndex={focusIndex} onSelect={onActivate} />
     case 'projects': return <ProjectsView section={section} focusIndex={focusIndex} onSelect={onActivate} />
-    case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} />
+    case 'experience': return <ExperienceView section={section} focusIndex={focusIndex} onSelect={onActivate} />
     case 'contact': return <ContactView section={section} focusIndex={focusIndex} />
     default: return null
   }
@@ -453,8 +453,20 @@ export function SlotFullScreen({
     switch (section.type) {
       case 'skills': {
         uaPlaySynth('click', 0.4)
-        const skill = (section as SkillsSection).categories[index]
-        if (skill) setDetailItem({ type: 'skill', index, data: skill })
+        // Resolve flat skill index → category + skill within category
+        const categories = (section as SkillsSection).categories
+        let remaining = index
+        for (const cat of categories) {
+          if (remaining < cat.skills.length) {
+            const s = cat.skills[remaining]
+            if (s) setDetailItem({ type: 'skill', index, data: {
+              name: s.name, level: s.level,
+              category: cat.name, categoryColor: cat.color, categoryIcon: cat.icon
+            }})
+            break
+          }
+          remaining -= cat.skills.length
+        }
         break
       }
       case 'services': {

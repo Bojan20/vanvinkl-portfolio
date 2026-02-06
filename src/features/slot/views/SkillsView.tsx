@@ -1,11 +1,19 @@
-import { memo } from 'react'
+import { memo, useState, useCallback } from 'react'
 import type { SkillsSection } from '../types'
 
-const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: SkillsSection, focusIndex: number }) {
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+const SkillsView = memo(function SkillsView({ section, focusIndex, onSelect }: { section: SkillsSection, focusIndex: number, onSelect?: (index: number) => void }) {
   let itemIndex = 0
   const catCount = section.categories.length
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const columns = isMobile ? 1 : (catCount <= 2 ? catCount : 2)
+  const isLandscape = isMobile && window.innerWidth > window.innerHeight
+  const columns = isMobile ? (isLandscape ? 2 : 1) : (catCount <= 2 ? catCount : 2)
+  const [pressedIndex, setPressedIndex] = useState(-1)
+
+  const handleTap = useCallback((index: number) => {
+    if (onSelect) onSelect(index)
+  }, [onSelect])
 
   return (
     <div style={{
@@ -64,21 +72,32 @@ const SkillsView = memo(function SkillsView({ section, focusIndex }: { section: 
             {cat.skills.map(skill => {
               const currentIndex = itemIndex
               const isFocused = focusIndex === currentIndex
+              const isActive = isFocused || pressedIndex === currentIndex
               itemIndex++
               return (
                 <div
                   key={skill.name}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleTap(currentIndex)}
+                  onTouchStart={() => setPressedIndex(currentIndex)}
+                  onTouchEnd={() => setPressedIndex(-1)}
+                  onTouchCancel={() => setPressedIndex(-1)}
                   style={{
                     padding: 'clamp(6px, 0.8vh, 10px) clamp(12px, 1.2vw, 18px)',
                     borderRadius: '8px',
-                    background: isFocused ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.04)',
-                    border: isFocused ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: isFocused ? `0 4px 16px ${cat.color}25` : 'none',
-                    transition: 'all 0.3s ease',
-                    color: isFocused ? '#fff' : '#c0c0d8',
+                    background: isActive ? `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)` : 'rgba(255,255,255,0.04)',
+                    border: isActive ? `2px solid ${cat.color}` : '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: isActive ? `0 4px 16px ${cat.color}25` : 'none',
+                    transition: 'all 0.15s ease',
+                    color: isActive ? '#fff' : '#c0c0d8',
                     fontSize: 'clamp(12px, 1.5vh, 16px)',
-                    fontWeight: isFocused ? '600' : '400',
-                    letterSpacing: '0.3px'
+                    fontWeight: isActive ? '600' : '400',
+                    letterSpacing: '0.3px',
+                    cursor: 'pointer',
+                    transform: pressedIndex === currentIndex ? 'scale(0.96)' : 'scale(1)',
+                    WebkitTapHighlightColor: 'transparent',
+                    userSelect: 'none' as const
                   }}
                 >
                   {skill.name}

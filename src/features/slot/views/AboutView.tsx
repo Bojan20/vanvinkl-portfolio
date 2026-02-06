@@ -1,10 +1,18 @@
-import { memo } from 'react'
+import { memo, useState, useCallback } from 'react'
 import type { AboutSection } from '../types'
 
-const AboutView = memo(function AboutView({ section, focusIndex }: { section: AboutSection, focusIndex: number }) {
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { section: AboutSection, focusIndex: number, onSelect?: (index: number) => void }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
-  const statColumns = isMobile ? 2 : Math.min(section.stats.length, 3)
+  const isLandscape = isMobile && window.innerWidth > window.innerHeight
+  const statColumns = isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
   const statRows = Math.ceil(section.stats.length / statColumns)
+  const [pressedIndex, setPressedIndex] = useState(-1)
+
+  const handleTap = useCallback((index: number) => {
+    if (onSelect) onSelect(index)
+  }, [onSelect])
 
   return (
     <div style={{
@@ -55,32 +63,43 @@ const AboutView = memo(function AboutView({ section, focusIndex }: { section: Ab
       }}>
         {section.stats.map((stat, i) => {
           const isFocused = focusIndex === i
+          const isActive = isFocused || pressedIndex === i
           return (
             <div
               key={stat.label}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleTap(i)}
+              onTouchStart={() => setPressedIndex(i)}
+              onTouchEnd={() => setPressedIndex(-1)}
+              onTouchCancel={() => setPressedIndex(-1)}
               style={{
-                background: isFocused
+                background: isActive
                   ? 'linear-gradient(135deg, rgba(136,68,255,0.18), rgba(136,68,255,0.06))'
                   : 'linear-gradient(135deg, rgba(136,68,255,0.06), rgba(136,68,255,0.02))',
                 borderRadius: '14px',
                 padding: 'clamp(12px, 1.5vh, 24px) clamp(10px, 1.2vw, 20px)',
                 textAlign: 'center',
-                border: isFocused ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.12)',
+                border: isActive ? '2px solid #8844ff' : '1px solid rgba(136,68,255,0.12)',
                 animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-                boxShadow: isFocused ? '0 6px 20px rgba(136,68,255,0.2)' : '0 2px 10px rgba(0,0,0,0.12)',
-                transition: 'all 0.3s ease',
+                boxShadow: isActive ? '0 6px 20px rgba(136,68,255,0.2)' : '0 2px 10px rgba(0,0,0,0.12)',
+                transition: 'all 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column' as const,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 'clamp(4px, 0.6vh, 10px)',
                 minHeight: 0,
-                overflow: 'hidden'
+                overflow: 'hidden',
+                cursor: 'pointer',
+                transform: pressedIndex === i ? 'scale(0.96)' : 'scale(1)',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none' as const
               }}
             >
               <div style={{
                 fontSize: 'clamp(24px, 3vh, 40px)',
-                filter: isFocused ? 'drop-shadow(0 0 12px rgba(136,68,255,0.6))' : 'none',
+                filter: isActive ? 'drop-shadow(0 0 12px rgba(136,68,255,0.6))' : 'none',
                 lineHeight: 1
               }}>{stat.icon}</div>
               <div style={{
@@ -88,17 +107,27 @@ const AboutView = memo(function AboutView({ section, focusIndex }: { section: Ab
                 fontWeight: 'bold',
                 fontSize: 'clamp(20px, 2.8vh, 34px)',
                 fontFamily: 'monospace',
-                textShadow: isFocused ? '0 0 15px rgba(136,68,255,0.4)' : 'none',
+                textShadow: isActive ? '0 0 15px rgba(136,68,255,0.4)' : 'none',
                 lineHeight: 1.1
               }}>{stat.value}</div>
               <div style={{
-                color: isFocused ? '#bbb' : '#777799',
+                color: isActive ? '#bbb' : '#777799',
                 fontSize: 'clamp(10px, 1.3vh, 14px)',
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 fontWeight: 600,
                 lineHeight: 1.2
               }}>{stat.label}</div>
+              {isTouch && (
+                <div style={{
+                  fontSize: '9px',
+                  color: '#8844ff',
+                  opacity: 0.5,
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase' as const,
+                  marginTop: 'clamp(2px, 0.3vh, 4px)'
+                }}>TAP FOR DETAILS</div>
+              )}
             </div>
           )
         })}

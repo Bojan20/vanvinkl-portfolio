@@ -159,27 +159,26 @@ export function getItemCount(section: SlotSection): number {
 export function getGridColumns(section: SlotSection): number {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 900
+  const isLandscape = isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
 
   switch (section.type) {
     case 'skills': {
-      // Skills navigate per individual skill within 2-column category grid
-      // But skills within a category are a vertical list, so left/right should move between categories
-      // Use 1 for vertical skill list navigation (up/down moves between skills)
+      // Skills navigate per individual skill — flat list, vertical navigation
       return 1
     }
-    case 'services': return isMobile ? 1 : 2
-    case 'about': return isMobile ? 2 : Math.min(section.stats.length, 3)
+    case 'services': return isMobile ? (isLandscape ? 2 : 1) : 2
+    case 'about': return isMobile ? (isLandscape ? 3 : 2) : Math.min(section.stats.length, 3)
     case 'projects': {
       const count = section.featured.length
       return isMobile ? 2 : isTablet ? 3 : (count <= 4 ? 2 : count <= 6 ? 3 : 4)
     }
     case 'experience': {
       const count = section.timeline.length
-      return isMobile ? 1 : (count <= 2 ? count : count <= 4 ? 2 : 3)
+      return isMobile ? (isLandscape ? 2 : 1) : (count <= 2 ? count : count <= 4 ? 2 : 3)
     }
     case 'contact': {
       const count = section.methods.length
-      return count <= 2 ? count : count <= 4 ? 2 : 3
+      return isMobile ? (isLandscape ? 2 : 1) : (count <= 2 ? count : count <= 4 ? 2 : 3)
     }
     default: return 1
   }

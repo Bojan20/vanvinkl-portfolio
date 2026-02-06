@@ -17,7 +17,9 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
   }
 
   const itemCount = section.methods.length
-  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const isLandscape = isMobile && window.innerWidth > window.innerHeight
+  const columns = isMobile ? (isLandscape ? 2 : 1) : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
 
   return (
     <div style={{
