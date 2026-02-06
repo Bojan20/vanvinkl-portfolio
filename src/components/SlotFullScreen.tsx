@@ -1249,6 +1249,9 @@ export function SlotFullScreen({
               selectedProject={selectedProject}
               onBackFromProject={() => {
                 console.log('[SlotFullScreen] onBackFromProject called, setting selectedProject to null')
+                // Set a flag to suppress the next popstate event (iOS Safari edge-swipe
+                // fires both our custom swipe AND the native back gesture → popstate)
+                ;(window as any).__suppressNextPopstate = Date.now()
                 setSelectedProject(null)
               }}
               onActivate={handleActivate}

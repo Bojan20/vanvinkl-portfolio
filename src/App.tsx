@@ -270,6 +270,15 @@ export function App() {
         closingViaEscRef.current = false
         return
       }
+      // Skip if PortfolioPlayer just handled a swipe-back (iOS Safari edge-swipe
+      // fires BOTH our custom swipe handler AND native history.back → popstate).
+      // Suppress popstate for 500ms after onBackFromProject was called.
+      const suppressTime = (window as any).__suppressNextPopstate
+      if (suppressTime && Date.now() - suppressTime < 500) {
+        console.log('[App] Suppressed popstate — PortfolioPlayer swipe-back in progress')
+        ;(window as any).__suppressNextPopstate = 0
+        return
+      }
       if (spinningSlot) {
         setSpinningSlot(null)
       }
