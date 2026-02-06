@@ -31,6 +31,7 @@ import { uaPlaySynth } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+const isMobilePortrait = isMobile && typeof window !== 'undefined' && window.innerHeight > window.innerWidth
 
 interface PortfolioPlayerProps {
   project: {
@@ -468,9 +469,9 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         left: '0',
         right: '0',
         display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        gap: isMobile ? '6px' : '8px',
-        alignItems: isMobile ? 'stretch' : 'center',
+        flexDirection: isMobilePortrait ? 'column' : 'row',
+        gap: isMobilePortrait ? '6px' : '8px',
+        alignItems: isMobilePortrait ? 'stretch' : 'center',
         padding: isMobile
           ? `8px max(12px, env(safe-area-inset-left, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px))`
           : `12px max(20px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-right, 0px))`,
@@ -479,7 +480,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         zIndex: 1000
       }}>
         {/* Music row */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobile ? undefined : 1 }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobilePortrait ? undefined : 1 }}>
           {/* Music Mute Button (focus 1) */}
           <button
             onClick={() => setMusicMuted(!musicMuted)}
@@ -556,7 +557,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </div>
 
         {/* SFX row */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobile ? undefined : 1 }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: isMobilePortrait ? undefined : 1 }}>
           {/* SFX Mute Button (focus 3) */}
           <button
             onClick={() => setSfxMuted(!sfxMuted)}
@@ -636,7 +637,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       {/* Video Progress Bar - Thin overlay above controls */}
       <div style={{
         position: 'fixed',
-        bottom: isMobile ? '108px' : '62px',
+        bottom: isMobilePortrait ? '108px' : '62px',
         left: 0,
         width: `${videoProgress}%`,
         height: isMobile ? '6px' : '4px',
