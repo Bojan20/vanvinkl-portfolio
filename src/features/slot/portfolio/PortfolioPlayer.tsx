@@ -104,16 +104,27 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     const sfx = sfxRef.current
     if (!video || !music || !sfx) return
 
-    // Wait for video to be ready enough
-    if (video.readyState < 3) { // HAVE_FUTURE_DATA
-      await new Promise<void>((resolve) => {
+    // Wait for video + audio to be buffered enough to play without stall
+    const waitReady = (el: HTMLMediaElement, label: string) =>
+      el.readyState >= 3 ? Promise.resolve() : new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          el.removeEventListener('canplay', onReady)
+          console.warn(`[Transport] ${label} canplay timeout — proceeding anyway`)
+          resolve()
+        }, 3000) // Don't block forever on slow mobile networks
         const onReady = () => {
-          video.removeEventListener('canplay', onReady)
+          clearTimeout(timeout)
+          el.removeEventListener('canplay', onReady)
           resolve()
         }
-        video.addEventListener('canplay', onReady)
+        el.addEventListener('canplay', onReady)
       })
-    }
+
+    await Promise.all([
+      waitReady(video, 'video'),
+      waitReady(music, 'music'),
+      waitReady(sfx, 'sfx')
+    ])
 
     playStateRef.current = 'prepared'
     console.log('[Transport] Idle → Prepared')
@@ -327,20 +338,29 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.currentTime = video.currentTime
     }
 
+    // Drift correction: only correct large drifts to avoid micro-seek stutter
+    // Mobile browsers fire timeupdate ~4Hz — aggressive correction causes audio gaps
+    let lastSyncTime = 0
+
     const handleTimeUpdate = () => {
       if (video.duration > 0) {
         setVideoProgress((video.currentTime / video.duration) * 100)
       }
       if (video.ended || playStateRef.current !== 'playing') return
 
-      // Drift correction — sync audio to video (50ms mobile, 100ms desktop)
-      const threshold = isMobile ? 0.05 : 0.1
+      // Throttle drift correction to max once per second
+      const now = performance.now()
+      if (now - lastSyncTime < 1000) return
+      lastSyncTime = now
+
+      // Only correct significant drift (300ms) — small drifts are imperceptible
+      // Setting currentTime causes a micro-seek → audio gap on mobile
       const musicDrift = Math.abs(video.currentTime - music.currentTime)
-      if (musicDrift > threshold) {
+      if (musicDrift > 0.3) {
         music.currentTime = video.currentTime
       }
       const sfxDrift = Math.abs(video.currentTime - sfx.currentTime)
-      if (sfxDrift > threshold) {
+      if (sfxDrift > 0.3) {
         sfx.currentTime = video.currentTime
       }
     }
@@ -635,12 +655,12 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       )}
 
       {/* Hidden audio tracks — SOLE audio source (video is muted) */}
-      <audio ref={musicRef} style={{ display: 'none' }}>
+      <audio ref={musicRef} preload="auto" style={{ display: 'none' }}>
         <source src={`${safeMusicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.opus`} type="audio/opus" />
         <source src={`${safeMusicPath || '/audioSlotPortfolio/music/Piggy-Plunger-Music'}.m4a`} type="audio/mp4" />
       </audio>
 
-      <audio ref={sfxRef} style={{ display: 'none' }}>
+      <audio ref={sfxRef} preload="auto" style={{ display: 'none' }}>
         <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.opus`} type="audio/opus" />
         <source src={`${safeSfxPath || '/audioSlotPortfolio/sfx/Piggy-Plunger-SFX'}.m4a`} type="audio/mp4" />
       </audio>
