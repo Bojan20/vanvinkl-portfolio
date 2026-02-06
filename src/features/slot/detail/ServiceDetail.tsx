@@ -28,7 +28,7 @@ export const ServiceDetail = memo(function ServiceDetail({
       <div style={{
         position: 'relative',
         textAlign: 'center',
-        marginBottom: '30px'
+        marginBottom: 'clamp(16px, 4vw, 30px)'
       }}>
         <div style={{
           fontSize: 'clamp(56px, 18vw, 100px)',
@@ -54,7 +54,7 @@ export const ServiceDetail = memo(function ServiceDetail({
       </div>
 
       <h2 style={{
-        margin: '0 0 20px 0',
+        margin: '0 0 clamp(12px, 3vw, 20px) 0',
         fontSize: 'clamp(24px, 6vw, 40px)',
         color: '#ff00aa',
         fontWeight: 900,

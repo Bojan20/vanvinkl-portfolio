@@ -167,7 +167,7 @@ export function getGridColumns(section: SlotSection): number {
       // Use 1 for vertical skill list navigation (up/down moves between skills)
       return 1
     }
-    case 'services': return 2
+    case 'services': return isMobile ? 1 : 2
     case 'about': return isMobile ? 2 : Math.min(section.stats.length, 3)
     case 'projects': {
       const count = section.featured.length
@@ -175,7 +175,7 @@ export function getGridColumns(section: SlotSection): number {
     }
     case 'experience': {
       const count = section.timeline.length
-      return count <= 2 ? count : count <= 4 ? 2 : 3
+      return isMobile ? 1 : (count <= 2 ? count : count <= 4 ? 2 : 3)
     }
     case 'contact': {
       const count = section.methods.length

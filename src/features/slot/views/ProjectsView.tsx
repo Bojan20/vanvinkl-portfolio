@@ -130,7 +130,7 @@ const ProjectsView = memo(function ProjectsView({ section, focusIndex, onSelect 
               lineHeight: 1.6,
               textAlign: 'center',
               display: '-webkit-box',
-              WebkitLineClamp: 5,
+              WebkitLineClamp: isMobile ? 3 : 5,
               WebkitBoxOrient: 'vertical' as const,
               overflow: 'hidden'
             }}>{proj.description}</p>

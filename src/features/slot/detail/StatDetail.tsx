@@ -54,13 +54,13 @@ export const StatDetail = memo(function StatDetail({
       {/* Bio section */}
       {stat.bio && (
         <div style={{
-          marginTop: '30px',
+          marginTop: 'clamp(16px, 4vw, 30px)',
           padding: 'clamp(12px, 3vw, 20px) clamp(16px, 4vw, 30px)',
           background: 'rgba(136,68,255,0.1)',
           borderRadius: '16px',
           border: '1px solid rgba(136,68,255,0.3)',
           color: '#888',
-          fontSize: '15px',
+          fontSize: 'clamp(13px, 3.5vw, 15px)',
           lineHeight: 1.8,
           fontStyle: 'italic',
           animation: showContent ? 'modalTextReveal 0.6s ease-out 0.2s both' : 'none'

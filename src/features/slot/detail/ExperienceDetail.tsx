@@ -28,10 +28,10 @@ export const ExperienceDetail = memo(function ExperienceDetail({
       <div style={{
         display: 'inline-block',
         color: '#00ff88',
-        fontSize: '14px',
-        marginBottom: '16px',
-        letterSpacing: '3px',
-        padding: '10px 24px',
+        fontSize: 'clamp(12px, 3vw, 14px)',
+        marginBottom: 'clamp(10px, 2.5vw, 16px)',
+        letterSpacing: 'clamp(1px, 0.5vw, 3px)',
+        padding: 'clamp(6px, 2vw, 10px) clamp(14px, 4vw, 24px)',
         background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,255,136,0.05))',
         borderRadius: '30px',
         border: '1px solid rgba(0,255,136,0.4)',
@@ -61,8 +61,8 @@ export const ExperienceDetail = memo(function ExperienceDetail({
         {exp.highlights.map((h, i) => (
           <li key={i} style={{
             color: '#aaa',
-            fontSize: '16px',
-            marginBottom: '18px',
+            fontSize: 'clamp(13px, 3.5vw, 16px)',
+            marginBottom: 'clamp(10px, 2.5vw, 18px)',
             lineHeight: 1.8,
             paddingLeft: 'clamp(20px, 5vw, 32px)',
             position: 'relative',

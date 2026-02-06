@@ -806,8 +806,8 @@ export function SlotFullScreen({
         </div>
       )}
 
-      {/* Content navigation hint - shows on first visit to content phase */}
-      {phase === 'content' && showContentHint && !selectedProject && (
+      {/* Content navigation hint - desktop only (no keyboard on touch devices) */}
+      {phase === 'content' && showContentHint && !selectedProject && !window.matchMedia('(pointer: coarse)').matches && (
         <div
           className="content-hint"
           style={{

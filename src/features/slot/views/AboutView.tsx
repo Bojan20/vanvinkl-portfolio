@@ -32,7 +32,11 @@ const AboutView = memo(function AboutView({ section, focusIndex }: { section: Ab
           textAlign: 'center',
           margin: 0,
           textShadow: '0 2px 15px rgba(0,0,0,0.4)',
-          letterSpacing: '0.2px'
+          letterSpacing: '0.2px',
+          display: isMobile ? '-webkit-box' : undefined,
+          WebkitLineClamp: isMobile ? 4 : undefined,
+          WebkitBoxOrient: isMobile ? 'vertical' as const : undefined,
+          overflow: isMobile ? 'hidden' : undefined
         }}>
           {section.bio}
         </p>

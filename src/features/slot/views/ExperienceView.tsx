@@ -3,7 +3,8 @@ import type { ExperienceSection } from '../types'
 
 const ExperienceView = memo(function ExperienceView({ section, focusIndex }: { section: ExperienceSection, focusIndex: number }) {
   const itemCount = section.timeline.length
-  const columns = itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const columns = isMobile ? 1 : (itemCount <= 2 ? itemCount : itemCount <= 4 ? 2 : 3)
   const rows = Math.ceil(itemCount / columns)
 
   return (

@@ -3,7 +3,8 @@ import type { ServicesSection } from '../types'
 
 const ServicesView = memo(function ServicesView({ section, focusIndex }: { section: ServicesSection, focusIndex: number }) {
   const itemCount = section.items.length
-  const columns = itemCount <= 2 ? itemCount : 2
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600
+  const columns = isMobile ? 1 : (itemCount <= 2 ? itemCount : 2)
   const rows = Math.ceil(itemCount / columns)
 
   return (
