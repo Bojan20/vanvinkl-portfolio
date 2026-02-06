@@ -71,15 +71,20 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     }
   }, [])
 
-  // Orientation / resize / visibility → resume audio interrupted by browser
+  // Orientation / resize / visibility → resume audio interrupted by browser (debounced)
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
     const resumePlaying = () => {
-      const idx = playingIndexRef.current
-      if (idx < 0) return
-      const audio = audioRefs.current[idx]
-      if (audio && audio.paused && audio.currentTime < audio.duration) {
-        audio.play().catch(() => {})
-      }
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        const idx = playingIndexRef.current
+        if (idx < 0) return
+        const audio = audioRefs.current[idx]
+        if (audio && audio.paused && audio.currentTime < audio.duration) {
+          audio.play().catch(() => {})
+        }
+      }, 300)
     }
 
     const handleVisibility = () => {
@@ -91,6 +96,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       window.removeEventListener('orientationchange', resumePlaying)
       window.removeEventListener('resize', resumePlaying)
       document.removeEventListener('visibilitychange', handleVisibility)

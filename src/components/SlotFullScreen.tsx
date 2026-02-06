@@ -515,44 +515,55 @@ export function SlotFullScreen({
     }
   }, [section])
 
-  // Touch/swipe handlers for mobile navigation
-  // IMPORTANT: PortfolioPlayer has its own swipe handler that calls onBack().
-  // We must NOT handle swipe here when a project is open — PortfolioPlayer owns it.
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Skip when PortfolioPlayer is active — it handles its own swipe
-    if (selectedProjectRef.current) return
-    const touch = e.touches[0]
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now()
-    }
-  }, [])
+  // Touch/swipe for mobile — SKIPPED entirely when PortfolioPlayer/AudioOnlyPlayer is active.
+  // Uses ref for onClose to avoid re-registering listener on every render.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return
-    // Double-check: skip if project opened between touchstart and touchend
-    if (selectedProjectRef.current) {
-      touchStartRef.current = null
-      return
-    }
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
 
-    const touch = e.changedTouches[0]
-    const dx = touch.clientX - touchStartRef.current.x
-    const dy = touch.clientY - touchStartRef.current.y
-    const dt = Date.now() - touchStartRef.current.time
-
-    // Swipe right = close slot (back to lounge)
-    if (Math.abs(dx) > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx > 0) {
-        haptic.light()
-        uaPlaySynth('back', 0.4)
-        onClose()
+    const onTouchStart = (e: TouchEvent) => {
+      // Skip when video/audio player is active — they own swipe
+      if (selectedProjectRef.current) return
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now()
       }
     }
 
-    touchStartRef.current = null
-  }, [onClose])
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!touchStartRef.current) return
+      if (selectedProjectRef.current) {
+        touchStartRef.current = null
+        return
+      }
+
+      const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+      const dy = e.changedTouches[0].clientY - touchStartRef.current.y
+      const dt = Date.now() - touchStartRef.current.time
+
+      if (Math.abs(dx) > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx > 0) {
+          haptic.light()
+          uaPlaySynth('back', 0.4)
+          onCloseRef.current()
+        }
+      }
+
+      touchStartRef.current = null
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [phase]) // re-register when phase changes (containerRef mounts/unmounts)
 
   // Keyboard navigation - UNIFIED handler for all phases
   useEffect(() => {
@@ -1107,8 +1118,6 @@ export function SlotFullScreen({
       {phase === 'content' && section && (
         <div
           ref={containerRef}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
           style={{
             width: '100%',
             height: '100%',

@@ -288,31 +288,43 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Orientation / resize / visibility → HARD SYNC + resume paused audio
+  // Orientation / resize / visibility → resume paused media (debounced)
+  // Key insight: do NOT seek currentTime on resize — it causes audio stutter.
+  // Only resume .play() if browser paused media during rotation.
+  // Timeline sync only if drift exceeds 300ms (same as timeupdate drift correction).
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
     const forceSync = () => {
-      const video = videoRef.current
-      const music = musicRef.current
-      const sfx = sfxRef.current
-      if (!video || !music || !sfx) return
+      // Debounce: resize fires 5-15x during rotation — only act once at the end
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        const video = videoRef.current
+        const music = musicRef.current
+        const sfx = sfxRef.current
+        if (!video || !music || !sfx) return
 
-      setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
+        setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
 
-      // Sync timeline + resume audio if playing (orientation change can pause audio)
-      if (playStateRef.current === 'playing') {
-        music.currentTime = video.currentTime
-        sfx.currentTime = video.currentTime
-        if (music.paused) music.play().catch(() => {})
-        if (sfx.paused) sfx.play().catch(() => {})
-        if (video.paused) video.play().catch(() => {})
-        console.log('[Transport] Hard sync on orientation/resize/visibility')
-      }
+        if (playStateRef.current === 'playing') {
+          // Resume any media paused by the browser during rotation
+          if (video.paused) video.play().catch(() => {})
+          if (music.paused) music.play().catch(() => {})
+          if (sfx.paused) sfx.play().catch(() => {})
+
+          // Only re-sync timeline if drift is significant (>300ms)
+          const drift = Math.abs(music.currentTime - video.currentTime)
+          if (drift > 0.3) {
+            music.currentTime = video.currentTime
+            sfx.currentTime = video.currentTime
+            console.log(`[Transport] Orientation sync: corrected ${drift.toFixed(1)}s drift`)
+          }
+        }
+      }, 300)
     }
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        forceSync()
-      }
+      if (document.visibilityState === 'visible') forceSync()
     }
 
     window.addEventListener('orientationchange', forceSync)
@@ -320,6 +332,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       window.removeEventListener('orientationchange', forceSync)
       window.removeEventListener('resize', forceSync)
       document.removeEventListener('visibilitychange', handleVisibility)
