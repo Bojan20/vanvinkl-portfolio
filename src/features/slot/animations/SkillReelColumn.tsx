@@ -2,10 +2,10 @@
  * SkillReelColumn - Single reel column animation component
  *
  * PRODUCTION-CRITICAL: RAF-based 4-phase state machine
- * - Phase 1: Accelerate (0-500ms) - Speed up, add blur
- * - Phase 2: Spin (500ms-stopTime) - Full speed cycling
- * - Phase 3: Decelerate (300ms) - Slow down, remove blur
- * - Phase 4: Bounce (300ms) - Overshoot + settle animation
+ * - Phase 1: Accelerate (0-350ms) - Speed up, add blur
+ * - Phase 2: Spin (350ms-stopTime) - Full speed cycling
+ * - Phase 3: Decelerate (250ms) - Slow down, remove blur
+ * - Phase 4: Bounce (250ms) - Overshoot + settle animation
  *
  * ZERO-LATENCY FEATURES:
  * - Touch-to-stop: Space key instantly stops all reels
@@ -101,12 +101,12 @@ const SkillReelColumn = memo(function SkillReelColumn({
     if (state.phase === 'idle') return
 
     const elapsed = performance.now() - state.startTime
-    const delayMs = delay * 120
+    const delayMs = delay * 60
 
     // Phase transitions based on elapsed time
     if (state.phase === 'accelerating') {
-      // Accelerate: 0-500ms
-      const accelProgress = Math.min(elapsed / 500, 1)
+      // Accelerate: 0-350ms
+      const accelProgress = Math.min(elapsed / 350, 1)
       state.speed = 50 - (32 * accelProgress) // 50 → 18
       const blur = Math.min((50 - state.speed) / 2, 12)
       state.rotation = (state.rotation + deltaTime * 0.5) % 360
@@ -128,8 +128,8 @@ const SkillReelColumn = memo(function SkillReelColumn({
       if (accelProgress >= 1) state.phase = 'spinning'
     }
     else if (state.phase === 'spinning') {
-      // Full speed: 500ms - stopTime
-      const stopTime = 1800 + delay * 500
+      // Full speed: 350ms - stopTime
+      const stopTime = 1000 + delay * 180
       state.rotation = (state.rotation + deltaTime * 0.5) % 360
       const rotX = Math.sin(state.rotation * Math.PI / 180) * 8
 
@@ -147,10 +147,10 @@ const SkillReelColumn = memo(function SkillReelColumn({
       if (elapsed >= stopTime) state.phase = 'decelerating'
     }
     else if (state.phase === 'decelerating') {
-      // Decelerate: ~300ms
-      const decelStart = 1800 + delay * 500
+      // Decelerate: ~250ms
+      const decelStart = 1000 + delay * 180
       const decelElapsed = elapsed - decelStart
-      const decelProgress = Math.min(decelElapsed / 300, 1)
+      const decelProgress = Math.min(decelElapsed / 250, 1)
 
       state.speed = 18 + (182 * decelProgress) // 18 → 200
       const blur = Math.max(12 - (12 * decelProgress), 0)
@@ -187,8 +187,8 @@ const SkillReelColumn = memo(function SkillReelColumn({
             }))
             state.hasStopped = true
             state.phase = 'idle'
-          }, 150)
-        }, 150)
+          }, 125)
+        }, 125)
       }
     }
   }, spinning && !forceStop)

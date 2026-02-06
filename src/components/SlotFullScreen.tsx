@@ -208,6 +208,7 @@ export function SlotFullScreen({
   const [isJackpot, setIsJackpot] = useState(false)
   const [jackpotStory, setJackpotStory] = useState<{ story: string, highlight: string } | undefined>()
   const [forceStop, setForceStop] = useState(false)
+  const [inspectMode, setInspectMode] = useState(false)
   const [introStep, setIntroStep] = useState(0) // 0: black, 1: lights, 2: machine, 3: ready
   const [detailItem, setDetailItem] = useState<{ type: string, index: number, data: unknown } | null>(null)
   const [selectedProject, setSelectedProject] = useState<{ icon: string, title: string, description: string, year: string, tags: string[], videoPath?: string, posterPath?: string, musicPath?: string, sfxPath?: string, audioTracks?: { label: string, path: string }[] } | null>(null)
@@ -295,7 +296,7 @@ export function SlotFullScreen({
   // Auto-transition to result after all reels stop
   useEffect(() => {
     if (phase === 'spinning') {
-      const totalSpinTime = 1800 + 4 * 500 + 400 // Last reel stop + bounce + buffer
+      const totalSpinTime = 1000 + 4 * 180 + 350 // Last reel stop + decel/bounce + buffer (~2070ms)
       const timer = setTimeout(() => {
         setPhase('result')
         // Only haptic feedback - no win/jackpot sounds (reel sounds are enough)
@@ -324,6 +325,16 @@ export function SlotFullScreen({
       return () => clearTimeout(timer)
     }
   }, [phase, targetIndices, segmentConfig, isJackpot, section])
+
+  // Inspect Mode - subtle scale-down after result reels settle
+  useEffect(() => {
+    if (phase === 'result') {
+      const timer = setTimeout(() => setInspectMode(true), 400)
+      return () => clearTimeout(timer)
+    } else {
+      setInspectMode(false)
+    }
+  }, [phase])
 
   // Reset focus when entering content phase
   useEffect(() => {
@@ -898,7 +909,10 @@ export function SlotFullScreen({
               0 0 80px ${primaryColor}15
             `,
             border: `2px solid ${primaryColor}30`,
-            position: 'relative'
+            position: 'relative',
+            transform: inspectMode ? 'scale(0.97)' : 'scale(1)',
+            filter: inspectMode ? 'brightness(0.92)' : 'brightness(1)',
+            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), filter 0.5s ease'
           }}>
             {/* Outer chrome frame */}
             <div style={{

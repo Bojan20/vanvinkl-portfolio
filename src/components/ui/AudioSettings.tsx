@@ -15,12 +15,11 @@ function isMobileDevice(): boolean {
 }
 
 interface AudioSettingsProps {
-  disabled?: boolean
   isOpen: boolean
   setIsOpen: (open: boolean) => void
 }
 
-export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProps) {
+export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
   const isMobile = isMobileDevice()
   const [selected, setSelected] = useState<'music' | 'sfx'>('music')
 
@@ -29,8 +28,6 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
 
   // Keyboard controls
   useEffect(() => {
-    if (disabled) return
-
     const handleKeyDown = (e: KeyboardEvent) => {
       // A key toggles menu
       if (e.code === 'KeyA' && !e.ctrlKey && !e.metaKey && !isOpen) {
@@ -86,49 +83,58 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [disabled, isOpen, selected, musicVolume, sfxVolume, setMusicVolume, setSfxVolume, setIsOpen])
+  }, [isOpen, selected, musicVolume, sfxVolume, setMusicVolume, setSfxVolume, setIsOpen])
 
   return (
     <>
-      {/* Hint in controls bar - always visible */}
+      {/* Hint button - desktop: bottom-right, mobile: below fullscreen toggle */}
       <div style={{
         position: 'fixed',
-        top: isMobile ? '20px' : 'auto',
+        top: isMobile ? 'calc(max(16px, env(safe-area-inset-top, 0px)) + 52px)' : 'auto',
         bottom: isMobile ? 'auto' : '20px',
-        right: '20px',
+        right: isMobile ? 'max(16px, env(safe-area-inset-right, 0px))' : '20px',
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        padding: '8px 14px',
+        padding: isMobile ? '10px 12px' : '8px 14px',
         background: 'rgba(5, 5, 15, 0.75)',
         border: '1px solid rgba(136, 68, 255, 0.3)',
         borderRadius: '20px',
         backdropFilter: 'blur(8px)',
         zIndex: 100,
         transition: 'all 0.2s ease',
-        opacity: disabled ? 0.3 : 1,
-        cursor: disabled ? 'default' : 'pointer',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        cursor: 'pointer',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none' as const
       }}
-      onClick={() => !disabled && setIsOpen(!isOpen)}
+      onClick={() => setIsOpen(!isOpen)}
       >
-        <span style={{
-          padding: '2px 8px',
-          background: 'rgba(136, 68, 255, 0.2)',
-          border: '1px solid rgba(136, 68, 255, 0.5)',
-          borderRadius: '4px',
-          color: '#8844ff',
-          fontSize: '11px',
-          fontFamily: 'monospace',
-          fontWeight: 'bold'
-        }}>
-          A
-        </span>
+        {/* Icon */}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8844ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+        </svg>
+        {/* Keyboard hint - desktop only */}
+        {!isMobile && (
+          <span style={{
+            padding: '2px 6px',
+            background: 'rgba(136, 68, 255, 0.2)',
+            border: '1px solid rgba(136, 68, 255, 0.5)',
+            borderRadius: '4px',
+            color: '#8844ff',
+            fontSize: '10px',
+            fontFamily: 'monospace',
+            fontWeight: 'bold'
+          }}>
+            A
+          </span>
+        )}
         <span style={{ color: '#888899', fontSize: '11px' }}>AUDIO</span>
       </div>
 
       {/* Audio Settings Panel */}
-      {isOpen && !disabled && (
+      {isOpen && (
         <>
           {/* Backdrop - tap to close */}
           {isMobile && (
@@ -147,9 +153,9 @@ export function AudioSettings({ disabled, isOpen, setIsOpen }: AudioSettingsProp
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
-              top: isMobile ? '80px' : 'auto',
+              top: isMobile ? 'calc(max(16px, env(safe-area-inset-top, 0px)) + 100px)' : 'auto',
               bottom: isMobile ? 'auto' : '70px',
-              right: '20px',
+              right: isMobile ? 'max(16px, env(safe-area-inset-right, 0px))' : '20px',
               background: 'rgba(5, 5, 15, 0.95)',
               border: '1px solid rgba(136, 68, 255, 0.4)',
               borderRadius: '16px',

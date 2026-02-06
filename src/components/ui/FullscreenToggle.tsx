@@ -38,7 +38,7 @@ function exitFullscreen() {
   }
 }
 
-export function FullscreenToggle() {
+export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}) {
   const isMobile = isMobileDevice()
   const [isFullscreen, setIsFullscreen] = useState(isInFullscreen)
 
@@ -87,15 +87,17 @@ export function FullscreenToggle() {
       aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
       style={{
         position: 'fixed',
-        top: isMobile ? 'max(16px, env(safe-area-inset-top, 0px))' : '20px',
+        top: compact
+          ? (isMobile ? 'max(16px, env(safe-area-inset-top, 0px))' : '64px')
+          : (isMobile ? 'max(16px, env(safe-area-inset-top, 0px))' : '20px'),
         right: isMobile ? 'max(16px, env(safe-area-inset-right, 0px))' : '20px',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
-        padding: isMobile ? '12px 14px' : '10px 16px',
+        gap: compact ? '0' : '8px',
+        padding: compact ? (isMobile ? '12px' : '10px') : (isMobile ? '12px 14px' : '10px 16px'),
         background: 'rgba(5, 5, 15, 0.75)',
         border: `1px solid ${isFullscreen ? 'rgba(0, 255, 136, 0.4)' : 'rgba(0, 255, 255, 0.3)'}`,
-        borderRadius: '20px',
+        borderRadius: compact ? '50%' : '20px',
         backdropFilter: 'blur(8px)',
         cursor: 'pointer',
         zIndex: 10000,
@@ -135,18 +137,20 @@ export function FullscreenToggle() {
         )}
       </svg>
 
-      {/* Label */}
-      <span style={{
-        color: isFullscreen ? '#00ff88' : '#00ffff',
-        fontSize: '11px',
-        fontWeight: 'bold',
-        letterSpacing: '1px'
-      }}>
-        {isFullscreen ? 'EXIT' : 'FULL'}
-      </span>
+      {/* Label - hidden in compact mode */}
+      {!compact && (
+        <span style={{
+          color: isFullscreen ? '#00ff88' : '#00ffff',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          letterSpacing: '1px'
+        }}>
+          {isFullscreen ? 'EXIT' : 'FULL'}
+        </span>
+      )}
 
-      {/* Keyboard hint - desktop only */}
-      {!isMobile && (
+      {/* Keyboard hint - desktop only, hidden in compact mode */}
+      {!compact && !isMobile && (
         <span style={{
           padding: '2px 6px',
           background: 'rgba(255, 255, 255, 0.1)',

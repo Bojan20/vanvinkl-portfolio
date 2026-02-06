@@ -354,14 +354,14 @@ export function App() {
         />
       </Suspense>
 
-      {/* Sound Toggle - always visible after intro */}
-      {!showIntro && <SoundToggle />}
+      {/* Sound Toggle - lounge only (slot has its own audio controls) */}
+      {!showIntro && !spinningSlot && <SoundToggle />}
 
-      {/* Fullscreen Toggle - top-right corner */}
-      {!showIntro && <FullscreenToggle />}
+      {/* Fullscreen Toggle - always visible (compact icon-only in slot to avoid overlap with ESC button) */}
+      {!showIntro && <FullscreenToggle compact={!!spinningSlot} />}
 
-      {/* Audio Settings - keyboard-controlled panel (A key to open) */}
-      {!showIntro && <AudioSettings disabled={!!spinningSlot} isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}
+      {/* Audio Settings - lounge only (slot has its own audio controls) */}
+      {!showIntro && !spinningSlot && <AudioSettings isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}
 
       {/* Spectrum Visualizer - audio reactive bars */}
       {!showIntro && !spinningSlot && !isMobile && (
