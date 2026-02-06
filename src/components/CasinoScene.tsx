@@ -97,6 +97,10 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   const lastFootstepTime = useRef(0)
   const footstepFoot = useRef(0) // 0 = left, 1 = right (alternating)
 
+  // Track slotOpen as ref for event handlers with stable deps
+  const slotOpenRef = useRef(slotOpen)
+  slotOpenRef.current = slotOpen
+
   // State refs (avoid re-renders)
   const nearMachineRef = useRef<string | null>(null)
   const spinningMachineRef = useRef<string | null>(null)
@@ -119,7 +123,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   // Keyboard handlers for orbital camera when sitting
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isSittingRef.current) return
+      if (!isSittingRef.current || slotOpenRef.current) return
       switch (e.code) {
         case 'ArrowLeft': orbitKeys.current.left = true; e.preventDefault(); break
         case 'ArrowRight': orbitKeys.current.right = true; e.preventDefault(); break
@@ -138,7 +142,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
     }
 
     const handleWheel = (e: WheelEvent) => {
-      if (!isSittingRef.current) return
+      if (!isSittingRef.current || slotOpenRef.current) return
       orbitDistance.current = Math.max(3, Math.min(12, orbitDistance.current + e.deltaY * 0.01))
     }
 
@@ -190,6 +194,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   // Handle SPACE key for spinning OR sitting
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (slotOpenRef.current) return
       if (e.code === 'Space') {
         e.preventDefault()
 

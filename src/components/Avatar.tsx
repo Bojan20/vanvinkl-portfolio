@@ -152,7 +152,7 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   // Track inputDisabled
   const inputDisabledRef = useRef(inputDisabled)
 
-  // Update inputDisabled ref and reset keys when disabled
+  // Update inputDisabled ref and reset keys + velocity when disabled
   useFrame(() => {
     if (inputDisabled !== inputDisabledRef.current) {
       inputDisabledRef.current = inputDisabled
@@ -161,6 +161,8 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
         keysRef.current.backward = false
         keysRef.current.left = false
         keysRef.current.right = false
+        velocityRef.current.x = 0
+        velocityRef.current.z = 0
       }
     }
   })
@@ -224,8 +226,8 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   useFrame((_, delta) => {
     if (!groupRef.current) return
 
-    const mobileMoving = mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)
-    const moving = !isSittingRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right || mobileMoving)
+    const mobileMoving = !inputDisabledRef.current && mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)
+    const moving = !isSittingRef.current && !inputDisabledRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right || mobileMoving)
     glowTime.current += delta
 
     if (isMovingRef) isMovingRef.current = !!moving
