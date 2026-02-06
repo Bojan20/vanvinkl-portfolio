@@ -203,7 +203,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
             ? '0 0 40px rgba(0, 255, 255, 0.4), inset 0 0 40px rgba(0, 255, 255, 0.1)'
             : '0 0 20px rgba(0, 255, 255, 0.2)',
           transform: isLoaded && isHovered ? 'scale(1.05)' : 'scale(1)',
-          minWidth: '340px'
+          minWidth: 'clamp(280px, 80vw, 340px)'
         }}>
           {/* Corner accents */}
           {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => (

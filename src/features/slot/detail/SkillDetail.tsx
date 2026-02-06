@@ -29,8 +29,8 @@ export const SkillDetail = memo(function SkillDetail({
     <div style={{ textAlign: 'center' }}>
       {/* Animated icon with glow pulse */}
       <div style={{
-        fontSize: '80px',
-        marginBottom: '24px',
+        fontSize: 'clamp(48px, 15vw, 80px)',
+        marginBottom: 'clamp(12px, 3vw, 24px)',
         animation: 'modalIconPulse 2s ease-in-out infinite',
         filter: `drop-shadow(0 0 30px ${skill.categoryColor})`
       }}>{skill.categoryIcon}</div>
@@ -53,8 +53,8 @@ export const SkillDetail = memo(function SkillDetail({
 
       {/* Skill name with glitch effect */}
       <h2 style={{
-        margin: '0 0 40px 0',
-        fontSize: '48px',
+        margin: '0 0 clamp(16px, 4vw, 40px) 0',
+        fontSize: 'clamp(28px, 7vw, 48px)',
         color: '#fff',
         fontWeight: 900,
         textShadow: `0 0 20px ${skill.categoryColor}60, 0 0 40px ${skill.categoryColor}30`,
@@ -123,7 +123,7 @@ export const SkillDetail = memo(function SkillDetail({
 
       {/* Percentage with counter animation */}
       <div style={{
-        fontSize: '64px',
+        fontSize: 'clamp(36px, 10vw, 64px)',
         fontWeight: 900,
         color: skill.categoryColor,
         textShadow: `0 0 40px ${skill.categoryColor}80`,

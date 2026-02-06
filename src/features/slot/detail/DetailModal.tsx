@@ -93,8 +93,8 @@ const DetailModal = memo(function DetailModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2000,
-        animation: 'modalBackdropReveal 0.4s ease-out forwards',
-        backdropFilter: 'blur(10px)'
+        padding: 'max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))',
+        animation: 'modalBackdropReveal 0.4s ease-out forwards'
       }}
     >
       {/* Cinematic light rays */}
@@ -110,8 +110,8 @@ const DetailModal = memo(function DetailModal({
         pointerEvents: 'none'
       }} />
 
-      {/* Corner decorations */}
-      {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner, i) => (
+      {/* Corner decorations (hidden on mobile - saves space) */}
+      {!window.matchMedia('(pointer: coarse)').matches && ['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner, i) => (
         <div key={corner} style={{
           position: 'absolute',
           [corner.includes('top') ? 'top' : 'bottom']: '20px',
@@ -133,9 +133,13 @@ const DetailModal = memo(function DetailModal({
         style={{
           background: 'linear-gradient(180deg, #18182e 0%, #0c0c18 100%)',
           borderRadius: '28px',
-          padding: '60px',
+          padding: 'clamp(20px, 5vw, 60px)',
           maxWidth: '650px',
           width: '90%',
+          maxHeight: '85dvh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch' as any,
           border: `2px solid ${primaryColor}50`,
           boxShadow: `
             0 0 80px ${primaryColor}40,
@@ -144,8 +148,7 @@ const DetailModal = memo(function DetailModal({
             inset 0 0 40px rgba(0,0,0,0.5)
           `,
           animation: 'modalCardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          position: 'relative',
-          overflow: 'hidden'
+          position: 'relative'
         }}
       >
         {/* Top shine line */}
@@ -164,21 +167,25 @@ const DetailModal = memo(function DetailModal({
 
         {/* Close hint with enhanced style */}
         <div style={{
-          marginTop: '50px',
+          marginTop: 'clamp(20px, 4vw, 50px)',
           textAlign: 'center',
           color: '#444',
           fontSize: '14px',
           animation: 'modalHintReveal 0.5s ease-out 0.5s both'
         }}>
-          Press <span style={{
-            color: primaryColor,
-            padding: '6px 16px',
-            background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`,
-            borderRadius: '8px',
-            border: `1px solid ${primaryColor}40`,
-            fontWeight: 600,
-            boxShadow: `0 2px 10px ${primaryColor}20`
-          }}>ESC</span> to close
+          {window.matchMedia('(pointer: coarse)').matches ? (
+            <>Tap outside to close</>
+          ) : (
+            <>Press <span style={{
+              color: primaryColor,
+              padding: '6px 16px',
+              background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`,
+              borderRadius: '8px',
+              border: `1px solid ${primaryColor}40`,
+              fontWeight: 600,
+              boxShadow: `0 2px 10px ${primaryColor}20`
+            }}>ESC</span> to close</>
+          )}
         </div>
       </div>
     </div>

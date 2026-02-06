@@ -31,7 +31,7 @@ export const ServiceDetail = memo(function ServiceDetail({
         marginBottom: '30px'
       }}>
         <div style={{
-          fontSize: '100px',
+          fontSize: 'clamp(56px, 18vw, 100px)',
           animation: 'modalIconFloat 3s ease-in-out infinite',
           filter: 'drop-shadow(0 0 40px rgba(255,0,170,0.5))'
         }}>{service.icon}</div>
@@ -55,7 +55,7 @@ export const ServiceDetail = memo(function ServiceDetail({
 
       <h2 style={{
         margin: '0 0 20px 0',
-        fontSize: '40px',
+        fontSize: 'clamp(24px, 6vw, 40px)',
         color: '#ff00aa',
         fontWeight: 900,
         textAlign: 'center',
@@ -65,19 +65,19 @@ export const ServiceDetail = memo(function ServiceDetail({
 
       <p style={{
         color: '#999',
-        fontSize: '18px',
-        lineHeight: 2,
-        marginBottom: '35px',
+        fontSize: 'clamp(14px, 3.5vw, 18px)',
+        lineHeight: 1.8,
+        marginBottom: 'clamp(16px, 4vw, 35px)',
         textAlign: 'center',
         animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
       }}>{service.description}</p>
 
       {/* Feature tags with staggered animation */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(6px, 2vw, 12px)', justifyContent: 'center' }}>
         {service.features.map((f, i) => (
           <span key={f} style={{
-            fontSize: '14px',
-            padding: '12px 24px',
+            fontSize: 'clamp(12px, 3vw, 14px)',
+            padding: 'clamp(8px, 2vw, 12px) clamp(14px, 4vw, 24px)',
             background: 'linear-gradient(135deg, rgba(255,0,170,0.2), rgba(255,0,170,0.1))',
             borderRadius: '30px',
             color: '#ff00aa',

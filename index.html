@@ -6,7 +6,10 @@
     <title>VanVinkl Casino | Creative Developer Portfolio</title>
 
     <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="Interactive 3D portfolio experience. Spin the slot machine to explore skills, projects, and services in a unique cyberpunk casino environment." />
@@ -79,6 +82,13 @@
       canvas {
         display: block;
         cursor: none !important;
+      }
+
+      /* Mobile: restore default cursor (no mouse on touch devices) */
+      @media (pointer: coarse) {
+        *, html, body, canvas {
+          cursor: default !important;
+        }
       }
 
       /* Hide all native video controls completely */

@@ -98,7 +98,7 @@ export const ProjectDetail = memo(function ProjectDetail({
         marginBottom: '30px'
       }}>
         <span style={{
-          fontSize: '90px',
+          fontSize: 'clamp(48px, 15vw, 90px)',
           animation: 'modalIconBounce 0.6s ease-out',
           filter: 'drop-shadow(0 0 30px rgba(255,215,0,0.5))'
         }}>{proj.icon}</span>
@@ -117,7 +117,7 @@ export const ProjectDetail = memo(function ProjectDetail({
 
       <h2 style={{
         margin: '0 0 24px 0',
-        fontSize: '40px',
+        fontSize: 'clamp(24px, 6vw, 40px)',
         color: '#ffd700',
         fontWeight: 900,
         textShadow: '0 0 30px rgba(255,215,0,0.5)',
@@ -126,9 +126,9 @@ export const ProjectDetail = memo(function ProjectDetail({
 
       <p style={{
         color: '#999',
-        fontSize: '18px',
-        lineHeight: 2,
-        marginBottom: '35px',
+        fontSize: 'clamp(14px, 3.5vw, 18px)',
+        lineHeight: 1.8,
+        marginBottom: 'clamp(16px, 4vw, 35px)',
         animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
       }}>{proj.description}</p>
 
@@ -140,9 +140,11 @@ export const ProjectDetail = memo(function ProjectDetail({
         <video
           ref={videoRef}
           controls
+          playsInline
           style={{
             width: '100%',
-            maxHeight: '500px',
+            maxHeight: 'clamp(200px, 50vh, 500px)',
+            aspectRatio: '16 / 9',
             borderRadius: '16px',
             border: '2px solid rgba(255,215,0,0.3)',
             boxShadow: '0 8px 40px rgba(255,215,0,0.2)',
@@ -261,11 +263,11 @@ export const ProjectDetail = memo(function ProjectDetail({
       </div>
 
       {/* Tech tags */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(6px, 2vw, 12px)' }}>
         {proj.tags.map((t, i) => (
           <span key={t} style={{
-            fontSize: '14px',
-            padding: '12px 24px',
+            fontSize: 'clamp(12px, 3vw, 14px)',
+            padding: 'clamp(8px, 2vw, 12px) clamp(14px, 4vw, 24px)',
             background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.1))',
             borderRadius: '30px',
             color: '#ffd700',

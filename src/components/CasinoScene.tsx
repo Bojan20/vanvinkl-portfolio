@@ -494,10 +494,10 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       ))}
 
       {/* ===== AMBIENT DUST ===== */}
-      <DustParticles count={30} area={[60, 9, 50]} color="#8866ff" opacity={0.25} size={0.04} />
+      <DustParticles count={isMobile ? 10 : 30} area={[60, 9, 50]} color="#8866ff" opacity={0.25} size={0.04} />
 
       {/* ===== FOG ===== */}
-      <fog attach="fog" args={['#080412', 18, 55]} />
+      <fog attach="fog" args={['#080412', 18, isMobile ? 40 : 55]} />
 
       {/* ===== POST-PROCESSING ===== */}
       {isMobile ? (

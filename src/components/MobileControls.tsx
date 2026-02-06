@@ -250,22 +250,32 @@ function ActionButton({ size, onPress, label = 'SPIN' }: ActionButtonProps) {
   const [pressed, setPressed] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault()
-    setPressed(true)
-    onPress()
-  }, [onPress])
+  // Use native event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const el = buttonRef.current
+    if (!el) return
 
-  const handleTouchEnd = useCallback(() => {
-    setPressed(false)
-  }, [])
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      setPressed(true)
+      onPress()
+    }
+    const handleTouchEnd = () => setPressed(false)
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: false })
+    el.addEventListener('touchend', handleTouchEnd, { passive: true })
+    el.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart)
+      el.removeEventListener('touchend', handleTouchEnd)
+      el.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [onPress])
 
   return (
     <button
       ref={buttonRef}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
       style={{
         width: size,
         height: size,

@@ -725,7 +725,7 @@ export function SlotFullScreen({
           pointerEvents: 'none',
           zIndex: 0
         }}>
-          {Array.from({ length: 20 }).map((_, i) => (
+          {Array.from({ length: window.matchMedia('(pointer: coarse)').matches ? 8 : 20 }).map((_, i) => (
             <div key={i} style={{
               position: 'absolute',
               left: `${Math.random() * 100}%`,
@@ -748,12 +748,11 @@ export function SlotFullScreen({
           className="esc-exit-hint"
           style={{
             position: 'fixed',
-            top: '24px',
-            right: '24px',
+            top: 'max(24px, env(safe-area-inset-top, 0px))',
+            right: 'max(24px, env(safe-area-inset-right, 0px))',
             padding: '10px 16px',
             borderRadius: '8px',
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(10px)',
+            background: 'rgba(0,0,0,0.75)',
             border: `1px solid ${primaryColor}40`,
             color: primaryColor,
             fontSize: '13px',
@@ -1280,7 +1279,7 @@ export function SlotFullScreen({
           )}
 
           {/* Content */}
-          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ animation: 'contentBodyReveal 0.8s ease-out 0.4s both', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any }}>
             <ContentView
               section={section}
               focusIndex={focusIndex}
@@ -1303,16 +1302,15 @@ export function SlotFullScreen({
             />
           )}
 
-          {/* Controls hint - bottom left */}
-          {!selectedProject && (
+          {/* Controls hint - bottom left (desktop only - keyboard controls) */}
+          {!selectedProject && !window.matchMedia('(pointer: coarse)').matches && (
             <div style={{
               position: 'fixed',
-              bottom: 'clamp(12px, 2vh, 24px)',
-              left: 'clamp(12px, 2vw, 24px)',
+              bottom: 'max(clamp(12px, 2vh, 24px), env(safe-area-inset-bottom, 0px))',
+              left: 'max(clamp(12px, 2vw, 24px), env(safe-area-inset-left, 0px))',
               padding: '10px 14px',
               borderRadius: '10px',
               background: 'rgba(0,0,0,0.7)',
-              backdropFilter: 'blur(8px)',
               border: `1px solid ${primaryColor}30`,
               color: '#888',
               fontSize: '11px',

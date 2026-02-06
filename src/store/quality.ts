@@ -39,11 +39,12 @@ interface QualityState {
   detectDeviceTier: () => void
 }
 
-// FPS thresholds for auto-adjustment
+// FPS thresholds for auto-adjustment (mobile-aware: tighter thresholds)
+const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 const FPS_THRESHOLDS = {
-  downgrade: 35,   // Ako FPS < 35, downgrade quality (relaxed - prefer visual quality)
-  upgrade: 50,     // Ako FPS > 50 stabilno, upgrade quality
-  stable: 45       // Target FPS za stable performance (relaxed)
+  downgrade: isMobile ? 45 : 35,  // Mobile: react faster to drops
+  upgrade: isMobile ? 55 : 50,    // Mobile: require higher sustained FPS before upgrading
+  stable: isMobile ? 50 : 45      // Mobile: higher stability bar
 }
 
 // FPS history za averaging (ring buffer)

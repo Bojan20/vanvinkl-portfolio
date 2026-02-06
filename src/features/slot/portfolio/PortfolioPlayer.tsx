@@ -26,9 +26,11 @@
  * Extracted from SlotFullScreen.tsx (lines 2717-3247)
  */
 
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, useMemo } from 'react'
 import { uaPlaySynth } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
+
+const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
 interface PortfolioPlayerProps {
   project: {
@@ -180,7 +182,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       if (video.ended) return
 
       const drift = Math.abs(video.currentTime - music.currentTime)
-      if (drift > 0.3) {
+      if (drift > (isMobile ? 0.15 : 0.3)) {
         music.currentTime = video.currentTime
         sfx.currentTime = video.currentTime
       }
@@ -327,7 +329,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     <div style={{
       position: 'relative',
       width: '100%',
-      height: '100vh',
+      height: '100dvh',
       margin: '0',
       padding: '0',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
@@ -335,29 +337,56 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       backgroundColor: '#000',
       cursor: 'pointer'
     }}>
-      {/* Permanent Controls Hint - Bottom Left (small) */}
-      <div style={{
-        position: 'fixed',
-        bottom: '80px',
-        left: '12px',
-        background: 'rgba(0,0,0,0.75)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,215,0,0.25)',
-        borderRadius: '6px',
-        padding: '8px 10px',
-        zIndex: 999,
-        color: '#ffd700',
-        fontSize: "12px",
-        fontFamily: 'monospace',
-        lineHeight: '1.4',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '3px', color: '#00ffff', fontSize: '11px' }}>CONTROLS</div>
-        <div>←→ Focus</div>
-        <div>↑↓ Volume</div>
-        <div>SPACE Play</div>
-        <div>ESC Exit</div>
-      </div>
+      {/* Mobile back button (no ESC key on touch devices) */}
+      {isMobile && (
+        <div
+          onClick={() => { uaPlaySynth('back', 0.4); onBack() }}
+          style={{
+            position: 'fixed',
+            top: 'max(16px, env(safe-area-inset-top, 0px))',
+            left: 'max(16px, env(safe-area-inset-left, 0px))',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.75)',
+            border: '1px solid rgba(255,215,0,0.3)',
+            color: '#ffd700',
+            fontSize: '14px',
+            fontWeight: 600,
+            zIndex: 1001,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          ← BACK
+        </div>
+      )}
+
+      {/* Permanent Controls Hint - Bottom Left (desktop only — no keyboard on mobile) */}
+      {!isMobile && (
+        <div style={{
+          position: 'fixed',
+          bottom: '80px',
+          left: '12px',
+          background: 'rgba(0,0,0,0.75)',
+          border: '1px solid rgba(255,215,0,0.25)',
+          borderRadius: '6px',
+          padding: '8px 10px',
+          zIndex: 999,
+          color: '#ffd700',
+          fontSize: "12px",
+          fontFamily: 'monospace',
+          lineHeight: '1.4',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '3px', color: '#00ffff', fontSize: '11px' }}>CONTROLS</div>
+          <div>←→ Focus</div>
+          <div>↑↓ Volume</div>
+          <div>SPACE Play</div>
+          <div>ESC Exit</div>
+        </div>
+      )}
 
       {/* Video Player - FULL SCREEN */}
       <video
@@ -365,6 +394,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         controls={false}
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={true}
+        playsInline
         preload="metadata"
         poster={safePosterPath || '/logo_van.png'}
         onContextMenu={(e) => e.preventDefault()}
@@ -421,9 +451,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         display: 'flex',
         gap: '8px',
         alignItems: 'center',
-        padding: '12px 20px',
+        padding: `12px max(20px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-right, 0px))`,
         background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(15px)',
         borderTop: '1px solid rgba(255,215,0,0.2)',
         zIndex: 1000,
         cursor: 'pointer'
@@ -491,8 +520,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             tabIndex={0}
             style={{
               flex: 1,
-              height: '4px',
-              borderRadius: '2px',
+              height: isMobile ? '20px' : '4px',
+              borderRadius: isMobile ? '10px' : '2px',
               background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${musicVolume * 100}%, rgba(255,215,0,0.3) ${musicVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
               outline: 'none',
               cursor: 'pointer',
@@ -565,8 +594,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
             tabIndex={0}
             style={{
               flex: 1,
-              height: '4px',
-              borderRadius: '2px',
+              height: isMobile ? '20px' : '4px',
+              borderRadius: isMobile ? '10px' : '2px',
               background: `linear-gradient(to right, #ffd700 0%, #ffd700 ${sfxVolume * 100}%, rgba(255,215,0,0.3) ${sfxVolume * 100}%, rgba(255,215,0,0.3) 100%)`,
               outline: 'none',
               cursor: 'pointer',
@@ -583,7 +612,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         bottom: '62px', // Above controls bar
         left: 0,
         width: `${videoProgress}%`,
-        height: "4px",
+        height: isMobile ? '6px' : '4px',
         background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
         boxShadow: '0 0 10px rgba(255,215,0,0.6)',
         transition: 'width 0.1s linear',

@@ -26,15 +26,15 @@ export const StatDetail = memo(function StatDetail({
     <div style={{ textAlign: 'center' }}>
       {/* Mega icon with effects */}
       <div style={{
-        fontSize: '100px',
-        marginBottom: '30px',
+        fontSize: 'clamp(56px, 18vw, 100px)',
+        marginBottom: 'clamp(16px, 4vw, 30px)',
         animation: 'modalIconPulse 2s ease-in-out infinite',
         filter: 'drop-shadow(0 0 40px rgba(136,68,255,0.5))'
       }}>{stat.icon}</div>
 
       {/* Animated counter value */}
       <div style={{
-        fontSize: '80px',
+        fontSize: 'clamp(40px, 12vw, 80px)',
         fontWeight: 900,
         color: '#8844ff',
         marginBottom: '12px',
@@ -48,14 +48,14 @@ export const StatDetail = memo(function StatDetail({
         fontSize: '16px',
         letterSpacing: '4px',
         textTransform: 'uppercase',
-        marginBottom: '30px'
+        marginBottom: 'clamp(16px, 4vw, 30px)'
       }}>{stat.label}</div>
 
       {/* Bio section */}
       {stat.bio && (
         <div style={{
           marginTop: '30px',
-          padding: '20px 30px',
+          padding: 'clamp(12px, 3vw, 20px) clamp(16px, 4vw, 30px)',
           background: 'rgba(136,68,255,0.1)',
           borderRadius: '16px',
           border: '1px solid rgba(136,68,255,0.3)',

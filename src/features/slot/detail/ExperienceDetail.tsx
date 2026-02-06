@@ -41,7 +41,7 @@ export const ExperienceDetail = memo(function ExperienceDetail({
 
       <h2 style={{
         margin: '0 0 12px 0',
-        fontSize: '40px',
+        fontSize: 'clamp(24px, 6vw, 40px)',
         color: '#fff',
         fontWeight: 900,
         textShadow: '0 0 20px rgba(0,255,136,0.3)',
@@ -50,8 +50,8 @@ export const ExperienceDetail = memo(function ExperienceDetail({
 
       <div style={{
         color: '#666',
-        fontSize: '22px',
-        marginBottom: '35px',
+        fontSize: 'clamp(16px, 4vw, 22px)',
+        marginBottom: 'clamp(16px, 4vw, 35px)',
         fontWeight: 500,
         animation: showContent ? 'modalTextReveal 0.6s ease-out 0.1s both' : 'none'
       }}>{exp.company}</div>
@@ -64,7 +64,7 @@ export const ExperienceDetail = memo(function ExperienceDetail({
             fontSize: '16px',
             marginBottom: '18px',
             lineHeight: 1.8,
-            paddingLeft: '32px',
+            paddingLeft: 'clamp(20px, 5vw, 32px)',
             position: 'relative',
             animation: showContent ? `modalHighlightReveal 0.5s ease-out ${0.2 + i * 0.1}s both` : 'none'
           }}>

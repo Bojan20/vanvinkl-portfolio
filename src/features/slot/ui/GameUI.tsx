@@ -26,7 +26,8 @@ export const GameMarquee = memo(function GameMarquee({
   color: string
   subtitle?: string
 }) {
-  const lights = useMemo(() => Array.from({ length: 20 }, (_, i) => i), [])
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+  const lights = useMemo(() => Array.from({ length: isTouchDevice ? 10 : 20 }, (_, i) => i), [])
 
   return (
     <div style={{
@@ -51,7 +52,7 @@ export const GameMarquee = memo(function GameMarquee({
             height: '8px',
             borderRadius: '50%',
             background: color,
-            boxShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
+            boxShadow: isTouchDevice ? `0 0 8px ${color}` : `0 0 10px ${color}, 0 0 20px ${color}`,
             animation: 'chaseLights 1s ease-in-out infinite',
             animationDelay: `${i * 0.05}s`
           }} />
@@ -73,13 +74,9 @@ export const GameMarquee = memo(function GameMarquee({
         fontSize: 'clamp(32px, 5vw, 48px)',
         fontWeight: 900,
         color: '#fff',
-        textShadow: `
-          0 0 10px ${color},
-          0 0 30px ${color},
-          0 0 60px ${color},
-          0 0 100px ${color}80,
-          0 2px 0 ${color}
-        `,
+        textShadow: isTouchDevice
+          ? `0 0 10px ${color}, 0 0 30px ${color}`
+          : `0 0 10px ${color}, 0 0 30px ${color}, 0 0 60px ${color}, 0 0 100px ${color}80, 0 2px 0 ${color}`,
         letterSpacing: '8px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         position: 'relative',
@@ -109,7 +106,7 @@ export const GameMarquee = memo(function GameMarquee({
         bottom: 0, left: '10%', right: '10%',
         height: '3px',
         background: color,
-        boxShadow: `0 0 10px ${color}, 0 0 20px ${color}, 0 0 40px ${color}`,
+        boxShadow: isTouchDevice ? `0 0 10px ${color}` : `0 0 10px ${color}, 0 0 20px ${color}, 0 0 40px ${color}`,
         animation: 'neonFlicker 3s ease-in-out infinite'
       }} />
     </div>

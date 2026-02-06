@@ -58,7 +58,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
         borderRadius: '20px',
         padding: '32px 40px',
         zIndex: 10001,
-        minWidth: '320px',
+        minWidth: 'clamp(280px, 85vw, 320px)',
         boxShadow: '0 0 60px rgba(0, 255, 255, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5)',
         animation: 'modalIn 0.3s ease-out',
         fontFamily: 'system-ui, -apple-system, sans-serif'

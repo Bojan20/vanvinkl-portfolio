@@ -117,7 +117,7 @@ export function CyberpunkCursor({ active = true }: { active?: boolean }) {
       top: 0,
       left: 0,
       width: '100vw',
-      height: '100vh',
+      height: '100dvh',
       pointerEvents: 'none',
       zIndex: 9999,
       overflow: 'hidden'

@@ -10,8 +10,10 @@
  * - Escape: Exit player
  */
 
-import React, { useState, useEffect, useRef, memo } from 'react'
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react'
 import { uaPlaySynth } from '../../../audio'
+
+const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
 interface AudioTrack {
   label: string
@@ -185,13 +187,14 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     if (audio) audio.currentTime = 0
   }
 
-  const handleSeek = (index: number, e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSeek = (index: number, e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const audio = audioRefs.current[index]
     if (!audio || !audio.duration) return
 
     const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const pct = x / rect.width
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+    const x = clientX - rect.left
+    const pct = Math.max(0, Math.min(1, x / rect.width))
     audio.currentTime = pct * audio.duration
   }
 
@@ -206,17 +209,46 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       position: 'fixed',
       top: 0,
       left: 0,
-      right: 0,
-      bottom: 0,
+      width: '100%',
+      height: '100dvh',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      WebkitOverflowScrolling: 'touch' as any,
       backgroundColor: '#000',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
+      padding: `max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))`,
       zIndex: 900
     }}>
+      {/* Mobile back button (no ESC key on touch devices) */}
+      {isMobile && (
+        <div
+          onClick={() => { uaPlaySynth('back', 0.4); onBack() }}
+          style={{
+            position: 'fixed',
+            top: 'max(16px, env(safe-area-inset-top, 0px))',
+            left: 'max(16px, env(safe-area-inset-left, 0px))',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.75)',
+            border: '1px solid rgba(255,215,0,0.3)',
+            color: '#ffd700',
+            fontSize: '14px',
+            fontWeight: 600,
+            zIndex: 1001,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          ← BACK
+        </div>
+      )}
+
       {/* Background gradient */}
       <div style={{
         position: 'absolute',
@@ -228,19 +260,19 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       {/* Project Header */}
       <div style={{
         textAlign: 'center',
-        marginBottom: '40px',
+        marginBottom: 'clamp(16px, 4vh, 40px)',
         zIndex: 1
       }}>
         <div style={{
-          fontSize: '80px',
-          marginBottom: '16px',
+          fontSize: 'clamp(48px, 15vw, 80px)',
+          marginBottom: 'clamp(8px, 2vw, 16px)',
           filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.4))'
         }}>
           {project.icon}
         </div>
         <h1 style={{
           color: '#ffd700',
-          fontSize: '36px',
+          fontSize: 'clamp(22px, 6vw, 36px)',
           fontWeight: 900,
           margin: '0 0 8px 0',
           textShadow: '0 0 20px rgba(255,215,0,0.4)'
@@ -306,8 +338,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 }}>
                   {/* Play/Pause button */}
                   <div style={{
-                    width: '44px',
-                    height: '44px',
+                    width: '48px',
+                    height: '48px',
                     borderRadius: '50%',
                     background: state.playing
                       ? 'linear-gradient(135deg, #ffd700, #ffaa00)'
@@ -362,9 +394,9 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                       uaPlaySynth('tick', 0.3)
                     }}
                     style={{
-                      height: '32px',
-                      padding: '0 10px',
-                      borderRadius: '16px',
+                      minHeight: '44px',
+                      padding: '0 14px',
+                      borderRadius: '22px',
                       background: isFocused ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                       display: 'flex',
                       alignItems: 'center',
@@ -389,11 +421,15 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                   e.stopPropagation()
                   handleSeek(index, e)
                 }}
+                onTouchStart={(e) => {
+                  e.stopPropagation()
+                  handleSeek(index, e)
+                }}
                 style={{
                   width: '100%',
-                  height: '6px',
+                  height: isMobile ? '24px' : '6px',
                   background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '3px',
+                  borderRadius: isMobile ? '12px' : '3px',
                   overflow: 'hidden',
                   cursor: 'pointer'
                 }}
@@ -404,7 +440,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                   background: isFocused
                     ? 'linear-gradient(90deg, #ffd700, #ffaa00)'
                     : 'rgba(255,215,0,0.5)',
-                  borderRadius: '3px',
+                  borderRadius: isMobile ? '12px' : '3px',
                   transition: 'width 0.1s linear'
                 }} />
               </div>
@@ -440,29 +476,30 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         })}
       </div>
 
-      {/* Controls Hint */}
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        left: '12px',
-        background: 'rgba(0,0,0,0.75)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,215,0,0.25)',
-        borderRadius: '6px',
-        padding: '8px 10px',
-        zIndex: 999,
-        color: '#ffd700',
-        fontSize: '12px',
-        fontFamily: 'monospace',
-        lineHeight: '1.4',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '3px', color: '#00ffff', fontSize: '11px' }}>CONTROLS</div>
-        <div>↑↓ Switch Track</div>
-        <div>SPACE Play/Pause</div>
-        <div>R Restart Track</div>
-        <div>ESC Exit</div>
-      </div>
+      {/* Controls Hint (desktop only — keyboard controls) */}
+      {!isMobile && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+          left: 'max(12px, env(safe-area-inset-left, 0px))',
+          background: 'rgba(0,0,0,0.85)',
+          border: '1px solid rgba(255,215,0,0.25)',
+          borderRadius: '6px',
+          padding: '8px 10px',
+          zIndex: 999,
+          color: '#ffd700',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          lineHeight: '1.4',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '3px', color: '#00ffff', fontSize: '11px' }}>CONTROLS</div>
+          <div>↑↓ Switch Track</div>
+          <div>SPACE Play/Pause</div>
+          <div>R Restart Track</div>
+          <div>ESC Exit</div>
+        </div>
+      )}
     </div>
   )
 })
