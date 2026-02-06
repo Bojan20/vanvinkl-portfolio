@@ -540,41 +540,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [focusIndex, musicVolume, sfxVolume, musicMuted, sfxMuted, togglePlayPause, onBack])
 
-  // Swipe right = back (mobile gesture)
-  // Listener on WINDOW to guarantee capture regardless of scrollable containers or overlays.
-  // SlotFullScreen has NO swipe listener when selectedProject is active, so this is the only one.
-  const touchStartRef = useRef<{ x: number, y: number, time: number } | null>(null)
+  // Mobile back: handled entirely via history.pushState/popstate in SlotFullScreen + App.tsx.
+  // Native back gesture (edge swipe) fires popstate → App.tsx dispatches slot:closeVideo.
+  // ← BACK button calls history.back() → same popstate flow.
+  // No custom swipe handler here — it would double-fire with native back gesture.
   const containerDivRef = useRef<HTMLDivElement>(null)
-  const onBackRef = useRef(onBack)
-  onBackRef.current = onBack
-
-  useEffect(() => {
-    const onTouchStart = (e: TouchEvent) => {
-      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() }
-    }
-
-    const onTouchEnd = (e: TouchEvent) => {
-      if (!touchStartRef.current) return
-      const dx = e.changedTouches[0].clientX - touchStartRef.current.x
-      const dy = e.changedTouches[0].clientY - touchStartRef.current.y
-      const dt = Date.now() - touchStartRef.current.time
-      touchStartRef.current = null
-
-      if (dx > 60 && dt < 500 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        uaPlaySynth('back', 0.4)
-        console.log('[PortfolioPlayer] Swipe right detected, calling onBack()')
-        onBackRef.current()
-      }
-    }
-
-    window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchend', onTouchEnd, { passive: true })
-
-    return () => {
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [])
 
   const isFocused = (index: number) => focusIndex === index
 
