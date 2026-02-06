@@ -229,6 +229,9 @@ export function SlotFullScreen({
   // Music fade RAF tracking (cancellable)
   const fadeRafRef = useRef<number | null>(null)
 
+  // DEBUG: persistent swipe debug (survives PortfolioPlayer unmount)
+  const [swipeDebug, setSwipeDebug] = useState('')
+
   // ========== DERIVED STATE ==========
   const section = SLOT_CONTENT[machineId]
   const _theme = SLOT_THEMES[machineId] || SLOT_THEMES.skills
@@ -360,6 +363,13 @@ export function SlotFullScreen({
     const timer = setTimeout(focusContainer, 50)
     return () => clearTimeout(timer)
   }, [phase, selectedProject, detailItem])
+
+  // Expose selectedProject to App.tsx popstate handler via window flag
+  // When video is active, popstate should NOT close the entire slot
+  useEffect(() => {
+    ;(window as any).__videoPlayerActive = !!selectedProject
+    return () => { ;(window as any).__videoPlayerActive = false }
+  }, [selectedProject])
 
   // Lounge music: instant stop on video open, RAF fade-in on video close
   useEffect(() => {
@@ -713,6 +723,18 @@ export function SlotFullScreen({
       cursor: 'default',
       outline: 'none' // Hide focus ring (fullscreen overlay)
     }}>
+      {/* DEBUG: persistent swipe overlay */}
+      {swipeDebug && (
+        <div style={{
+          position: 'fixed', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
+          background: 'rgba(0,200,0,0.95)', color: '#000', padding: '20px 30px',
+          borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', fontFamily: 'monospace',
+          zIndex: 99999, textAlign: 'center', maxWidth: '90vw'
+        }}>
+          {swipeDebug}
+        </div>
+      )}
+
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 
       {/* CRT Scanlines Overlay */}
@@ -1249,9 +1271,7 @@ export function SlotFullScreen({
               selectedProject={selectedProject}
               onBackFromProject={() => {
                 console.log('[SlotFullScreen] onBackFromProject called, setting selectedProject to null')
-                // Set a flag to suppress the next popstate event (iOS Safari edge-swipe
-                // fires both our custom swipe AND the native back gesture → popstate)
-                ;(window as any).__suppressNextPopstate = Date.now()
+                setSwipeDebug(`BACK @ ${new Date().toLocaleTimeString()}`)
                 setSelectedProject(null)
               }}
               onActivate={handleActivate}

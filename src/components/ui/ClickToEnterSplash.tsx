@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { FullscreenToggle } from './FullscreenToggle'
 
 // Inline mobile detection
 function isMobileDevice(): boolean {
@@ -339,6 +340,9 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen toggle - available on splash screen */}
+      <FullscreenToggle />
 
       {/* Floating particles */}
       <div style={{

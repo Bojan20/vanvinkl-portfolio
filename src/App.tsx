@@ -270,13 +270,16 @@ export function App() {
         closingViaEscRef.current = false
         return
       }
-      // Skip if PortfolioPlayer just handled a swipe-back (iOS Safari edge-swipe
-      // fires BOTH our custom swipe handler AND native history.back → popstate).
-      // Suppress popstate for 500ms after onBackFromProject was called.
-      const suppressTime = (window as any).__suppressNextPopstate
-      if (suppressTime && Date.now() - suppressTime < 500) {
-        console.log('[App] Suppressed popstate — PortfolioPlayer swipe-back in progress')
-        ;(window as any).__suppressNextPopstate = 0
+      // When video/audio player is active inside a slot, popstate should NOT
+      // close the entire slot. Instead, just ignore it — the player's own
+      // swipe handler or BACK button handles navigation back to project list.
+      // SlotFullScreen sets __videoPlayerActive when selectedProject is set.
+      if ((window as any).__videoPlayerActive) {
+        console.log('[App] popstate ignored — video player active inside slot')
+        // Re-push the slot history entry so the next back still works
+        if (spinningSlot) {
+          history.pushState({ slot: spinningSlot }, '')
+        }
         return
       }
       if (spinningSlot) {
