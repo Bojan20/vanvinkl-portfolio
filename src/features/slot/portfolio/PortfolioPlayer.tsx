@@ -84,6 +84,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   // ============================================================
   const playStateRef = useRef<PlayState>('idle')
   const startingRef = useRef(false) // Lock to prevent concurrent start() calls
+  const playStartedAtRef = useRef(0) // Timestamp of last start() — blocks premature pause
   const [isPlaying, setIsPlaying] = useState(false)
 
   // Focus items count
@@ -134,6 +135,10 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
    * start() — Prepared/Paused → Playing
    * NOOP from Playing (prevents double attack)
    * Single gate: ALL play triggers route through here
+   *
+   * BULLETPROOF: startingRef lock held until 300ms AFTER playback begins.
+   * This prevents any concurrent or delayed play trigger (synthetic click,
+   * touch→click coalescing, React re-render race) from causing double audio.
    */
   const start = useCallback(async () => {
     // Double-call guard: lock prevents concurrent async starts
@@ -165,12 +170,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
 
       // Transition state
       playStateRef.current = 'playing'
+      playStartedAtRef.current = Date.now()
       setIsPlaying(true)
       console.log('[Transport] → Playing')
     } catch (e) {
       console.warn('[Transport] start() failed:', e)
     } finally {
-      startingRef.current = false
+      // Hold lock for 300ms after play to absorb delayed synthetic clicks
+      setTimeout(() => { startingRef.current = false }, 300)
     }
   }, [prepare])
 
@@ -180,6 +187,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
    */
   const pause = useCallback(() => {
     if (playStateRef.current !== 'playing') return
+    // Block premature pause from synthetic click after play (mobile touch→click race)
+    if (Date.now() - playStartedAtRef.current < 500) return
 
     const video = videoRef.current
     const music = musicRef.current
@@ -630,7 +639,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
           objectFit: 'contain',
           cursor: 'pointer'
         }}
-        onClick={() => togglePlayPause()}
+        onClick={() => { if (playStateRef.current !== 'idle') togglePlayPause() }}
         onDoubleClick={toggleVideoFullscreen}
       >
         <source src={`${safeVideoPath || '/videoSlotPortfolio/Piggy Portfolio Video.mp4'}?v=6`} type="video/mp4" />

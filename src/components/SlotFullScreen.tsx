@@ -358,8 +358,7 @@ export function SlotFullScreen({
     return () => clearTimeout(timer)
   }, [phase, selectedProject, detailItem])
 
-  // Lounge music fade when entering/exiting portfolio video
-  // ULTIMATIVNO: RAF-based, cancellable, 1000ms fade TO ZERO
+  // Lounge music: instant stop on video open, RAF fade-in on video close
   useEffect(() => {
     // Cancel any ongoing fade (prevents conflicts when rapidly entering/exiting)
     if (fadeRafRef.current !== null) {
@@ -369,30 +368,10 @@ export function SlotFullScreen({
     }
 
     if (selectedProject) {
-      // Video opened → Fade OUT lounge music (1000ms → 0 volume)
-      const startVolume = uaGetVolume('music')
-      const startTime = Date.now()
-      const fadeDuration = 1000
-
-      console.log(`[Music Fade] Video OPENED → OUT from ${startVolume.toFixed(3)} to 0.000`)
-
-      const fadeOut = () => {
-        const elapsed = Date.now() - startTime
-        const progress = Math.min(elapsed / fadeDuration, 1)
-        const eased = 1 - Math.pow(1 - progress, 3) // Cubic ease-out
-        const vol = startVolume * (1 - eased)
-        uaVolume('music', Math.max(0, vol), 0)
-
-        if (progress < 1) {
-          fadeRafRef.current = requestAnimationFrame(fadeOut)
-        } else {
-          fadeRafRef.current = null
-          // STOP lounge completely after fade (free resources)
-          uaStop('lounge', 0)
-          console.log('[Music] Fade OUT complete → Lounge STOPPED')
-        }
-      }
-      fadeRafRef.current = requestAnimationFrame(fadeOut)
+      // Video opened → INSTANT stop lounge music (no fade — prevents overlap with portfolio audio)
+      uaVolume('music', 0, 0) // Instant zero
+      uaStop('lounge', 0)     // Free resources
+      console.log('[Music] Video OPENED → Lounge STOPPED instantly')
 
     } else {
       // Video closed → Fade IN lounge music to stored volume
