@@ -94,10 +94,10 @@ export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}
         display: 'flex',
         alignItems: 'center',
         gap: compact ? '0' : '8px',
-        padding: compact ? (isMobile ? '12px' : '10px') : (isMobile ? '12px 14px' : '10px 16px'),
+        padding: compact ? (isMobile ? '12px' : '8px 12px') : (isMobile ? '12px 14px' : '10px 16px'),
         background: 'rgba(5, 5, 15, 0.75)',
         border: `1px solid ${isFullscreen ? 'rgba(0, 255, 136, 0.4)' : 'rgba(0, 255, 255, 0.3)'}`,
-        borderRadius: compact ? '50%' : '20px',
+        borderRadius: compact ? (isMobile ? '50%' : '20px') : '20px',
         backdropFilter: 'blur(8px)',
         cursor: 'pointer',
         zIndex: 10000,
@@ -149,8 +149,8 @@ export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}
         </span>
       )}
 
-      {/* Keyboard hint - desktop only, hidden in compact mode */}
-      {!compact && !isMobile && (
+      {/* Keyboard hint - desktop only */}
+      {!isMobile && (
         <span style={{
           padding: '2px 6px',
           background: 'rgba(255, 255, 255, 0.1)',

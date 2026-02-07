@@ -549,12 +549,34 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
     }
 
+    // Fullscreen transition recovery: browser may fire 'waiting' during layout
+    // but never fire 'playing' afterwards, leaving audio stuck paused
+    const handleFullscreenRecovery = () => {
+      if (!stalled) return
+      if (playStateRef.current !== 'playing') return
+      // Give browser 300ms to settle after fullscreen change
+      setTimeout(() => {
+        if (!stalled) return
+        if (video.paused || video.ended) return
+        // Video is actually playing but 'playing' event never fired — force recovery
+        stalled = false
+        music.currentTime = video.currentTime
+        sfx.currentTime = video.currentTime
+        music.play().catch(() => {})
+        sfx.play().catch(() => {})
+        setBufferState('playing')
+        console.log('[Transport] Fullscreen recovery — forced audio resume')
+      }, 300)
+    }
+
     video.addEventListener('seeked', handleSeeked)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
     video.addEventListener('waiting', handleWaiting)
     video.addEventListener('playing', handlePlaying)
     video.addEventListener('progress', handleProgress)
+    document.addEventListener('fullscreenchange', handleFullscreenRecovery)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenRecovery)
 
     return () => {
       cancelAnimationFrame(rafId)
@@ -564,6 +586,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       video.removeEventListener('waiting', handleWaiting)
       video.removeEventListener('playing', handlePlaying)
       video.removeEventListener('progress', handleProgress)
+      document.removeEventListener('fullscreenchange', handleFullscreenRecovery)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenRecovery)
     }
   }, [])
 
