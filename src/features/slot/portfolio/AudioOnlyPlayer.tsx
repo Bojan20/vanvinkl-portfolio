@@ -13,7 +13,6 @@
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react'
 import { uaPlaySynth, uaGetContext } from '../../../audio'
-import { useAudioStore } from '../../../store/audio'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -39,7 +38,6 @@ interface TrackState {
   progress: number
   duration: number
   currentTime: number
-  volume: number // Per-track volume 0–1 (linear slider position)
 }
 
 const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
@@ -49,8 +47,10 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   const [showContent, setShowContent] = useState(false)
   const [focusedTrack, setFocusedTrack] = useState(0)
   const [trackStates, setTrackStates] = useState<TrackState[]>(
-    project.audioTracks.map(() => ({ playing: false, progress: 0, duration: 0, currentTime: 0, volume: 1 }))
+    project.audioTracks.map(() => ({ playing: false, progress: 0, duration: 0, currentTime: 0 }))
   )
+  // Single volume slider for the entire player (0–1, default 100%)
+  const [playerVolume, setPlayerVolume] = useState(1)
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([])
   // Track which index is intentionally playing (survives orientation changes)
   const playingIndexRef = useRef<number>(-1)
@@ -58,7 +58,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   // AudioContext DSP routing — per-track MediaElementSource → GainNode → ctx.destination
   const sourceRefs = useRef<(MediaElementAudioSourceNode | null)[]>([])
   const gainRefs = useRef<(GainNode | null)[]>([])
-  const musicVolume = useAudioStore(s => s.musicVolume)
 
   // Landscape detection for compact layout
   const [isLandscape, setIsLandscape] = useState(
@@ -90,10 +89,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     try {
       const source = ctx.createMediaElementSource(audio)
       const gainNode = ctx.createGain()
-      // Apply current perceptual volume immediately: global² × track²
-      const globalVol = useAudioStore.getState().musicVolume
-      const trackVol = trackStates[index]?.volume ?? 1
-      gainNode.gain.value = (globalVol * globalVol) * (trackVol * trackVol)
+      // Apply current player volume immediately (x² perceptual)
+      gainNode.gain.value = playerVolume * playerVolume
       source.connect(gainNode)
       gainNode.connect(ctx.destination)
       sourceRefs.current[index] = source
@@ -101,7 +98,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     } catch (e) {
       console.warn('[AudioOnlyPlayer] AudioContext routing failed for track', index, e)
     }
-  }, [trackStates])
+  }, [playerVolume])
 
   // Cleanup on unmount — disconnect DSP nodes + pause audio
   useEffect(() => {
@@ -123,60 +120,30 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     }
   }, [])
 
-  // Perceptual volume — x² curve + sample-accurate smoothing via linearRamp
-  // Final gain = globalVolume² × trackVolume² (both perceptual)
-  // Responds to global music volume slider (AudioSettings) + per-track sliders
-  const applyVolume = useCallback((trackIndex?: number) => {
-    const globalGain = musicVolume * musicVolume // x² perceptual
+  // Player volume — x² perceptual curve, sample-accurate smoothing via linearRamp
+  // Independent from global musicVolume (this player has its own volume control)
+  useEffect(() => {
+    const gain = playerVolume * playerVolume // x² perceptual
     const ctx = uaGetContext()
     let hasAudioContext = false
 
-    const applyToTrack = (i: number) => {
-      const gainNode = gainRefs.current[i]
-      const trackVol = trackStates[i]?.volume ?? 1
-      const trackGain = trackVol * trackVol // x² perceptual per-track
-      const finalGain = globalGain * trackGain
-
+    gainRefs.current.forEach(gainNode => {
       if (gainNode && ctx) {
         hasAudioContext = true
         const now = ctx.currentTime
         gainNode.gain.cancelScheduledValues(now)
         gainNode.gain.setValueAtTime(gainNode.gain.value, now)
-        gainNode.gain.linearRampToValueAtTime(finalGain, now + 0.015)
-      } else {
-        const audio = audioRefs.current[i]
-        if (audio) audio.volume = finalGain
+        gainNode.gain.linearRampToValueAtTime(gain, now + 0.015)
       }
-    }
-
-    if (trackIndex !== undefined) {
-      applyToTrack(trackIndex)
-    } else {
-      gainRefs.current.forEach((_, i) => applyToTrack(i))
-      // Fallback for tracks not yet connected to AudioContext
-      if (!hasAudioContext) {
-        audioRefs.current.forEach((audio, i) => {
-          if (audio) {
-            const trackVol = trackStates[i]?.volume ?? 1
-            audio.volume = globalGain * trackVol * trackVol
-          }
-        })
-      }
-    }
-  }, [musicVolume, trackStates])
-
-  useEffect(() => {
-    applyVolume()
-  }, [applyVolume])
-
-  // Per-track volume change handler
-  const handleTrackVolumeChange = useCallback((index: number, newVolume: number) => {
-    setTrackStates(prev => {
-      const next = [...prev]
-      next[index] = { ...next[index], volume: newVolume }
-      return next
     })
-  }, [])
+
+    // Fallback: if no AudioContext routing, apply x² directly to <audio> elements
+    if (!hasAudioContext) {
+      audioRefs.current.forEach(audio => {
+        if (audio) audio.volume = gain
+      })
+    }
+  }, [playerVolume])
 
   // Orientation / resize / visibility → resume audio interrupted by browser (debounced)
   useEffect(() => {
@@ -234,23 +201,13 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
 
         case 'ArrowLeft':
           e.preventDefault()
-          setTrackStates(prev => {
-            const next = [...prev]
-            const cur = next[focusedTrack].volume
-            next[focusedTrack] = { ...next[focusedTrack], volume: Math.max(0, cur - 0.05) }
-            return next
-          })
+          setPlayerVolume(v => Math.max(0, Math.round((v - 0.05) * 100) / 100))
           uaPlaySynth('tick', 0.2)
           break
 
         case 'ArrowRight':
           e.preventDefault()
-          setTrackStates(prev => {
-            const next = [...prev]
-            const cur = next[focusedTrack].volume
-            next[focusedTrack] = { ...next[focusedTrack], volume: Math.min(1, cur + 0.05) }
-            return next
-          })
+          setPlayerVolume(v => Math.min(1, Math.round((v + 0.05) * 100) / 100))
           uaPlaySynth('tick', 0.2)
           break
 
@@ -452,22 +409,22 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         .aop-volume-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: ${isLandscape ? '12px' : (isMobile ? '20px' : '14px')};
-          height: ${isLandscape ? '12px' : (isMobile ? '20px' : '14px')};
+          width: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
+          height: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
           border-radius: 50%;
-          background: #ffd700;
+          background: #00ffff;
           border: 2px solid rgba(0,0,0,0.3);
           cursor: pointer;
-          box-shadow: 0 0 6px rgba(255,215,0,0.4);
+          box-shadow: 0 0 8px rgba(0,255,255,0.5);
         }
         .aop-volume-slider::-moz-range-thumb {
-          width: ${isLandscape ? '12px' : (isMobile ? '20px' : '14px')};
-          height: ${isLandscape ? '12px' : (isMobile ? '20px' : '14px')};
+          width: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
+          height: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
           border-radius: 50%;
-          background: #ffd700;
+          background: #00ffff;
           border: 2px solid rgba(0,0,0,0.3);
           cursor: pointer;
-          box-shadow: 0 0 6px rgba(255,215,0,0.4);
+          box-shadow: 0 0 8px rgba(0,255,255,0.5);
         }
         .aop-volume-slider::-webkit-slider-runnable-track {
           height: ${isLandscape ? '4px' : (isMobile ? '6px' : '4px')};
@@ -675,89 +632,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 )}
               </div>
 
-              {/* Per-track volume slider */}
-              <div
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isLandscape ? '6px' : '10px',
-                  marginBottom: isLandscape ? '4px' : '10px'
-                }}
-              >
-                {/* Volume icon — speaker with level indication */}
-                <svg
-                  width={isLandscape ? '14' : '18'}
-                  height={isLandscape ? '14' : '18'}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={state.volume === 0 ? '#ff4444' : (isFocused ? '#ffd700' : '#666')}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0, cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // Toggle mute
-                    handleTrackVolumeChange(index, state.volume === 0 ? 1 : 0)
-                  }}
-                >
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  {state.volume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />}
-                  {state.volume > 0.5 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />}
-                </svg>
-
-                {/* Slider track */}
-                <div style={{
-                  flex: 1,
-                  height: isLandscape ? '14px' : (isMobile ? '24px' : '14px'),
-                  display: 'flex',
-                  alignItems: 'center',
-                  position: 'relative'
-                }}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={state.volume}
-                    className="aop-volume-slider"
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      handleTrackVolumeChange(index, parseFloat(e.target.value))
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    style={{
-                      width: '100%',
-                      height: isLandscape ? '4px' : (isMobile ? '6px' : '4px'),
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      background: `linear-gradient(to right, ${
-                        state.volume === 0 ? '#ff4444' : (isFocused ? '#ffd700' : 'rgba(255,215,0,0.5)')
-                      } ${state.volume * 100}%, rgba(255,255,255,0.1) ${state.volume * 100}%)`,
-                      borderRadius: '2px',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      margin: 0
-                    }}
-                  />
-                </div>
-
-                {/* Volume percentage */}
-                <span style={{
-                  color: state.volume === 0 ? '#ff4444' : (isFocused ? '#ffd700' : '#666'),
-                  fontSize: isLandscape ? '9px' : '11px',
-                  fontFamily: 'monospace',
-                  minWidth: isLandscape ? '26px' : '32px',
-                  textAlign: 'right',
-                  flexShrink: 0
-                }}>
-                  {Math.round(state.volume * 100)}%
-                </span>
-              </div>
-
               {/* Progress bar */}
               <div
                 onClick={(e) => {
@@ -817,6 +691,95 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
             </div>
           )
         })}
+      </div>
+
+      {/* Player Volume Slider — bottom of player */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          bottom: isLandscape
+            ? 'max(8px, env(safe-area-inset-bottom, 0px))'
+            : 'max(20px, env(safe-area-inset-bottom, 0px))',
+          right: isLandscape
+            ? 'max(12px, env(safe-area-inset-right, 0px))'
+            : '50%',
+          transform: isLandscape ? 'none' : 'translateX(50%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: isLandscape ? '8px' : '12px',
+          padding: isLandscape ? '6px 12px' : '10px 20px',
+          background: 'rgba(0,0,0,0.85)',
+          border: `1px solid ${playerVolume === 0 ? 'rgba(255,68,68,0.4)' : 'rgba(0,255,255,0.3)'}`,
+          borderRadius: '20px',
+          backdropFilter: 'blur(8px)',
+          zIndex: 1000,
+          minWidth: isLandscape ? '180px' : '260px'
+        }}
+      >
+        {/* Speaker icon — click to mute/unmute */}
+        <svg
+          width={isLandscape ? '16' : '20'}
+          height={isLandscape ? '16' : '20'}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={playerVolume === 0 ? '#ff4444' : '#00ffff'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ flexShrink: 0, cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setPlayerVolume(playerVolume === 0 ? 1 : 0)
+          }}
+        >
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          {playerVolume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />}
+          {playerVolume > 0.5 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />}
+        </svg>
+
+        {/* Slider */}
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={playerVolume}
+          className="aop-volume-slider"
+          onChange={(e) => {
+            e.stopPropagation()
+            setPlayerVolume(parseFloat(e.target.value))
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          style={{
+            flex: 1,
+            height: isLandscape ? '4px' : (isMobile ? '6px' : '4px'),
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            background: `linear-gradient(to right, ${
+              playerVolume === 0 ? '#ff4444' : '#00ffff'
+            } ${playerVolume * 100}%, rgba(255,255,255,0.15) ${playerVolume * 100}%)`,
+            borderRadius: '2px',
+            outline: 'none',
+            cursor: 'pointer',
+            margin: 0
+          }}
+        />
+
+        {/* Percentage */}
+        <span style={{
+          color: playerVolume === 0 ? '#ff4444' : '#00ffff',
+          fontSize: isLandscape ? '10px' : '12px',
+          fontFamily: 'monospace',
+          minWidth: '32px',
+          textAlign: 'right',
+          flexShrink: 0,
+          fontWeight: 600
+        }}>
+          {Math.round(playerVolume * 100)}%
+        </span>
       </div>
 
       {/* Controls Hint (desktop only — keyboard controls) */}

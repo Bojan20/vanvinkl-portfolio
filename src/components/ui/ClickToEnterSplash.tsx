@@ -91,10 +91,17 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleEnter, isLoaded])
 
-  // Mobile swipe left/right → exit app (history.back)
+  // Mobile swipe left/right → navigate back (leave site)
+  // Push a dummy history entry so history.back() always works, even on direct visit
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  const pushedStateRef = useRef(false)
   useEffect(() => {
     if (!isMobile) return
+
+    if (!pushedStateRef.current) {
+      history.pushState({ vanvinklSplash: true }, '')
+      pushedStateRef.current = true
+    }
 
     const onTouchStart = (e: TouchEvent) => {
       swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
