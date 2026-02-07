@@ -96,10 +96,10 @@ class UnifiedAudioSystem {
       this.masterGain.connect(this.ctx.destination)
 
       // Init gains use perceptual curve to match store defaults
-      // Store defaults: music=0.7, sfx=0.7, ui=0.6, spatial=0.5
-      // x^2 curve: 0.7²=0.49, 0.7²=0.49, 0.6²=0.36, 0.5²=0.25
+      // Store defaults: music=0.6, sfx=0.7, ui=0.6, spatial=0.5
+      // x^2 curve: 0.6²=0.36, 0.7²=0.49, 0.6²=0.36, 0.5²=0.25
       this.musicGain = this.ctx.createGain()
-      this.musicGain.gain.value = 0.49  // 0.7² perceptual
+      this.musicGain.gain.value = 0.36  // 0.6² perceptual
       this.musicGain.connect(this.masterGain)
 
       this.sfxGain = this.ctx.createGain()

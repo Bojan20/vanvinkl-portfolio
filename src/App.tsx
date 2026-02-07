@@ -440,14 +440,17 @@ export function App() {
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
               // Resume lounge music — seamless fade in
-              const { musicVolume } = useAudioStore.getState()
+              const { musicVolume, sfxVolume } = useAudioStore.getState()
               if (!uaIsPlaying('lounge')) {
                 uaVolume('music', 0, 0) // Ensure bus at 0 before restart
                 uaPlay('lounge')
               }
               // Smooth fade in to stored volume (no dropout)
               uaVolume('music', musicVolume, 0.8)
-              console.log(`[Music] Slot closed - lounge resumed, fade to ${musicVolume.toFixed(2)}`)
+              // Restore SFX + UI bus volumes (may have been altered during slot)
+              uaVolume('sfx', sfxVolume, 0)
+              uaVolume('ui', sfxVolume, 0)
+              console.log(`[Music] Slot closed - lounge resumed, music=${musicVolume.toFixed(2)} sfx=${sfxVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {
               setSpinningSlot(machineId)

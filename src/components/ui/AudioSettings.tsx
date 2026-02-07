@@ -29,10 +29,10 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // A key toggles menu
-      if (e.code === 'KeyA' && !e.ctrlKey && !e.metaKey && !isOpen) {
+      // A key toggles menu (open AND close)
+      if (e.code === 'KeyA' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
-        setIsOpen(true)
+        setIsOpen(!isOpen)
         return
       }
 
@@ -75,6 +75,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
           break
 
         case 'Escape':
+          // ESC also closes (standard UX expectation)
           e.preventDefault()
           setIsOpen(false)
           break
@@ -196,7 +197,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
                 fontSize: '9px',
                 letterSpacing: '1px'
               }}>
-                {isMobile ? 'TAP ANYWHERE TO CLOSE' : 'ESC TO CLOSE'}
+                {isMobile ? 'TAP ANYWHERE TO CLOSE' : 'A TO CLOSE'}
               </span>
             </div>
 
@@ -209,8 +210,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
               marginBottom: '8px',
               borderRadius: '8px',
               background: selected === 'music' ? 'rgba(255, 0, 170, 0.15)' : 'transparent',
-              border: selected === 'music' ? '1px solid rgba(255, 0, 170, 0.4)' : '1px solid transparent',
-              transition: 'all 0.15s ease'
+              border: selected === 'music' ? '1px solid rgba(255, 0, 170, 0.4)' : '1px solid transparent'
             }}>
               <span style={{
                 color: selected === 'music' ? '#ff00aa' : '#666',
@@ -249,7 +249,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
                         ? 'linear-gradient(90deg, #ff00aa, #ff66cc)'
                         : 'rgba(255, 0, 170, 0.5)',
                       borderRadius: '3px',
-                      transition: 'width 0.1s ease'
+                      transition: 'none'
                     }} />
                   </div>
                 )}
@@ -273,8 +273,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
               padding: '10px 12px',
               borderRadius: '8px',
               background: selected === 'sfx' ? 'rgba(0, 255, 255, 0.15)' : 'transparent',
-              border: selected === 'sfx' ? '1px solid rgba(0, 255, 255, 0.4)' : '1px solid transparent',
-              transition: 'all 0.15s ease'
+              border: selected === 'sfx' ? '1px solid rgba(0, 255, 255, 0.4)' : '1px solid transparent'
             }}>
               <span style={{
                 color: selected === 'sfx' ? '#00ffff' : '#666',
@@ -314,7 +313,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
                         ? 'linear-gradient(90deg, #00ffff, #66ffff)'
                         : 'rgba(0, 255, 255, 0.5)',
                       borderRadius: '3px',
-                      transition: 'width 0.1s ease'
+                      transition: 'none'
                     }} />
                   </div>
                 )}

@@ -10,7 +10,7 @@ interface AudioState {
 // NO PERSIST - always start fresh with default values
 // These are LOUNGE defaults (not video player)
 export const useAudioStore = create<AudioState>((set) => ({
-  musicVolume: 0.7,  // 70% default for lounge
+  musicVolume: 0.6,  // 60% default for lounge
   sfxVolume: 0.7,    // 70% default for lounge
   setMusicVolume: (volume: number) => set({ musicVolume: volume }),
   setSfxVolume: (volume: number) => set({ sfxVolume: volume })

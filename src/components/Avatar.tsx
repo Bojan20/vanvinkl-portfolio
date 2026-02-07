@@ -206,10 +206,15 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     }
 
     const handleBlur = () => {
-      keysRef.current.forward = false
-      keysRef.current.backward = false
-      keysRef.current.left = false
-      keysRef.current.right = false
+      // Fullscreen toggle fires blur transiently — delay and check if focus actually left
+      setTimeout(() => {
+        if (!document.hasFocus()) {
+          keysRef.current.forward = false
+          keysRef.current.backward = false
+          keysRef.current.left = false
+          keysRef.current.right = false
+        }
+      }, 50)
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -223,8 +228,11 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     }
   }, [])
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
     if (!groupRef.current) return
+
+    // Clamp delta to prevent position jumps during fullscreen/resize transitions
+    const delta = Math.min(rawDelta, 0.05)
 
     const mobileMoving = !inputDisabledRef.current && mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)
     const moving = !isSittingRef.current && !inputDisabledRef.current && (keysRef.current.forward || keysRef.current.backward || keysRef.current.left || keysRef.current.right || mobileMoving)
