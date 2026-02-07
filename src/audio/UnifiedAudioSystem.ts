@@ -264,7 +264,29 @@ class UnifiedAudioSystem {
   }
 
   /**
-   * Set volume for a bus
+   * Perceptual volume mapping — logarithmic curve for human hearing
+   * Music: x^3 → -60 dB range (fine control near unity)
+   * SFX/UI: x^4 → -80 dB range (steeper low-end attenuation)
+   * Master/Spatial: x^2 → -40 dB range (moderate curve)
+   */
+  private perceptualGain(bus: string, linear: number): number {
+    if (linear <= 0) return 0
+    if (linear >= 1) return 1
+    if (bus === 'music') {
+      const curved = linear * linear * linear // x^3
+      return Math.pow(10, -60 * (1 - curved) / 20)
+    }
+    if (bus === 'sfx' || bus === 'ui') {
+      const curved = linear * linear * linear * linear // x^4
+      return Math.pow(10, -80 * (1 - curved) / 20)
+    }
+    // master, spatial: moderate x^2 curve
+    const curved = linear * linear
+    return Math.pow(10, -40 * (1 - curved) / 20)
+  }
+
+  /**
+   * Set volume for a bus (perceptual curve + sample-accurate smoothing)
    */
   setVolume(bus: 'master' | 'music' | 'sfx' | 'ui' | 'spatial', volume: number, fadeTime = 0.1): void {
     if (!this.ctx) return
@@ -276,9 +298,13 @@ class UnifiedAudioSystem {
 
     if (!gain) return
 
+    const perceptual = this.perceptualGain(bus, Math.max(0, Math.min(1, volume)))
+    const smoothTime = (bus === 'sfx' || bus === 'ui') ? 0.008 : 0.015 // 8ms SFX, 15ms music
+
     const now = this.ctx.currentTime
+    gain.gain.cancelScheduledValues(now)
     gain.gain.setValueAtTime(gain.gain.value, now)
-    gain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, volume)), now + fadeTime)
+    gain.gain.linearRampToValueAtTime(perceptual, now + Math.max(smoothTime, fadeTime))
   }
 
   /**
