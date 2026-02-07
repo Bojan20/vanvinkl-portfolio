@@ -120,9 +120,6 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
 
   return (
     <div
-      onClick={isMobile ? handleEnter : undefined}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -134,8 +131,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         zIndex: 50000,
         opacity: isClicking ? 0 : 1,
         transition: 'opacity 0.4s ease-out',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        cursor: isMobile ? 'pointer' : 'default'
+        fontFamily: 'system-ui, -apple-system, sans-serif'
       }}
     >
       {/* Scanlines overlay */}
@@ -217,8 +213,12 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         alignItems: 'center',
         gap: '20px'
       }}>
-        {/* Hexagon border effect */}
-        <div style={{
+        {/* Hexagon border effect — ONLY this is tappable */}
+        <div
+          onClick={isLoaded ? handleEnter : undefined}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
           padding: '24px 64px',
           background: isLoaded && isHovered
             ? 'rgba(0, 255, 255, 0.15)'
@@ -231,7 +231,9 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
             ? '0 0 40px rgba(0, 255, 255, 0.4), inset 0 0 40px rgba(0, 255, 255, 0.1)'
             : '0 0 20px rgba(0, 255, 255, 0.2)',
           transform: isLoaded && isHovered ? 'scale(1.05)' : 'scale(1)',
-          minWidth: 'clamp(280px, 80vw, 340px)'
+          minWidth: 'clamp(280px, 80vw, 340px)',
+          cursor: isLoaded ? 'pointer' : 'default',
+          WebkitTapHighlightColor: 'transparent'
         }}>
           {/* Corner accents */}
           {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => (
