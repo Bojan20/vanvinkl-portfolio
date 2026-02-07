@@ -318,6 +318,7 @@ export function IntroOverlay({
   const [bgOpacity, setBgOpacity] = useState(1) // Background opacity - starts dark, fades out
   const [showBurst, setShowBurst] = useState(false) // WOW burst effect when text complete
   const [showSkipHint, setShowSkipHint] = useState(false) // Show skip hint after 2s
+  const skippedRef = useRef(false) // Blocks all SFX after skip
   const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`█▓▒░'
 
   // Show skip hint after 2 seconds
@@ -330,6 +331,7 @@ export function IntroOverlay({
   // Skip intro: ESC/ENTER (desktop) or tap (mobile) — dispatches global event so IntroCamera also skips
   const skipIntro = useCallback(() => {
     console.log('[Intro] User skipped intro - completing immediately')
+    skippedRef.current = true // Block all remaining SFX immediately
     setPhase('done')
     onComplete()
     // Notify IntroCamera to also complete immediately
@@ -419,7 +421,7 @@ export function IntroOverlay({
   // GRADUAL REVEAL - letters transform one by one from glitch to real
   // Play magic reveal sound when transitioning to hold phase (all letters revealed)
   useEffect(() => {
-    if (phase === 'hold') {
+    if (phase === 'hold' && !skippedRef.current) {
       console.log('[Intro] Phase changed to HOLD - playing MagicReveal!')
       uaPlaySynth('magicReveal',0.5)
       setShowBurst(true)
@@ -443,8 +445,8 @@ export function IntroOverlay({
 
     const interval = setInterval(() => {
       currentChar++
-      // Play cyber reveal sound for each letter (not for spaces)
-      if (originalText[currentChar - 1] !== ' ') {
+      // Play cyber reveal sound for each letter (not for spaces), unless skipped
+      if (originalText[currentChar - 1] !== ' ' && !skippedRef.current) {
         uaPlaySynth('cyberReveal',0.25)
       }
       if (currentChar >= originalText.length) {
