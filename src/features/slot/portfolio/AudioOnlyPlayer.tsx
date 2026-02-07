@@ -52,6 +52,21 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   // Track which index is intentionally playing (survives orientation changes)
   const playingIndexRef = useRef<number>(-1)
 
+  // Landscape detection for compact layout
+  const [isLandscape, setIsLandscape] = useState(
+    isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
+  )
+  useEffect(() => {
+    if (!isMobile) return
+    const update = () => setIsLandscape(window.innerWidth > window.innerHeight)
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', () => setTimeout(update, 100))
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+
   // Staggered reveal
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100)
@@ -249,15 +264,18 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       width: '100%',
       height: '100dvh',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      overflowY: 'auto',
+      overflowY: isLandscape ? 'hidden' : 'auto',
       overflowX: 'hidden',
       WebkitOverflowScrolling: 'touch' as any,
       backgroundColor: '#000',
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: isLandscape ? 'row' : 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: `max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))`,
+      gap: isLandscape ? '16px' : '0',
+      padding: isLandscape
+        ? `max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(50px, env(safe-area-inset-left, 0px))`
+        : `max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))`,
       zIndex: 900
     }}>
       {/* Mobile back button (no ESC key on touch devices) */}
@@ -268,12 +286,12 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
             position: 'fixed',
             top: 'max(16px, env(safe-area-inset-top, 0px))',
             left: 'max(16px, env(safe-area-inset-left, 0px))',
-            padding: '10px 16px',
+            padding: isLandscape ? '6px 10px' : '10px 16px',
             borderRadius: '8px',
             background: 'rgba(0,0,0,0.75)',
             border: '1px solid rgba(255,215,0,0.3)',
             color: '#ffd700',
-            fontSize: '14px',
+            fontSize: isLandscape ? '11px' : '14px',
             fontWeight: 600,
             zIndex: 1001,
             cursor: 'pointer',
@@ -297,28 +315,30 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       {/* Project Header */}
       <div style={{
         textAlign: 'center',
-        marginBottom: 'clamp(16px, 4vh, 40px)',
-        zIndex: 1
+        marginBottom: isLandscape ? '0' : 'clamp(16px, 4vh, 40px)',
+        zIndex: 1,
+        flexShrink: 0,
+        ...(isLandscape ? { width: '30%', maxWidth: '200px' } : {})
       }}>
         <div style={{
-          fontSize: 'clamp(48px, 15vw, 80px)',
-          marginBottom: 'clamp(8px, 2vw, 16px)',
+          fontSize: isLandscape ? '36px' : 'clamp(48px, 15vw, 80px)',
+          marginBottom: isLandscape ? '4px' : 'clamp(8px, 2vw, 16px)',
           filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.4))'
         }}>
           {project.icon}
         </div>
         <h1 style={{
           color: '#ffd700',
-          fontSize: 'clamp(22px, 6vw, 36px)',
+          fontSize: isLandscape ? '16px' : 'clamp(22px, 6vw, 36px)',
           fontWeight: 900,
-          margin: '0 0 8px 0',
+          margin: isLandscape ? '0 0 2px 0' : '0 0 8px 0',
           textShadow: '0 0 20px rgba(255,215,0,0.4)'
         }}>
           {project.title}
         </h1>
         <div style={{
           color: '#666',
-          fontSize: '14px',
+          fontSize: isLandscape ? '10px' : '14px',
           fontFamily: 'monospace'
         }}>
           {project.year}
@@ -327,11 +347,11 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
 
       {/* Audio Tracks */}
       <div style={{
-        width: '90%',
-        maxWidth: '600px',
+        width: isLandscape ? '65%' : '90%',
+        maxWidth: isLandscape ? '500px' : '600px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: isLandscape ? '6px' : '16px',
         zIndex: 1
       }}>
         {project.audioTracks.map((track, index) => {
@@ -352,8 +372,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 border: isFocused
                   ? '2px solid rgba(255,215,0,0.6)'
                   : '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '16px',
-                padding: '20px 24px',
+                borderRadius: isLandscape ? '10px' : '16px',
+                padding: isLandscape ? '8px 12px' : '20px 24px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: isFocused
@@ -366,17 +386,17 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '12px'
+                marginBottom: isLandscape ? '4px' : '12px'
               }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px'
+                  gap: isLandscape ? '8px' : '12px'
                 }}>
                   {/* Play/Pause button */}
                   <div style={{
-                    width: '48px',
-                    height: '48px',
+                    width: isLandscape ? '30px' : '48px',
+                    height: isLandscape ? '30px' : '48px',
                     borderRadius: '50%',
                     background: state.playing
                       ? 'linear-gradient(135deg, #ffd700, #ffaa00)'
@@ -384,10 +404,11 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '18px',
+                    fontSize: isLandscape ? '12px' : '18px',
                     color: state.playing ? '#000' : (isFocused ? '#ffd700' : '#888'),
                     fontWeight: 'bold',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
                   }}>
                     {state.playing ? '⏸' : '▶'}
                   </div>
@@ -395,16 +416,16 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                   <div>
                     <div style={{
                       color: isFocused ? '#ffd700' : '#ccc',
-                      fontSize: '16px',
+                      fontSize: isLandscape ? '12px' : '16px',
                       fontWeight: 700
                     }}>
                       {track.label}
                     </div>
                     <div style={{
                       color: '#666',
-                      fontSize: '12px',
+                      fontSize: isLandscape ? '9px' : '12px',
                       fontFamily: 'monospace',
-                      marginTop: '2px'
+                      marginTop: isLandscape ? '0' : '2px'
                     }}>
                       {state.duration > 0
                         ? `${formatTime(state.currentTime)} / ${formatTime(state.duration)}`
@@ -431,15 +452,15 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                       uaPlaySynth('tick', 0.3)
                     }}
                     style={{
-                      minHeight: '44px',
-                      padding: '0 14px',
-                      borderRadius: '22px',
+                      minHeight: isLandscape ? '30px' : '44px',
+                      padding: isLandscape ? '0 8px' : '0 14px',
+                      borderRadius: isLandscape ? '15px' : '22px',
                       background: isFocused ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '4px',
-                      fontSize: '14px',
+                      fontSize: isLandscape ? '11px' : '14px',
                       color: isFocused ? '#ffd700' : '#666',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
@@ -447,7 +468,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                     }}
                     title="Restart track (R)"
                   >
-                    ⏮ <span style={{ fontSize: '10px', opacity: 0.7, fontFamily: 'monospace' }}>R</span>
+                    ⏮ {!isLandscape && <span style={{ fontSize: '10px', opacity: 0.7, fontFamily: 'monospace' }}>R</span>}
                   </div>
                 )}
               </div>
@@ -464,9 +485,9 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 }}
                 style={{
                   width: '100%',
-                  height: isMobile ? '24px' : '6px',
+                  height: isLandscape ? '14px' : (isMobile ? '24px' : '6px'),
                   background: 'rgba(255,255,255,0.1)',
-                  borderRadius: isMobile ? '12px' : '3px',
+                  borderRadius: isLandscape ? '7px' : (isMobile ? '12px' : '3px'),
                   overflow: 'hidden',
                   cursor: 'pointer'
                 }}
@@ -477,7 +498,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                   background: isFocused
                     ? 'linear-gradient(90deg, #ffd700, #ffaa00)'
                     : 'rgba(255,215,0,0.5)',
-                  borderRadius: isMobile ? '12px' : '3px',
+                  borderRadius: isLandscape ? '7px' : (isMobile ? '12px' : '3px'),
                   transition: 'width 0.1s linear'
                 }} />
               </div>
