@@ -609,14 +609,13 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [])
 
   // ============================================================
-  // PERCEPTUAL VOLUME — x^2 curve + sample-accurate smoothing
+  // LINEAR VOLUME — slider 100% = original file volume (unity gain)
   // ============================================================
-  // Simple power curve: slider 0.5 → gain 0.25 (audible, gradual)
+  // No perceptual curve — prevents distortion on mobile browsers
   // Smoothing via linearRampToValueAtTime — no clicks, no pops
 
   useEffect(() => {
-    const linear = musicMuted ? 0 : musicVolume
-    const gain = linear * linear // x^2 — gradual, always audible
+    const gain = musicMuted ? 0 : musicVolume // Linear, unity at 100%
 
     const ctx = uaGetContext()
     if (musicGainRef.current && ctx) {
@@ -630,8 +629,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [musicVolume, musicMuted])
 
   useEffect(() => {
-    const linear = sfxMuted ? 0 : sfxVolume
-    const gain = linear * linear // x^2 — gradual, always audible
+    const gain = sfxMuted ? 0 : sfxVolume // Linear, unity at 100%
 
     const ctx = uaGetContext()
     if (sfxGainRef.current && ctx) {

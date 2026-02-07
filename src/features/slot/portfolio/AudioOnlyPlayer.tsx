@@ -89,8 +89,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     try {
       const source = ctx.createMediaElementSource(audio)
       const gainNode = ctx.createGain()
-      // Apply current player volume immediately (x² perceptual)
-      gainNode.gain.value = playerVolume * playerVolume
+      // Linear gain — slider 100% = original file volume (unity gain)
+      gainNode.gain.value = playerVolume
       source.connect(gainNode)
       gainNode.connect(ctx.destination)
       sourceRefs.current[index] = source
@@ -120,10 +120,10 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     }
   }, [])
 
-  // Player volume — x² perceptual curve, sample-accurate smoothing via linearRamp
+  // Player volume — linear gain (slider 100% = original file volume, no amplification)
   // Independent from global musicVolume (this player has its own volume control)
   useEffect(() => {
-    const gain = playerVolume * playerVolume // x² perceptual
+    const gain = playerVolume // Linear — no perceptual curve, unity gain at 100%
     const ctx = uaGetContext()
     let hasAudioContext = false
 
@@ -137,7 +137,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       }
     })
 
-    // Fallback: if no AudioContext routing, apply x² directly to <audio> elements
+    // Fallback: if no AudioContext routing, apply linear to <audio> elements
     if (!hasAudioContext) {
       audioRefs.current.forEach(audio => {
         if (audio) audio.volume = gain
