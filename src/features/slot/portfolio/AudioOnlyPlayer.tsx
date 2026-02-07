@@ -178,6 +178,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   const togglePlayPause = (index: number) => {
     const audio = audioRefs.current[index]
     if (!audio) return
+    // Block toggle while seeking — prevents double-action from timeline tap
+    if (seekingRef.current) return
 
     if (audio.paused) {
       // Pause all other tracks first
@@ -239,6 +241,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     if (audio) audio.currentTime = 0
   }
 
+  const seekingRef = useRef(false)
   const handleSeek = (index: number, e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const audio = audioRefs.current[index]
     if (!audio || !audio.duration) return
@@ -247,7 +250,29 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
     const x = clientX - rect.left
     const pct = Math.max(0, Math.min(1, x / rect.width))
+
+    // Pause before seeking to prevent audio artifacts (pops, repeats)
+    const wasPlaying = !audio.paused
+    if (wasPlaying) audio.pause()
+    seekingRef.current = true
+
     audio.currentTime = pct * audio.duration
+
+    // Resume after browser has seeked to new position
+    const onSeeked = () => {
+      audio.removeEventListener('seeked', onSeeked)
+      seekingRef.current = false
+      if (wasPlaying) audio.play().catch(() => {})
+    }
+    audio.addEventListener('seeked', onSeeked)
+    // Safety: if seeked never fires (edge case), resume after 500ms
+    setTimeout(() => {
+      audio.removeEventListener('seeked', onSeeked)
+      if (seekingRef.current) {
+        seekingRef.current = false
+        if (wasPlaying && audio.paused) audio.play().catch(() => {})
+      }
+    }, 500)
   }
 
   const formatTime = (seconds: number) => {
