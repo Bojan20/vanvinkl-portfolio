@@ -74,7 +74,7 @@ export function CasinoCanvas({
         max: 1,
         debounce: 200
       }}
-      frameloop={tabVisible ? 'always' : 'never'}
+      frameloop={tabVisible && !spinningSlot ? 'always' : 'never'}
       flat
       onCreated={({ gl }) => {
         glRef.current = gl
