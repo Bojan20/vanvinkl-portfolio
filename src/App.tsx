@@ -313,12 +313,8 @@ export function App() {
         setSpinningSlot(null)
         return
       }
-      // No slot open, no video → back to splash (full reset like first visit)
-      uaStop('lounge')
-      setShowSplash(true)
-      setShowIntro(false)
-      setOverlayComplete(false)
-      setCameraComplete(false)
+      // No slot open, no video → full reload (clean restart like first visit)
+      window.location.reload()
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
