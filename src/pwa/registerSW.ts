@@ -24,19 +24,23 @@ export async function registerServiceWorker(): Promise<void> {
 
   try {
     const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/'
+      scope: '/',
+      updateViaCache: 'none' // Always fetch sw.js from network, never from HTTP/SW cache
     })
 
     console.log('[PWA] Service worker registered:', registration.scope)
 
-    // Check for updates
+    // Force immediate update check
+    registration.update().catch(() => {})
+
+    // When new SW installs, reload to activate it immediately
     registration.addEventListener('updatefound', () => {
       const newWorker = registration.installing
       if (newWorker) {
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('[PWA] New version available!')
-            // Could show "Update available" toast here
+            console.log('[PWA] New version installed — reloading to activate')
+            window.location.reload()
           }
         })
       }

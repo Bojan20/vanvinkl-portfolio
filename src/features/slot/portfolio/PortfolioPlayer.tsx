@@ -127,21 +127,43 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     playStateRef.current = 'preparing'
     console.log('[Transport] Idle → Preparing (buffering media)')
 
-    // Wait for canplaythrough (readyState >= 4) — enough buffer for uninterrupted play
+    // Wait for canplaythrough OR readyState >= 3 (HAVE_FUTURE_DATA — enough to start)
+    // Also listens for error events to avoid hanging forever on broken media
     const waitReady = (el: HTMLMediaElement, label: string) =>
-      el.readyState >= 4 ? Promise.resolve() : new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          el.removeEventListener('canplaythrough', onReady)
-          console.warn(`[Transport] ${label} canplaythrough timeout — proceeding with readyState ${el.readyState}`)
-          resolve()
-        }, 15000) // 15s timeout — generous for mobile networks
-        const onReady = () => {
+      el.readyState >= 3 ? Promise.resolve() : new Promise<void>((resolve) => {
+        const cleanup = () => {
           clearTimeout(timeout)
+          clearInterval(poll)
           el.removeEventListener('canplaythrough', onReady)
+          el.removeEventListener('canplay', onReady)
+          el.removeEventListener('error', onError)
+        }
+        const timeout = setTimeout(() => {
+          cleanup()
+          console.warn(`[Transport] ${label} timeout — proceeding with readyState ${el.readyState}`)
+          resolve()
+        }, 10000)
+        const onReady = () => {
+          cleanup()
           console.log(`[Transport] ${label} ready (readyState: ${el.readyState})`)
           resolve()
         }
+        const onError = () => {
+          cleanup()
+          console.warn(`[Transport] ${label} error — proceeding anyway`)
+          resolve()
+        }
+        // Poll readyState as fallback — some browsers miss events
+        const poll = setInterval(() => {
+          if (el.readyState >= 3) {
+            cleanup()
+            console.log(`[Transport] ${label} ready via poll (readyState: ${el.readyState})`)
+            resolve()
+          }
+        }, 500)
         el.addEventListener('canplaythrough', onReady)
+        el.addEventListener('canplay', onReady)
+        el.addEventListener('error', onError)
       })
 
     // Track individual readiness for progress reporting
@@ -154,11 +176,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       setBufferProgress(Math.round((readyCount / totalTracks) * 100))
     }
 
-    await Promise.all([
-      trackReady(video, 'video'),
-      trackReady(music, 'music'),
-      trackReady(sfx, 'sfx')
-    ])
+    try {
+      await Promise.all([
+        trackReady(video, 'video'),
+        trackReady(music, 'music'),
+        trackReady(sfx, 'sfx')
+      ])
+    } catch (e) {
+      console.warn('[Transport] prepare() error — proceeding anyway:', e)
+    }
 
     if (playStateRef.current === 'released') return // unmounted during prepare
 
@@ -767,8 +793,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         </div>
       )}
 
-      {/* Permanent Controls Hint - Bottom Left (desktop only) */}
-      {!isMobile && (
+      {/* Permanent Controls Hint - Bottom Left (desktop only, hidden in fullscreen) */}
+      {!isMobile && !isFullscreen && (
         <div style={{
           position: 'fixed',
           bottom: '80px',
