@@ -447,9 +447,14 @@ export function App() {
               }
               // Smooth fade in to stored volume (no dropout)
               uaVolume('music', musicVolume, 0.8)
-              // Restore SFX + UI bus volumes (may have been altered during slot)
+              // Restore SFX + UI bus volumes — immediate + delayed (PortfolioPlayer cleanup is async)
               uaVolume('sfx', sfxVolume, 0)
               uaVolume('ui', sfxVolume, 0)
+              setTimeout(() => {
+                const { sfxVolume: v } = useAudioStore.getState()
+                uaVolume('sfx', v, 0)
+                uaVolume('ui', v, 0)
+              }, 200)
               console.log(`[Music] Slot closed - lounge resumed, music=${musicVolume.toFixed(2)} sfx=${sfxVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {
