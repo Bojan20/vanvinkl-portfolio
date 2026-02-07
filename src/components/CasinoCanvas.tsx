@@ -16,17 +16,23 @@ import { LoadingScreen } from './ui'
  * R3F doesn't always restart the render loop automatically on prop change.
  */
 function FrameloopResumer({ active }: { active: boolean }) {
-  const { invalidate, gl } = useThree()
+  const { invalidate, gl, setDpr } = useThree()
 
   useEffect(() => {
     if (active) {
-      // Reset DPR to device default (performance regression may have lowered it)
+      // Reset DPR via R3F API (updates internal state + renderer)
+      // gl.setPixelRatio alone does NOT update R3F's internal viewport.dpr,
+      // so the performance adaptor keeps the lowered DPR → blur
       const dpr = Math.min(window.devicePixelRatio, 2)
+      setDpr(dpr)
+      // Also sync the renderer directly (belt + suspenders)
       gl.setPixelRatio(dpr)
+      // Resize to fix any stale framebuffer dimensions
+      gl.setSize(gl.domElement.clientWidth, gl.domElement.clientHeight, false)
       // Force a frame to kick-start the render loop
       invalidate()
     }
-  }, [active, invalidate, gl])
+  }, [active, invalidate, gl, setDpr])
 
   return null
 }

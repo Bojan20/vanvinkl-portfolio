@@ -1292,12 +1292,12 @@ export function SlotFullScreen({
             />
           )}
 
-          {/* Controls hint - bottom left (desktop only - keyboard controls) */}
+          {/* Controls hint - top left (desktop only - keyboard controls) */}
           {!selectedProject && !window.matchMedia('(pointer: coarse)').matches && (
             <div style={{
               position: 'fixed',
-              bottom: 'max(clamp(12px, 2vh, 24px), env(safe-area-inset-bottom, 0px))',
-              left: 'max(clamp(12px, 2vw, 24px), env(safe-area-inset-left, 0px))',
+              top: '64px',
+              left: '20px',
               padding: '10px 14px',
               borderRadius: '10px',
               background: 'rgba(0,0,0,0.7)',

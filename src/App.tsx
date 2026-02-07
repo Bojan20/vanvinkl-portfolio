@@ -439,15 +439,14 @@ export function App() {
                 qualityStore.setPreset('auto')
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
-              // Resume lounge music — ALWAYS restart + force volume
-              // SlotFullScreen may have stopped lounge or left music bus at 0
+              // Resume lounge music — seamless fade in
               const { musicVolume } = useAudioStore.getState()
-              uaVolume('music', 0, 0) // Instant zero (cancel any stale ramp)
               if (!uaIsPlaying('lounge')) {
+                uaVolume('music', 0, 0) // Ensure bus at 0 before restart
                 uaPlay('lounge')
               }
-              // Fade in from 0 to stored volume over 500ms
-              setTimeout(() => uaVolume('music', musicVolume, 0.5), 50)
+              // Smooth fade in to stored volume (no dropout)
+              uaVolume('music', musicVolume, 0.8)
               console.log(`[Music] Slot closed - lounge resumed, fade to ${musicVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {
