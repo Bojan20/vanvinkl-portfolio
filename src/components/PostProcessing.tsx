@@ -82,7 +82,7 @@ const QUALITY_PRESETS: Record<QualityPreset, QualitySettings> = {
     dofBokehScale: 3
   },
   high: {
-    ssaoSamples: 24,
+    ssaoSamples: 16,
     ssaoRings: 4,
     ssaoRadius: 0.1,
     bloomIntensity: 0.9,
@@ -298,17 +298,18 @@ export function detectQualityPreset(): QualityPreset {
   if (debugInfo) {
     const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).toLowerCase()
 
-    // Integrated graphics = medium
-    if (renderer.includes('intel') || renderer.includes('integrated')) {
+    // Integrated / low-end = medium
+    if (renderer.includes('intel hd') || renderer.includes('intel uhd') || renderer.includes('intel iris') || renderer.includes('integrated')) {
       return releaseAndReturn('medium')
     }
 
-    // High-end discrete GPU = high/ultra
-    if (renderer.includes('rtx') || renderer.includes('radeon rx 6') || renderer.includes('radeon rx 7')) {
+    // Ultra-tier: RTX, Radeon RX 6xxx/7xxx/9xxx, Apple M-series
+    if (renderer.includes('rtx') || renderer.includes('radeon rx 6') || renderer.includes('radeon rx 7') || renderer.includes('radeon rx 9') || renderer.includes('apple m')) {
       return releaseAndReturn('ultra')
     }
 
-    if (renderer.includes('gtx') || renderer.includes('radeon')) {
+    // High-tier: GTX, older Radeon, discrete NVIDIA/AMD
+    if (renderer.includes('gtx') || renderer.includes('radeon') || renderer.includes('nvidia') || renderer.includes('geforce')) {
       return releaseAndReturn('high')
     }
   }

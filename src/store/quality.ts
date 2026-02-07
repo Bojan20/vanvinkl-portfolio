@@ -155,25 +155,27 @@ export const useQualityStore = create<QualityState>()(
         // Heuristic device tier detection
         let tier: 'low' | 'medium' | 'high' = 'medium'
 
+        const r = renderer.toLowerCase()
+
         // High-end GPUs
         if (
-          renderer.includes('NVIDIA') ||
-          renderer.includes('AMD') ||
-          renderer.includes('Radeon') ||
-          renderer.includes('RTX') ||
-          renderer.includes('GeForce GTX 1060') ||
-          renderer.includes('Apple M1') ||
-          renderer.includes('Apple M2') ||
-          renderer.includes('Apple M3')
+          r.includes('nvidia') ||
+          r.includes('radeon') ||
+          r.includes('rtx') ||
+          r.includes('geforce') ||
+          r.includes('apple m') // Catches M1, M2, M3, M4, M5+
         ) {
           tier = 'high'
         }
 
         // Low-end indicators (integrated graphics)
         else if (
-          renderer.includes('Intel HD') ||
-          renderer.includes('Intel UHD') ||
-          renderer.includes('PowerVR') ||
+          r.includes('intel hd') ||
+          r.includes('intel uhd') ||
+          r.includes('intel iris') ||
+          r.includes('powervr') ||
+          r.includes('adreno 5') || // Older Qualcomm
+          r.includes('mali-g5') ||   // Older ARM
           /iPhone|iPad|Android/i.test(navigator.userAgent)
         ) {
           tier = 'low'

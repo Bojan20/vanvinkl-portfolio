@@ -16,7 +16,7 @@
  * Jackpot reveals detailed case studies
  */
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 
 // Store imports
 import {
@@ -228,6 +228,23 @@ export function SlotFullScreen({
   // Music fade RAF tracking (cancellable)
   const fadeRafRef = useRef<number | null>(null)
 
+  // Stable random values for floating particles + keyframe animation (avoid re-render jitter)
+  const particleRng = useMemo(() => {
+    const count = 20 // max particle count
+    return Array.from({ length: count }, () => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      w: 2 + Math.random() * 4,
+      h: 2 + Math.random() * 4,
+      opacity: 0.3 + Math.random() * 0.4,
+      duration: 5 + Math.random() * 10,
+      delay: Math.random() * 5
+    }))
+  }, [])
+  const keyframeRng = useMemo(() => ({
+    tx: Math.random() * 40 - 20,
+    ty: Math.random() * 40 - 20
+  }), [])
 
   // ========== DERIVED STATE ==========
   const section = SLOT_CONTENT[machineId]
@@ -768,18 +785,18 @@ export function SlotFullScreen({
           pointerEvents: 'none',
           zIndex: 0
         }}>
-          {Array.from({ length: window.matchMedia('(pointer: coarse)').matches ? 8 : 20 }).map((_, i) => (
+          {particleRng.slice(0, window.matchMedia('(pointer: coarse)').matches ? 8 : 20).map((p, i) => (
             <div key={i} style={{
               position: 'absolute',
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${2 + Math.random() * 4}px`,
-              height: `${2 + Math.random() * 4}px`,
+              left: `${p.left}%`,
+              top: `${p.top}%`,
+              width: `${p.w}px`,
+              height: `${p.h}px`,
               borderRadius: '50%',
               background: i % 3 === 0 ? primaryColor : i % 3 === 1 ? COLORS.gold : COLORS.magenta,
-              opacity: 0.3 + Math.random() * 0.4,
-              animation: `floatParticle ${5 + Math.random() * 10}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 5}s`
+              opacity: p.opacity,
+              animation: `floatParticle ${p.duration}s ease-in-out infinite`,
+              animationDelay: `${p.delay}s`
             }} />
           ))}
         </div>
@@ -1316,7 +1333,7 @@ export function SlotFullScreen({
       <style>{`
         @keyframes floatParticle {
           0%, 100% { transform: translate(0, 0); opacity: 0.3; }
-          50% { transform: translate(${Math.random() * 40 - 20}px, ${Math.random() * 40 - 20}px); opacity: 0.8; }
+          50% { transform: translate(${keyframeRng.tx}px, ${keyframeRng.ty}px); opacity: 0.8; }
         }
         @keyframes megaShake {
           0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }

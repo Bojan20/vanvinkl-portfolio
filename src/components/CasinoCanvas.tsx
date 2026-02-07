@@ -7,7 +7,7 @@
  */
 
 import { Canvas } from '@react-three/fiber'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useRef, useEffect } from 'react'
 import { CasinoScene } from './CasinoScene'
 import { LoadingScreen } from './ui'
 
@@ -38,6 +38,17 @@ export function CasinoCanvas({
   onIntroCameraComplete,
   onContextLost
 }: CasinoCanvasProps) {
+  const glRef = useRef<{ domElement: HTMLCanvasElement } | null>(null)
+
+  // Cleanup WebGL context lost listener on unmount
+  useEffect(() => {
+    return () => {
+      if (glRef.current) {
+        glRef.current.domElement.removeEventListener('webglcontextlost', onContextLost)
+      }
+    }
+  }, [onContextLost])
+
   return (
     <Canvas
       shadows={false}
@@ -66,6 +77,7 @@ export function CasinoCanvas({
       frameloop={tabVisible ? 'always' : 'never'}
       flat
       onCreated={({ gl }) => {
+        glRef.current = gl
         gl.domElement.addEventListener('webglcontextlost', onContextLost)
       }}
     >

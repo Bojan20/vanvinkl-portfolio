@@ -33,7 +33,9 @@ export function isValidMediaPath(path: string | undefined): boolean {
   // Block data/blob URLs
   if (path.startsWith('data:') || path.startsWith('blob:')) return false
 
-  // Block parent directory traversal
+  // Block parent directory traversal (raw and URL-encoded)
+  const decoded = decodeURIComponent(path)
+  if (decoded.includes('../') || decoded.includes('..\\')) return false
   if (path.includes('../') || path.includes('..\\')) return false
 
   return true

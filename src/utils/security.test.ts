@@ -101,6 +101,14 @@ describe('isValidMediaPath', () => {
       expect(isValidMediaPath('/audio/..\\..\\windows\\system32')).toBe(false)
     })
 
+    it('blocks URL-encoded directory traversal', () => {
+      expect(isValidMediaPath('/audio/%2e%2e/%2e%2e/etc/passwd')).toBe(false)
+      expect(isValidMediaPath('/audio/%2E%2E/%2E%2E/etc/passwd')).toBe(false)
+      expect(isValidMediaPath('/%2e%2e%2f%2e%2e%2fetc%2fpasswd')).toBe(false)
+      expect(isValidMediaPath('/audio/..%2f..%2fetc/passwd')).toBe(false)
+      expect(isValidMediaPath('/audio/..%5c..%5cwindows%5csystem32')).toBe(false)
+    })
+
     it('blocks JavaScript protocol', () => {
       expect(isValidMediaPath('javascript:alert(1)')).toBe(false)
     })

@@ -249,24 +249,27 @@ export function detectGPUTier(): 'low' | 'medium' | 'high' {
   const loseExt = gl.getExtension('WEBGL_lose_context')
   loseExt?.loseContext()
 
+  const r = renderer.toLowerCase()
+
   // High-end
   if (
-    renderer.includes('NVIDIA') ||
-    renderer.includes('AMD Radeon') ||
-    renderer.includes('RTX') ||
-    renderer.includes('GeForce GTX 1060') ||
-    renderer.includes('Apple M1') ||
-    renderer.includes('Apple M2') ||
-    renderer.includes('Apple M3')
+    r.includes('nvidia') ||
+    r.includes('radeon') ||
+    r.includes('rtx') ||
+    r.includes('geforce') ||
+    r.includes('apple m') // M1, M2, M3, M4, M5+
   ) {
     return 'high'
   }
 
   // Low-end (integrated graphics)
   if (
-    renderer.includes('Intel HD') ||
-    renderer.includes('Intel UHD 6') ||
-    renderer.includes('PowerVR') ||
+    r.includes('intel hd') ||
+    r.includes('intel uhd') ||
+    r.includes('intel iris') ||
+    r.includes('powervr') ||
+    r.includes('adreno 5') ||
+    r.includes('mali-g5') ||
     isMobileDevice()
   ) {
     return 'low'

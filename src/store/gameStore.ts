@@ -53,7 +53,6 @@ interface GameState {
 
   // Audio
   audioInitialized: boolean
-  masterVolume: number
   muted: boolean
 }
 
@@ -85,7 +84,6 @@ interface GameActions {
 
   // Audio
   setAudioInitialized: () => void
-  setMasterVolume: (volume: number) => void
   toggleMute: () => void
 
   // Reset
@@ -113,7 +111,6 @@ const initialState: GameState = {
   modalData: null,
 
   audioInitialized: false,
-  masterVolume: 0.8,
   muted: false
 }
 
@@ -180,7 +177,6 @@ export const useGameStore = create<GameState & GameActions>()(
 
     // Audio actions
     setAudioInitialized: () => set({ audioInitialized: true }),
-    setMasterVolume: (volume) => set({ masterVolume: volume }),
     toggleMute: () => set(state => ({ muted: !state.muted })),
 
     // Reset
