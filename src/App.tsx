@@ -13,7 +13,6 @@ import {
   FullscreenToggle,
   SpectrumVisualizer,
   KeyboardShortcutsModal,
-  AchievementToast,
   KonamiEasterEgg,
   LoadingScreen,
   AudioSettings,
@@ -48,7 +47,7 @@ import { gameRefs } from './store'
 // Unified Audio System
 import { initUnifiedAudio, unifiedAudio, uaPlay, uaStop, uaVolume, uaIsPlaying } from './audio'
 import { useAudioStore } from './store/audio'
-import { achievementStore, type Achievement } from './store/achievements'
+import { achievementStore } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
 import { useQualityStore, initQualitySystem } from './store/quality'
 import { FPSMonitor } from './utils/performance'
@@ -66,7 +65,7 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [konamiActive, resetKonami] = useKonamiCode()
   const [tabVisible, setTabVisible] = useState(true)
-  const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null)
+
 
   // LIFECYCLE POLICY §6 — Suspend on tab hidden, resume on visible
   usePageVisibility({
@@ -130,14 +129,6 @@ export function App() {
     // Intro can be skipped with ESC/ENTER but doesn't persist
     setShowIntro(true)
     console.log('[Intro] Starting intro animation')
-  }, [])
-
-  // Subscribe to achievement unlocks
-  useEffect(() => {
-    const unsubscribe = achievementStore.onUnlock((achievement) => {
-      setUnlockedAchievement(achievement)
-    })
-    return unsubscribe
   }, [])
 
   // Track Konami code for achievement
@@ -473,12 +464,6 @@ export function App() {
 
       {/* Konami Code Easter Egg */}
       <KonamiEasterEgg active={konamiActive} onComplete={resetKonami} />
-
-      {/* Achievement Toast */}
-      <AchievementToast
-        achievement={unlockedAchievement}
-        onClose={() => setUnlockedAchievement(null)}
-      />
 
       {/* Onboarding tooltip removed - controls hint already shown at bottom of screen */}
 

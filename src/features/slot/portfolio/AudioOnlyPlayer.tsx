@@ -315,12 +315,10 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     const pct = Math.max(0, Math.min(1, x / rect.width))
     const targetTime = pct * audio.duration
 
-    // Pause before seeking to prevent audio artifacts (pops, repeats)
-    const wasPlaying = !audio.paused
-    if (wasPlaying) audio.pause()
+    // Set seeking flag — blocks togglePlayPause from parent click bubbling
     seekingRef.current = true
 
-    // Immediately update UI to target position (prevents visual snap-back)
+    // Immediately update UI to target position
     setTrackStates(prev => {
       const next = [...prev]
       next[index] = {
@@ -331,26 +329,39 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       return next
     })
 
+    // Direct seek — no pause/resume, browser handles it natively
+    // If not playing, start playback from target position
+    const wasPlaying = !audio.paused
     audio.currentTime = targetTime
 
-    // Resume after browser has seeked — wait one frame for buffer flush
+    if (!wasPlaying) {
+      // Route through AudioContext on first play
+      connectToAudioContext(index)
+      // Pause all other tracks
+      audioRefs.current.forEach((a, i) => {
+        if (a && i !== index && !a.paused) {
+          a.pause()
+          setTrackStates(prev => {
+            const next = [...prev]
+            next[i] = { ...next[i], playing: false }
+            return next
+          })
+        }
+      })
+      audio.play().catch(() => {})
+      playingIndexRef.current = index
+    }
+
+    // Clear seeking flag after browser has processed the seek
     const onSeeked = () => {
       audio.removeEventListener('seeked', onSeeked)
-      // RAF ensures browser has flushed old audio buffer before resume
-      requestAnimationFrame(() => {
-        seekingRef.current = false
-        if (wasPlaying) audio.play().catch(() => {})
-      })
+      requestAnimationFrame(() => { seekingRef.current = false })
     }
     audio.addEventListener('seeked', onSeeked)
-    // Safety: if seeked never fires (edge case), resume after 500ms
     setTimeout(() => {
       audio.removeEventListener('seeked', onSeeked)
-      if (seekingRef.current) {
-        seekingRef.current = false
-        if (wasPlaying && audio.paused) audio.play().catch(() => {})
-      }
-    }, 500)
+      seekingRef.current = false
+    }, 300)
   }
 
   const formatTime = (seconds: number) => {

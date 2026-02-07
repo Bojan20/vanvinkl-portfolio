@@ -30,7 +30,6 @@ import {
   type ExperienceSection,
   type ContactSection
 } from '../store/slotContent'
-import { achievementStore } from '../store/achievements'
 
 // Audio system
 import { uaPlay, uaStop, uaVolume, uaGetVolume, uaPlaySynth } from '../audio'
@@ -265,7 +264,6 @@ export function SlotFullScreen({
     setSpinCount(prev => prev + 1)
     setTargetIndices(generateSpinResult())
     haptic.spin() // Haptic feedback on spin start
-    achievementStore.trackSpin() // Track for achievements
   }, [phase, generateSpinResult])
 
   const handleReelStop = useCallback((reelIndex: number) => {
@@ -306,13 +304,8 @@ export function SlotFullScreen({
         // Only haptic feedback - no win/jackpot sounds (reel sounds are enough)
         if (isJackpot) {
           haptic.jackpot()
-          achievementStore.trackJackpot()
         } else {
           haptic.success()
-        }
-        // Track section visit for achievement
-        if (section) {
-          achievementStore.trackSectionVisit(section.type)
         }
         // Update discovered skills using segment config
         targetIndices.forEach((idx, reelIdx) => {
@@ -721,9 +714,9 @@ export function SlotFullScreen({
       onClick={handleContainerClick}
       style={{
       position: 'fixed',
-      top: 0, left: 0,
-      width: '100dvw',
-      height: '100dvh',
+      inset: 0,
+      width: '100%',
+      height: '100%',
       background: phase === 'intro' && introStep === 0
         ? '#000000'
         : 'linear-gradient(180deg, #03020a 0%, #08061a 30%, #0a0820 50%, #08061a 70%, #03020a 100%)',
@@ -736,9 +729,11 @@ export function SlotFullScreen({
       transition: 'background 0.5s ease',
       animation: isJackpot && phase === 'result' ? 'megaShake 0.5s ease-in-out' : 'none',
       cursor: 'default',
-      outline: 'none', // Hide focus ring (fullscreen overlay)
+      outline: 'none',
       willChange: 'transform',
-      transform: 'translateZ(0)' // Force GPU compositing — prevents black flash on orientation change
+      backfaceVisibility: 'hidden' as const,
+      WebkitBackfaceVisibility: 'hidden' as const,
+      transform: 'translateZ(0)'
     }}>
       {/* ========== ULTRA PREMIUM BACKGROUND EFFECTS ========== */}
 
