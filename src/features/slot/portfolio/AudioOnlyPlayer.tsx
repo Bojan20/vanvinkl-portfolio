@@ -693,19 +693,14 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         })}
       </div>
 
-      {/* Player Volume Slider — bottom of player */}
+      {/* Player Volume Slider — below tracks */}
       <div
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         style={{
-          position: 'fixed',
-          bottom: isLandscape
-            ? 'max(8px, env(safe-area-inset-bottom, 0px))'
-            : 'max(20px, env(safe-area-inset-bottom, 0px))',
-          right: isLandscape
-            ? 'max(12px, env(safe-area-inset-right, 0px))'
-            : '50%',
-          transform: isLandscape ? 'none' : 'translateX(50%)',
+          marginTop: isLandscape ? '8px' : '12px',
+          width: isLandscape ? '65%' : '90%',
+          maxWidth: isLandscape ? '500px' : '600px',
           display: 'flex',
           alignItems: 'center',
           gap: isLandscape ? '8px' : '12px',
@@ -714,8 +709,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           border: `1px solid ${playerVolume === 0 ? 'rgba(255,68,68,0.4)' : 'rgba(0,255,255,0.3)'}`,
           borderRadius: '20px',
           backdropFilter: 'blur(8px)',
-          zIndex: 1000,
-          minWidth: isLandscape ? '180px' : '260px'
+          zIndex: 1000
         }}
       >
         {/* Speaker icon — click to mute/unmute */}

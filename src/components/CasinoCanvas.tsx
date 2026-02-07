@@ -6,10 +6,30 @@
  * This wrapper enables dynamic import of the entire 3D stack.
  */
 
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { Suspense, lazy, useRef, useEffect } from 'react'
 import { CasinoScene } from './CasinoScene'
 import { LoadingScreen } from './ui'
+
+/**
+ * Forces R3F to resume rendering when frameloop switches back to 'always'.
+ * R3F doesn't always restart the render loop automatically on prop change.
+ */
+function FrameloopResumer({ active }: { active: boolean }) {
+  const { invalidate, gl } = useThree()
+
+  useEffect(() => {
+    if (active) {
+      // Reset DPR to device default (performance regression may have lowered it)
+      const dpr = Math.min(window.devicePixelRatio, 2)
+      gl.setPixelRatio(dpr)
+      // Force a frame to kick-start the render loop
+      invalidate()
+    }
+  }, [active, invalidate, gl])
+
+  return null
+}
 
 const IntroCamera = lazy(() => import('./IntroSequence').then(m => ({ default: m.IntroCamera })))
 
@@ -81,6 +101,7 @@ export function CasinoCanvas({
         gl.domElement.addEventListener('webglcontextlost', onContextLost)
       }}
     >
+      <FrameloopResumer active={tabVisible && !spinningSlot} />
       <Suspense fallback={<LoadingScreen />}>
         {showIntro && (
           <IntroCamera

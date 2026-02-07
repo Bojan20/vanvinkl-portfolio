@@ -63,6 +63,7 @@ export interface ContactMethod {
   value: string
   action: 'email' | 'link' | 'copy'
   url?: string
+  disabled?: boolean
 }
 
 export interface AboutItem {
@@ -432,28 +433,36 @@ export const SLOT_CONTENT: Record<string, SlotSection> = {
         label: 'Email',
         value: 'vanvinklstudio@gmail.com',
         action: 'email',
-        url: 'mailto:vanvinklstudio@gmail.com'
+        url: 'mailto:vanvinklstudio@gmail.com?subject=Project%20Inquiry&body=Hi%20Bojan%2C%0A%0AI%27m%20interested%20in%20working%20with%20you%20on%20a%20project.%0A%0AProject%20details%3A%0A'
+      },
+      {
+        icon: '💬',
+        label: 'WhatsApp',
+        value: '+381 69 400 0062',
+        action: 'link',
+        url: 'https://wa.me/381694000062?text=Hi%20Bojan%2C%20I%27m%20interested%20in%20working%20with%20you!'
       },
       {
         icon: '📱',
-        label: 'Phone',
+        label: 'Viber',
         value: '+381 69 400 0062',
-        action: 'copy',
-        url: 'tel:+381694000062'
+        action: 'link',
+        url: 'viber://chat?number=%2B381694000062'
       },
       {
         icon: '💼',
         label: 'LinkedIn',
         value: 'Bojan Petkovic',
         action: 'link',
-        url: 'https://linkedin.com/in/bojan-petkovic-audio'
+        url: 'https://www.linkedin.com/in/soundpet/'
       },
       {
         icon: '🌐',
         label: 'Website',
-        value: 'vanvinkl.com',
+        value: 'Coming Soon',
         action: 'link',
-        url: 'https://vanvinkl.com'
+        url: 'https://vanvinkl.com',
+        disabled: true
       }
     ],
     availability: 'Currently accepting new projects. Typical turnaround: 2-4 weeks for full slot audio packages.',

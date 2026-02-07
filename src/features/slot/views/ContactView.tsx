@@ -28,6 +28,7 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
   const handleClick = (method: typeof section.methods[0], index: number) => {
+    if (method.disabled) return
     if (method.action === 'email' && method.url) {
       window.location.href = method.url
     } else if (method.action === 'link' && method.url) {
@@ -56,9 +57,6 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
   const cardGap = isMobile ? (isLandscape ? 3 : 5) : 12
   const gridGap = isMobile ? (isLandscape ? 4 : 6) : 16
   const sectionGap = isMobile ? (isLandscape ? 4 : 8) : 24
-  const availSize = isMobile ? (isLandscape ? 10 : 12) : 18
-  const availPadX = isMobile ? (isLandscape ? 10 : 14) : 36
-  const availPadY = isMobile ? (isLandscape ? 4 : 6) : 16
 
   return (
     <div style={{
@@ -84,22 +82,28 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i
           const isCopied = copiedIndex === i
+          const isDisabled = !!method.disabled
           return (
             <button
               key={method.label}
               onClick={() => handleClick(method, i)}
+              disabled={isDisabled}
               style={{
-                background: isFocused
-                  ? 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))'
-                  : 'linear-gradient(135deg, rgba(255,68,68,0.06), rgba(255,68,68,0.02))',
-                border: isFocused ? '2px solid #ff4444' : '1px solid rgba(255,68,68,0.12)',
+                background: isDisabled
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))'
+                  : isFocused
+                    ? 'linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))'
+                    : 'linear-gradient(135deg, rgba(255,68,68,0.06), rgba(255,68,68,0.02))',
+                border: isDisabled
+                  ? '1px solid rgba(255,255,255,0.08)'
+                  : isFocused ? '2px solid #ff4444' : '1px solid rgba(255,68,68,0.12)',
                 borderRadius: isMobile ? '8px' : '14px',
                 padding: `${cardPadY}px ${cardPadX}px`,
                 textAlign: 'center',
-                cursor: 'pointer',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
                 animation: `fadeSlideIn 0.5s ease-out ${i * 0.1}s both`,
-                boxShadow: isFocused ? '0 6px 20px rgba(255,68,68,0.2)' : '0 2px 10px rgba(0,0,0,0.12)',
+                boxShadow: isDisabled ? 'none' : isFocused ? '0 6px 20px rgba(255,68,68,0.2)' : '0 2px 10px rgba(0,0,0,0.12)',
                 outline: 'none',
                 display: 'flex',
                 flexDirection: 'column' as const,
@@ -108,22 +112,23 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
                 gap: `${cardGap}px`,
                 minHeight: 0,
                 overflow: 'hidden',
+                opacity: isDisabled ? 0.35 : 1,
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
               <div style={{
                 fontSize: `${iconSize}px`,
-                filter: isFocused ? 'drop-shadow(0 0 10px rgba(255,68,68,0.6))' : 'none',
+                filter: isDisabled ? 'grayscale(1)' : isFocused ? 'drop-shadow(0 0 10px rgba(255,68,68,0.6))' : 'none',
                 lineHeight: 1
               }}>{method.icon}</div>
               <div style={{
-                color: isFocused ? '#ff6666' : '#ff4444',
+                color: isDisabled ? '#666' : isFocused ? '#ff6666' : '#ff4444',
                 fontWeight: 'bold',
                 fontSize: `${labelSize}px`,
                 letterSpacing: '0.3px'
               }}>{method.label}</div>
               <div style={{
-                color: isFocused ? '#bbb' : '#888899',
+                color: isDisabled ? '#555' : isFocused ? '#bbb' : '#888899',
                 fontSize: `${valueSize}px`,
                 fontWeight: isCopied ? 600 : 400,
                 whiteSpace: 'nowrap',
@@ -136,27 +141,6 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
             </button>
           )
         })}
-      </div>
-      {/* Availability badge */}
-      <div style={{ textAlign: 'center', flexShrink: 0 }}>
-        <div style={{
-          display: 'inline-block',
-          background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))',
-          padding: `${availPadY}px ${availPadX}px`,
-          borderRadius: isMobile ? '10px' : '16px',
-          border: '1px solid rgba(0,255,136,0.3)'
-        }}>
-          <p style={{
-            color: '#00ff88',
-            fontSize: `${availSize}px`,
-            fontWeight: 600,
-            margin: 0,
-            textShadow: '0 0 15px rgba(0,255,136,0.4)',
-            letterSpacing: '0.3px'
-          }}>
-            {section.availability}
-          </p>
-        </div>
       </div>
     </div>
   )
