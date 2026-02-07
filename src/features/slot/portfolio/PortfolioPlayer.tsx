@@ -549,24 +549,41 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       }
     }
 
-    // Fullscreen transition recovery: browser may fire 'waiting' during layout
-    // but never fire 'playing' afterwards, leaving audio stuck paused
+    // Fullscreen transition recovery:
+    // 1. Browser may fire 'waiting' during DOM re-layout but never 'playing' → audio stuck
+    // 2. Even without stall, DOM re-layout can cause video decoder micro-stutters
+    //    that desync audio by a few frames → audible jitter
+    // Solution: always re-sync audio to video's actual position after fullscreen settles
     const handleFullscreenRecovery = () => {
-      if (!stalled) return
       if (playStateRef.current !== 'playing') return
-      // Give browser 300ms to settle after fullscreen change
+      // Wait for DOM layout to fully settle
       setTimeout(() => {
-        if (!stalled) return
+        if (playStateRef.current !== 'playing') return
         if (video.paused || video.ended) return
-        // Video is actually playing but 'playing' event never fired — force recovery
-        stalled = false
-        music.currentTime = video.currentTime
-        sfx.currentTime = video.currentTime
-        music.play().catch(() => {})
-        sfx.play().catch(() => {})
-        setBufferState('playing')
-        console.log('[Transport] Fullscreen recovery — forced audio resume')
-      }, 300)
+
+        // Force re-sync audio to video's actual decoded position
+        const vt = video.currentTime
+        if (Math.abs(music.currentTime - vt) > 0.05) {
+          music.currentTime = vt
+        }
+        if (Math.abs(sfx.currentTime - vt) > 0.05) {
+          sfx.currentTime = vt
+        }
+
+        // Recover from stall if 'playing' event never fired
+        if (stalled) {
+          stalled = false
+          music.play().catch(() => {})
+          sfx.play().catch(() => {})
+          setBufferState('playing')
+          console.log('[Transport] Fullscreen stall recovery — forced audio resume')
+        } else {
+          // Ensure audio is still running (DOM re-layout can pause it)
+          if (music.paused) music.play().catch(() => {})
+          if (sfx.paused) sfx.play().catch(() => {})
+        }
+        console.log('[Transport] Fullscreen sync — audio re-aligned to', vt.toFixed(3), 's')
+      }, 150)
     }
 
     video.addEventListener('seeked', handleSeeked)
