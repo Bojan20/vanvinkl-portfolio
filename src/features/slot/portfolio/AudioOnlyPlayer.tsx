@@ -11,7 +11,8 @@
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react'
-import { uaPlaySynth } from '../../../audio'
+import { uaPlaySynth, uaGetContext } from '../../../audio'
+import { useAudioStore } from '../../../store/audio'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -52,6 +53,11 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   // Track which index is intentionally playing (survives orientation changes)
   const playingIndexRef = useRef<number>(-1)
 
+  // AudioContext DSP routing — per-track MediaElementSource → GainNode → ctx.destination
+  const sourceRefs = useRef<(MediaElementAudioSourceNode | null)[]>([])
+  const gainRefs = useRef<(GainNode | null)[]>([])
+  const musicVolume = useAudioStore(s => s.musicVolume)
+
   // Landscape detection for compact layout
   const [isLandscape, setIsLandscape] = useState(
     isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
@@ -73,7 +79,28 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Cleanup on unmount
+  // Route <audio> elements through AudioContext for hardware-clock sync + perceptual volume
+  const connectToAudioContext = useCallback((index: number) => {
+    const audio = audioRefs.current[index]
+    if (!audio || sourceRefs.current[index]) return // Already connected
+    const ctx = uaGetContext()
+    if (!ctx) return
+    try {
+      const source = ctx.createMediaElementSource(audio)
+      const gain = ctx.createGain()
+      // Apply current perceptual volume immediately
+      const vol = useAudioStore.getState().musicVolume
+      gain.gain.value = vol * vol // x² perceptual
+      source.connect(gain)
+      gain.connect(ctx.destination)
+      sourceRefs.current[index] = source
+      gainRefs.current[index] = gain
+    } catch (e) {
+      console.warn('[AudioOnlyPlayer] AudioContext routing failed for track', index, e)
+    }
+  }, [])
+
+  // Cleanup on unmount — disconnect DSP nodes + pause audio
   useEffect(() => {
     return () => {
       audioRefs.current.forEach(audio => {
@@ -83,8 +110,40 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           audio.load()
         }
       })
+      // Disconnect AudioContext nodes
+      try {
+        sourceRefs.current.forEach(s => s?.disconnect())
+        gainRefs.current.forEach(g => g?.disconnect())
+      } catch {}
+      sourceRefs.current = []
+      gainRefs.current = []
     }
   }, [])
+
+  // Perceptual volume — x² curve + sample-accurate smoothing via linearRamp
+  // Responds to global music volume slider (AudioSettings)
+  useEffect(() => {
+    const gain = musicVolume * musicVolume // x² perceptual curve
+    const ctx = uaGetContext()
+    let hasAudioContext = false
+
+    gainRefs.current.forEach(gainNode => {
+      if (gainNode && ctx) {
+        hasAudioContext = true
+        const now = ctx.currentTime
+        gainNode.gain.cancelScheduledValues(now)
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now)
+        gainNode.gain.linearRampToValueAtTime(gain, now + 0.015)
+      }
+    })
+
+    // Fallback: if no AudioContext routing, apply x² directly to <audio> elements
+    if (!hasAudioContext) {
+      audioRefs.current.forEach(audio => {
+        if (audio) audio.volume = gain
+      })
+    }
+  }, [musicVolume])
 
   // Orientation / resize / visibility → resume audio interrupted by browser (debounced)
   useEffect(() => {
@@ -193,6 +252,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           })
         }
       })
+      // Route through AudioContext on first play (createMediaElementSource can only be called once)
+      connectToAudioContext(index)
       audio.play().catch(e => console.warn('Audio play failed:', e))
       playingIndexRef.current = index
       uaPlaySynth('select', 0.5)
@@ -206,6 +267,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   const handleTimeUpdate = (index: number) => {
     const audio = audioRefs.current[index]
     if (!audio || !audio.duration) return
+    // Skip UI updates while seeking — prevents progress bar jumping back to old position
+    if (seekingRef.current) return
 
     setTrackStates(prev => {
       const next = [...prev]
@@ -250,19 +313,34 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
     const x = clientX - rect.left
     const pct = Math.max(0, Math.min(1, x / rect.width))
+    const targetTime = pct * audio.duration
 
     // Pause before seeking to prevent audio artifacts (pops, repeats)
     const wasPlaying = !audio.paused
     if (wasPlaying) audio.pause()
     seekingRef.current = true
 
-    audio.currentTime = pct * audio.duration
+    // Immediately update UI to target position (prevents visual snap-back)
+    setTrackStates(prev => {
+      const next = [...prev]
+      next[index] = {
+        ...next[index],
+        progress: pct * 100,
+        currentTime: targetTime
+      }
+      return next
+    })
 
-    // Resume after browser has seeked to new position
+    audio.currentTime = targetTime
+
+    // Resume after browser has seeked — wait one frame for buffer flush
     const onSeeked = () => {
       audio.removeEventListener('seeked', onSeeked)
-      seekingRef.current = false
-      if (wasPlaying) audio.play().catch(() => {})
+      // RAF ensures browser has flushed old audio buffer before resume
+      requestAnimationFrame(() => {
+        seekingRef.current = false
+        if (wasPlaying) audio.play().catch(() => {})
+      })
     }
     audio.addEventListener('seeked', onSeeked)
     // Safety: if seeked never fires (edge case), resume after 500ms
