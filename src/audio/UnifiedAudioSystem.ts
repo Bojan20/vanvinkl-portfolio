@@ -95,20 +95,23 @@ class UnifiedAudioSystem {
       this.masterGain = this.ctx.createGain()
       this.masterGain.connect(this.ctx.destination)
 
+      // Init gains use perceptual curve to match store defaults
+      // Store defaults: music=0.5, sfx=0.7, ui=0.6, spatial=0.5
+      // x^2 curve: 0.5²=0.25, 0.7²=0.49, 0.6²=0.36, 0.5²=0.25
       this.musicGain = this.ctx.createGain()
-      this.musicGain.gain.value = 0.5
+      this.musicGain.gain.value = 0.25  // 0.5² perceptual
       this.musicGain.connect(this.masterGain)
 
       this.sfxGain = this.ctx.createGain()
-      this.sfxGain.gain.value = 0.7
+      this.sfxGain.gain.value = 0.49  // 0.7² perceptual
       this.sfxGain.connect(this.masterGain)
 
       this.uiGain = this.ctx.createGain()
-      this.uiGain.gain.value = 0.6
+      this.uiGain.gain.value = 0.36  // 0.6² perceptual
       this.uiGain.connect(this.masterGain)
 
       this.spatialGain = this.ctx.createGain()
-      this.spatialGain.gain.value = 0.5
+      this.spatialGain.gain.value = 0.25  // 0.5² perceptual
       this.spatialGain.connect(this.masterGain)
 
       // Create analyzer for visualization (connected to music bus)
@@ -264,25 +267,14 @@ class UnifiedAudioSystem {
   }
 
   /**
-   * Perceptual volume mapping — logarithmic curve for human hearing
-   * Music: x^3 → -60 dB range (fine control near unity)
-   * SFX/UI: x^4 → -80 dB range (steeper low-end attenuation)
-   * Master/Spatial: x^2 → -40 dB range (moderate curve)
+   * Perceptual volume mapping — power curves for human hearing
+   * Simple x^2 for all buses: gradual, natural feel, no extreme attenuation
+   * slider 0.5 → gain 0.25 (audible), slider 0.1 → gain 0.01 (quiet)
    */
-  private perceptualGain(bus: string, linear: number): number {
+  private perceptualGain(_bus: string, linear: number): number {
     if (linear <= 0) return 0
     if (linear >= 1) return 1
-    if (bus === 'music') {
-      const curved = linear * linear * linear // x^3
-      return Math.pow(10, -60 * (1 - curved) / 20)
-    }
-    if (bus === 'sfx' || bus === 'ui') {
-      const curved = linear * linear * linear * linear // x^4
-      return Math.pow(10, -80 * (1 - curved) / 20)
-    }
-    // master, spatial: moderate x^2 curve
-    const curved = linear * linear
-    return Math.pow(10, -40 * (1 - curved) / 20)
+    return linear * linear // x^2 — smooth, gradual, always audible
   }
 
   /**

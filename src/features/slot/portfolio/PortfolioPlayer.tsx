@@ -568,45 +568,36 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [])
 
   // ============================================================
-  // PERCEPTUAL VOLUME — logarithmic curves + sample-accurate smoothing
+  // PERCEPTUAL VOLUME — x^2 curve + sample-accurate smoothing
   // ============================================================
-  // Music: slider 0–1 → -60 dB to 0 dB, fine control near 0 dB
-  // SFX:   slider 0–1 → -80 dB to 0 dB, steeper attenuation in low range
+  // Simple power curve: slider 0.5 → gain 0.25 (audible, gradual)
   // Smoothing via linearRampToValueAtTime — no clicks, no pops
 
   useEffect(() => {
-    // Music: -60 dB range, perceptual curve (x^3 for fine control at top)
     const linear = musicMuted ? 0 : musicVolume
-    // Cubic curve: more resolution near 1.0 (fine control at high volumes)
-    const dbRange = 60
-    const curved = linear * linear * linear // x^3
-    const gain = curved > 0 ? Math.pow(10, -dbRange * (1 - curved) / 20) : 0
+    const gain = linear * linear // x^2 — gradual, always audible
 
     const ctx = uaGetContext()
     if (musicGainRef.current && ctx) {
       const now = ctx.currentTime
       musicGainRef.current.gain.cancelScheduledValues(now)
       musicGainRef.current.gain.setValueAtTime(musicGainRef.current.gain.value, now)
-      musicGainRef.current.gain.linearRampToValueAtTime(gain, now + 0.015) // 15ms smoothing
+      musicGainRef.current.gain.linearRampToValueAtTime(gain, now + 0.015)
     } else if (musicRef.current) {
       musicRef.current.volume = gain
     }
   }, [musicVolume, musicMuted])
 
   useEffect(() => {
-    // SFX: -80 dB range, steeper curve (x^4 for aggressive low-end attenuation)
     const linear = sfxMuted ? 0 : sfxVolume
-    // Quartic curve: steeper attenuation, more aggressive in lower range
-    const dbRange = 80
-    const curved = linear * linear * linear * linear // x^4
-    const gain = curved > 0 ? Math.pow(10, -dbRange * (1 - curved) / 20) : 0
+    const gain = linear * linear // x^2 — gradual, always audible
 
     const ctx = uaGetContext()
     if (sfxGainRef.current && ctx) {
       const now = ctx.currentTime
       sfxGainRef.current.gain.cancelScheduledValues(now)
       sfxGainRef.current.gain.setValueAtTime(sfxGainRef.current.gain.value, now)
-      sfxGainRef.current.gain.linearRampToValueAtTime(gain, now + 0.008) // 8ms smoothing
+      sfxGainRef.current.gain.linearRampToValueAtTime(gain, now + 0.008)
     } else if (sfxRef.current) {
       sfxRef.current.volume = gain
     }
