@@ -26,7 +26,7 @@
  */
 
 import { useState, useEffect, useRef, memo, useCallback } from 'react'
-import { uaPlaySynth } from '../../../audio'
+import { uaPlaySynth, uaGetContext } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
@@ -96,6 +96,15 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   const startingRef = useRef(false) // Lock to prevent concurrent start() calls
   const playStartedAtRef = useRef(0) // Timestamp of last start() — blocks premature pause
   const [isPlaying, setIsPlaying] = useState(false)
+
+  // ============================================================
+  // AudioContext routing — route <audio> elements through Web Audio API
+  // This ensures all audio shares the same hardware clock = zero drift
+  // ============================================================
+  const musicSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const sfxSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const musicGainRef = useRef<GainNode | null>(null)
+  const sfxGainRef = useRef<GainNode | null>(null)
 
   // Focus items count
   const _FOCUS_ITEMS = 4
@@ -186,56 +195,54 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       const sfx = sfxRef.current
       if (!video || !music || !sfx) return
 
-      // Hard sync: force all to EXACT same position BEFORE play
-      const syncTime = video.currentTime
-      music.currentTime = syncTime
-      sfx.currentTime = syncTime
-
-      // Reset any residual playbackRate from previous session
+      // STRATEGY: Video-first start with timeupdate gate.
+      // 1. Start video (muted) — no audible effect
+      // 2. Wait for first timeupdate — video decoder is now actively producing frames
+      // 3. Read video.currentTime at that exact moment
+      // 4. Set audio currentTime to match, then start audio
+      // Result: audio starts from video's REAL decoded position, not an estimate.
+      // With AudioContext routing, all audio shares the same hardware clock = zero drift.
       music.playbackRate = 1.0
       sfx.playbackRate = 1.0
 
-      // Verify audio elements have buffer at sync point
-      // If not buffered, wait briefly for buffer to catch up
-      const ensureBuffered = async (el: HTMLMediaElement, label: string) => {
-        if (el.readyState >= 3) return // HAVE_FUTURE_DATA or better
-        console.log(`[Transport] ${label} not ready (readyState: ${el.readyState}), waiting...`)
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => { resolve() }, 3000)
-          const onReady = () => {
-            clearTimeout(timeout)
-            el.removeEventListener('canplay', onReady)
-            resolve()
-          }
-          el.addEventListener('canplay', onReady)
-        })
+      // Ensure AudioContext is running (may be suspended after tab switch)
+      const ctx = uaGetContext()
+      if (ctx && ctx.state === 'suspended') {
+        await ctx.resume()
       }
 
+      // Start video first (it's muted so no audible desync)
+      await video.play()
+
+      // Wait for first timeupdate — video is now truly decoding
+      await new Promise<void>((resolve) => {
+        const onUpdate = () => {
+          video.removeEventListener('timeupdate', onUpdate)
+          resolve()
+        }
+        video.addEventListener('timeupdate', onUpdate)
+        // Safety timeout — don't block forever
+        setTimeout(() => {
+          video.removeEventListener('timeupdate', onUpdate)
+          resolve()
+        }, 500)
+      })
+
+      // Now sync audio to where video ACTUALLY is and start them
+      const syncTime = video.currentTime
+      music.currentTime = syncTime
+      sfx.currentTime = syncTime
       await Promise.all([
-        ensureBuffered(music, 'music'),
-        ensureBuffered(sfx, 'sfx')
-      ])
-
-      // Re-sync after buffer wait (positions may have shifted)
-      music.currentTime = video.currentTime
-      sfx.currentTime = video.currentTime
-
-      // Fire all three .play() calls simultaneously — no await gap between them.
-      // Video is muted so we don't need to wait for it before starting audio.
-      // This eliminates the 10-50ms gap that caused initial desync.
-      const playPromises = [
-        video.play(),
         music.play().catch(() => {}),
         sfx.play().catch(() => {})
-      ]
-      await Promise.all(playPromises)
+      ])
 
       // Transition state
       playStateRef.current = 'playing'
       playStartedAtRef.current = Date.now()
       setIsPlaying(true)
       setBufferState('playing')
-      console.log('[Transport] → Playing')
+      console.log('[Transport] → Playing (AudioContext sync, offset:', syncTime.toFixed(3), 's)')
     } catch (e) {
       console.warn('[Transport] start() failed:', e)
     } finally {
@@ -290,6 +297,14 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
       sfx.removeAttribute('src')
       sfx.load()
     }
+
+    // Disconnect AudioContext nodes (don't null them — can't re-create MediaElementSource)
+    try {
+      if (musicSourceRef.current) musicSourceRef.current.disconnect()
+      if (sfxSourceRef.current) sfxSourceRef.current.disconnect()
+      if (musicGainRef.current) musicGainRef.current.disconnect()
+      if (sfxGainRef.current) sfxGainRef.current.disconnect()
+    } catch {}
 
     playStateRef.current = 'released'
     setIsPlaying(false)
@@ -388,7 +403,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
   }, [])
 
-  // Initialize on mount — start buffering immediately, NO autoplay
+  // Initialize on mount — route audio through AudioContext + start buffering
   useEffect(() => {
     const video = videoRef.current
     const music = musicRef.current
@@ -400,6 +415,33 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
     if (music) music.pause()
     if (sfx) sfx.pause()
+
+    // Route <audio> elements through shared AudioContext for hardware-clock sync
+    const ctx = uaGetContext()
+    if (ctx && music && sfx) {
+      try {
+        // createMediaElementSource can only be called ONCE per element
+        if (!musicSourceRef.current) {
+          const musicSource = ctx.createMediaElementSource(music)
+          const musicGain = ctx.createGain()
+          musicSource.connect(musicGain)
+          musicGain.connect(ctx.destination)
+          musicSourceRef.current = musicSource
+          musicGainRef.current = musicGain
+        }
+        if (!sfxSourceRef.current) {
+          const sfxSource = ctx.createMediaElementSource(sfx)
+          const sfxGain = ctx.createGain()
+          sfxSource.connect(sfxGain)
+          sfxGain.connect(ctx.destination)
+          sfxSourceRef.current = sfxSource
+          sfxGainRef.current = sfxGain
+        }
+        console.log('[PortfolioPlayer] Audio routed through AudioContext')
+      } catch (e) {
+        console.warn('[PortfolioPlayer] AudioContext routing failed, using native:', e)
+      }
+    }
 
     playStateRef.current = 'idle'
 
@@ -518,16 +560,22 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     }
   }, [])
 
-  // Update audio volumes with mute support
+  // Update audio volumes via GainNode (AudioContext) or fallback to element.volume
   useEffect(() => {
-    if (musicRef.current) {
-      musicRef.current.volume = musicMuted ? 0 : musicVolume
+    const vol = musicMuted ? 0 : musicVolume
+    if (musicGainRef.current) {
+      musicGainRef.current.gain.value = vol
+    } else if (musicRef.current) {
+      musicRef.current.volume = vol
     }
   }, [musicVolume, musicMuted])
 
   useEffect(() => {
-    if (sfxRef.current) {
-      sfxRef.current.volume = sfxMuted ? 0 : sfxVolume
+    const vol = sfxMuted ? 0 : sfxVolume
+    if (sfxGainRef.current) {
+      sfxGainRef.current.gain.value = vol
+    } else if (sfxRef.current) {
+      sfxRef.current.volume = vol
     }
   }, [sfxVolume, sfxMuted])
 

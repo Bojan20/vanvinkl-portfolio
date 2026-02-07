@@ -22,5 +22,6 @@ export {
   uaGetBassLevel,
   uaSuspend,
   uaResume,
-  uaDispose
+  uaDispose,
+  uaGetContext
 } from './UnifiedAudioSystem'

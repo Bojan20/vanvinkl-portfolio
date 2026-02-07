@@ -1061,6 +1061,14 @@ class UnifiedAudioSystem {
   isInitialized(): boolean {
     return this.ready
   }
+
+  /**
+   * Get the AudioContext for external routing (e.g. PortfolioPlayer media elements)
+   * Returns null if not initialized
+   */
+  getContext(): AudioContext | null {
+    return this.ctx
+  }
 }
 
 // Singleton
@@ -1181,4 +1189,11 @@ export async function uaResume(): Promise<void> {
  */
 export function uaDispose(): void {
   unifiedAudio.dispose()
+}
+
+/**
+ * Get AudioContext for external media element routing (PortfolioPlayer)
+ */
+export function uaGetContext(): AudioContext | null {
+  return unifiedAudio.getContext()
 }
