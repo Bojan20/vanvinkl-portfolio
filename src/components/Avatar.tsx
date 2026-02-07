@@ -9,12 +9,9 @@
  * - Particle energy field
  * - Glowing visor with scan lines
  * - Pulsing power core
- *
- * OPTIMIZED: All geometries and materials are memoized + disposed on unmount.
- * Shared geometry/material instances where parameters match.
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -155,135 +152,6 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   // Track inputDisabled
   const inputDisabledRef = useRef(inputDisabled)
 
-  // ========== MEMOIZED GEOMETRIES ==========
-  const geometries = useMemo(() => {
-    const g = {
-      // Aura torus geometries
-      outerAura: new THREE.TorusGeometry(0.8, 0.02, 8, 32),
-      innerAura: new THREE.TorusGeometry(0.6, 0.015, 8, 32),
-      groundRing: new THREE.RingGeometry(0.4, 0.6, 32),
-
-      // Hip area
-      hipArmor: new THREE.BoxGeometry(BODY.hipWidth + 0.04, 0.14, 0.2),
-      belt: new THREE.BoxGeometry(BODY.hipWidth + 0.06, 0.05, 0.21),
-      beltLed: new THREE.BoxGeometry(BODY.hipWidth - 0.1, 0.025, 0.01),
-      beltBuckle: new THREE.BoxGeometry(0.06, 0.04, 0.01),
-
-      // Legs
-      upperLeg: new THREE.CapsuleGeometry(BODY.legThickness, BODY.upperLegLength - 0.16, 8, 16),
-      thighArmor: new THREE.BoxGeometry(0.09, 0.2, 0.035),
-      thighLed: new THREE.BoxGeometry(0.01, 0.15, 0.02),
-      lowerLeg: new THREE.CapsuleGeometry(BODY.legThickness * 0.85, BODY.lowerLegLength - 0.14, 8, 16),
-      shinGuard: new THREE.BoxGeometry(0.07, 0.24, 0.03),
-      shinLed: new THREE.BoxGeometry(0.04, 0.18, 0.01),
-      boot: new THREE.BoxGeometry(0.1, BODY.footHeight + 0.02, BODY.footLength),
-      bootLed: new THREE.BoxGeometry(0.09, 0.02, 0.1),
-      bootChrome: new THREE.BoxGeometry(0.11, 0.04, 0.02),
-
-      // Torso
-      lowerTorso: new THREE.BoxGeometry(BODY.waistWidth + 0.04, 0.22, 0.18),
-      chest: new THREE.BoxGeometry(BODY.shoulderWidth + 0.06, BODY.chestHeight, 0.2),
-      collar: new THREE.CylinderGeometry(0.08, 0.1, 0.08, 12),
-      collarLedRing: new THREE.TorusGeometry(0.09, 0.008, 8, 24),
-      powerCore: new THREE.SphereGeometry(0.04, 16, 16),
-      powerCoreRing: new THREE.TorusGeometry(0.05, 0.008, 8, 24),
-      chestLedPanel: new THREE.BoxGeometry(0.12, 0.04, 0.01),
-      chestSideLed: new THREE.BoxGeometry(0.02, 0.08, 0.01),
-      shoulderPad: new THREE.BoxGeometry(0.12, 0.1, 0.16),
-      shoulderLed: new THREE.BoxGeometry(0.08, 0.04, 0.01),
-      spineLed: new THREE.BoxGeometry(0.025, 0.35, 0.01),
-      backLedStrip: new THREE.BoxGeometry(0.015, 0.25, 0.01),
-
-      // Arms
-      shoulderJoint: new THREE.SphereGeometry(0.06, 12, 12),
-      upperArm: new THREE.CapsuleGeometry(BODY.armThickness + 0.01, BODY.upperArmLength - 0.1, 8, 16),
-      armLedStrip: new THREE.BoxGeometry(0.012, 0.18, 0.025),
-      armArmorPlate: new THREE.BoxGeometry(0.06, 0.12, 0.02),
-      elbowJoint: new THREE.SphereGeometry(0.035, 12, 12),
-      lowerArm: new THREE.CapsuleGeometry(BODY.armThickness * 0.85, BODY.lowerArmLength - 0.08, 8, 16),
-      wristBand: new THREE.CylinderGeometry(0.045, 0.05, 0.07, 12),
-      wristLed: new THREE.BoxGeometry(0.04, 0.05, 0.01),
-      hand: new THREE.SphereGeometry(0.045, 12, 12),
-
-      // Head
-      neck: new THREE.CylinderGeometry(0.045, 0.05, BODY.neckHeight, 12),
-      neckRingChrome: new THREE.TorusGeometry(0.052, 0.008, 8, 24),
-      neckRingGlow: new THREE.TorusGeometry(0.048, 0.006, 8, 24),
-      head: new THREE.SphereGeometry(BODY.headRadius, 16, 16),
-      hair: new THREE.SphereGeometry(BODY.headRadius * 0.85, 16, 16),
-      topHairVol: new THREE.BoxGeometry(0.08, 0.04, 0.12),
-      hairLed: new THREE.BoxGeometry(0.04, 0.01, 0.06),
-      visor: new THREE.BoxGeometry(0.22, 0.045, 0.035),
-      visorScanline: new THREE.BoxGeometry(0.2, 0.002, 0.01),
-      visorFrame: new THREE.BoxGeometry(0.24, 0.055, 0.02),
-      visorSideConn: new THREE.BoxGeometry(0.025, 0.035, 0.1),
-      visorCornerLed: new THREE.BoxGeometry(0.015, 0.04, 0.01),
-      earImplant: new THREE.BoxGeometry(0.04, 0.06, 0.05),
-      earLed: new THREE.SphereGeometry(0.012, 8, 8),
-      secondaryEarLed: new THREE.SphereGeometry(0.006, 8, 8),
-      templeCircuit: new THREE.BoxGeometry(0.008, 0.025, 0.04)
-    }
-    return g
-  }, [])
-
-  // ========== MEMOIZED MATERIALS ==========
-  const materials = useMemo(() => {
-    const m = {
-      // Standard materials (lit)
-      jacket: new THREE.MeshStandardMaterial({ color: CYBER.jacket, metalness: 0.7, roughness: 0.3 }),
-      jacketBody: new THREE.MeshStandardMaterial({ color: CYBER.jacket, metalness: 0.5, roughness: 0.4 }),
-      jacketHighlight: new THREE.MeshStandardMaterial({ color: CYBER.jacketHighlight, metalness: 0.4, roughness: 0.5 }),
-      jacketHighlightArm: new THREE.MeshStandardMaterial({ color: CYBER.jacketHighlight, metalness: 0.6, roughness: 0.4 }),
-      chrome: new THREE.MeshStandardMaterial({ color: CYBER.chrome, metalness: 0.95, roughness: 0.1 }),
-      chromeHand: new THREE.MeshStandardMaterial({ color: CYBER.chrome, metalness: 0.9, roughness: 0.15 }),
-      gold: new THREE.MeshStandardMaterial({ color: CYBER.gold, metalness: 0.9, roughness: 0.15 }),
-      goldShoulder: new THREE.MeshStandardMaterial({ color: CYBER.gold, metalness: 0.9, roughness: 0.15 }),
-      pants: new THREE.MeshStandardMaterial({ color: CYBER.pants, metalness: 0.4, roughness: 0.6 }),
-      boots: new THREE.MeshStandardMaterial({ color: CYBER.boots, metalness: 0.6, roughness: 0.4 }),
-      skin: new THREE.MeshStandardMaterial({ color: CYBER.skin, roughness: 0.85 }),
-      hair: new THREE.MeshStandardMaterial({ color: CYBER.hair, roughness: 0.9, metalness: 0.1 }),
-      hairTop: new THREE.MeshStandardMaterial({ color: CYBER.hair, roughness: 0.9 }),
-
-      // Basic (unlit/emissive) materials
-      neonCyanAura: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.2, toneMapped: false, side: THREE.DoubleSide }),
-      neonMagentaAura: new THREE.MeshBasicMaterial({ color: CYBER.neonMagenta, transparent: true, opacity: 0.15, toneMapped: false, side: THREE.DoubleSide }),
-      groundRing: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.3, toneMapped: false, side: THREE.DoubleSide }),
-      beltLed: new THREE.MeshBasicMaterial({ color: CYBER.neonMagenta, transparent: true, opacity: 0.9, toneMapped: false }),
-      beltBuckle: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.8, toneMapped: false }),
-      thighLed: new THREE.MeshBasicMaterial({ color: CYBER.neonPurple, transparent: true, opacity: 0.8, toneMapped: false }),
-      shinLed: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.7, toneMapped: false }),
-      bootLed: new THREE.MeshBasicMaterial({ color: CYBER.neonPink, transparent: true, opacity: 0.9, toneMapped: false }),
-      collarLed: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.8, toneMapped: false }),
-      powerCoreMat: new THREE.MeshBasicMaterial({ color: CYBER.powerCore, transparent: true, opacity: 0.9, toneMapped: false }),
-      powerCoreRing: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.7, toneMapped: false }),
-      chestLed: new THREE.MeshBasicMaterial({ color: CYBER.neonBlue, transparent: true, opacity: 0.8, toneMapped: false }),
-      chestSideLed: new THREE.MeshBasicMaterial({ color: CYBER.neonMagenta, transparent: true, opacity: 0.7, toneMapped: false }),
-      shoulderLed: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.9, toneMapped: false }),
-      spineLedMat: new THREE.MeshBasicMaterial({ color: CYBER.neonPurple, transparent: true, opacity: 0.8, toneMapped: false }),
-      backLedStrip: new THREE.MeshBasicMaterial({ color: CYBER.neonMagenta, transparent: true, opacity: 0.7, toneMapped: false }),
-      armLed: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.9, toneMapped: false }),
-      wristLed: new THREE.MeshBasicMaterial({ color: CYBER.neonGreen, transparent: true, opacity: 0.9, toneMapped: false }),
-      neckRingGlow: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, transparent: true, opacity: 0.6, toneMapped: false }),
-      hairLed: new THREE.MeshBasicMaterial({ color: CYBER.neonPurple, transparent: true, opacity: 0.5, toneMapped: false }),
-      visorMat: new THREE.MeshBasicMaterial({ color: CYBER.visor, transparent: true, opacity: 0.95, toneMapped: false }),
-      visorScanline1: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.4, toneMapped: false }),
-      visorScanline2: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.3, toneMapped: false }),
-      visorCornerLed: new THREE.MeshBasicMaterial({ color: CYBER.neonRed, transparent: true, opacity: 0.9, toneMapped: false }),
-      earLed: new THREE.MeshBasicMaterial({ color: CYBER.neonMagenta, transparent: true, opacity: 0.95, toneMapped: false }),
-      secondaryEarLed: new THREE.MeshBasicMaterial({ color: CYBER.neonCyan, toneMapped: false }),
-      templeCircuit: new THREE.MeshBasicMaterial({ color: CYBER.neonPurple, transparent: true, opacity: 0.6, toneMapped: false })
-    }
-    return m
-  }, [])
-
-  // Cleanup all geometries and materials on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(geometries).forEach(g => g.dispose())
-      Object.values(materials).forEach(m => m.dispose())
-    }
-  }, [geometries, materials])
-
   // Update inputDisabled ref and reset keys + velocity when disabled
   useFrame(() => {
     if (inputDisabled !== inputDisabledRef.current) {
@@ -368,6 +236,7 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     const glow = glowTime.current
 
     // ====== ULTIMATE GLOW ANIMATIONS ======
+    // Different frequencies for each element creates organic feel
     const pulse1 = 0.6 + Math.sin(glow * 3) * 0.4
     const pulse2 = 0.7 + Math.sin(glow * 4 + 1) * 0.3
     const pulse3 = 0.5 + Math.sin(glow * 5 + 2) * 0.5
@@ -500,6 +369,7 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
       groupRef.current.position.y = 0.1
       groupRef.current.rotation.y = sittingRotationRef.current
 
+      // Sitting pose animations
       if (hipsRef.current) {
         hipsRef.current.rotation.x = 0
         hipsRef.current.rotation.y = 0
@@ -552,14 +422,16 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
       let inputX = 0
       let inputZ = 0
 
+      // Keyboard input
       if (keysRef.current.forward) inputZ -= 1
       if (keysRef.current.backward) inputZ += 1
       if (keysRef.current.left) inputX -= 1
       if (keysRef.current.right) inputX += 1
 
+      // Mobile joystick input (override keyboard if present)
       if (mobileMovementRef && (mobileMovementRef.current.x !== 0 || mobileMovementRef.current.y !== 0)) {
-        inputX = mobileMovementRef.current.x
-        inputZ = mobileMovementRef.current.y
+        inputX = mobileMovementRef.current.x  // Invert X (joystick right = left in world)
+        inputZ = mobileMovementRef.current.y   // Y maps to Z (joystick up = forward = positive Z)
       }
 
       const inputLength = Math.sqrt(inputX * inputX + inputZ * inputZ)
@@ -709,85 +581,156 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
 
   const hipY = BODY.footHeight + BODY.lowerLegLength + BODY.upperLegLength
 
-  // Shorthand aliases
-  const G = geometries
-  const M = materials
-
   return (
     <group ref={groupRef}>
       {/* ===== ENERGY AURA - OUTER ===== */}
-      <mesh ref={auraRef} position={[0, 1.0, 0]} geometry={G.outerAura} material={M.neonCyanAura} />
+      <mesh ref={auraRef} position={[0, 1.0, 0]}>
+        <torusGeometry args={[0.8, 0.02, 8, 32]} />
+        <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.2} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* ===== ENERGY AURA - INNER ===== */}
-      <mesh ref={innerAuraRef} position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={G.innerAura} material={M.neonMagentaAura} />
+      <mesh ref={innerAuraRef} position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.6, 0.015, 8, 32]} />
+        <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.15} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* ===== GROUND GLOW RING ===== */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={G.groundRing} material={M.groundRing} />
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.4, 0.6, 32]} />
+        <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.3} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* ===== HIPS ===== */}
       <group ref={hipsRef} position={[0, hipY, 0]}>
         {/* Hip armor */}
-        <mesh position={[0, -0.05, 0]} geometry={G.hipArmor} material={M.jacket} />
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[BODY.hipWidth + 0.04, 0.14, 0.2]} />
+          <meshStandardMaterial color={CYBER.jacket} metalness={0.7} roughness={0.3} />
+        </mesh>
 
         {/* Tech belt - CHROME */}
-        <mesh position={[0, 0.0, 0]} geometry={G.belt} material={M.chrome} />
+        <mesh position={[0, 0.0, 0]}>
+          <boxGeometry args={[BODY.hipWidth + 0.06, 0.05, 0.21]} />
+          <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+        </mesh>
 
         {/* Belt LED strip - VIBRANT */}
-        <mesh ref={beltLedRef} position={[0, 0.0, 0.11]} geometry={G.beltLed} material={M.beltLed} />
+        <mesh ref={beltLedRef} position={[0, 0.0, 0.11]}>
+          <boxGeometry args={[BODY.hipWidth - 0.1, 0.025, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.9} toneMapped={false} />
+        </mesh>
 
         {/* Belt buckle glow */}
-        <mesh position={[0, 0.0, 0.115]} geometry={G.beltBuckle} material={M.beltBuckle} />
+        <mesh position={[0, 0.0, 0.115]}>
+          <boxGeometry args={[0.06, 0.04, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.8} toneMapped={false} />
+        </mesh>
 
         {/* ===== LEFT LEG ===== */}
         <group ref={leftUpperLegRef} position={[-0.1, -0.08, 0]}>
-          <mesh position={[0, -BODY.upperLegLength / 2, 0]} geometry={G.upperLeg} material={M.pants} />
+          <mesh position={[0, -BODY.upperLegLength / 2, 0]}>
+            <capsuleGeometry args={[BODY.legThickness, BODY.upperLegLength - 0.16, 8, 16]} />
+            <meshStandardMaterial color={CYBER.pants} metalness={0.4} roughness={0.6} />
+          </mesh>
 
           {/* Thigh armor - CHROME */}
-          <mesh position={[0, -BODY.upperLegLength / 2, 0.06]} geometry={G.thighArmor} material={M.chrome} />
+          <mesh position={[0, -BODY.upperLegLength / 2, 0.06]}>
+            <boxGeometry args={[0.09, 0.2, 0.035]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
           {/* Thigh LED */}
-          <mesh ref={thighLedLeftRef} position={[-0.07, -BODY.upperLegLength / 2, 0.02]} geometry={G.thighLed} material={M.thighLed} />
+          <mesh ref={thighLedLeftRef} position={[-0.07, -BODY.upperLegLength / 2, 0.02]}>
+            <boxGeometry args={[0.01, 0.15, 0.02]} />
+            <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.8} toneMapped={false} />
+          </mesh>
 
           <group ref={leftLowerLegRef} position={[0, -BODY.upperLegLength, 0]}>
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0]} geometry={G.lowerLeg} material={M.pants} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0]}>
+              <capsuleGeometry args={[BODY.legThickness * 0.85, BODY.lowerLegLength - 0.14, 8, 16]} />
+              <meshStandardMaterial color={CYBER.pants} metalness={0.4} roughness={0.6} />
+            </mesh>
 
             {/* Shin guard - GOLD accent */}
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0.05]} geometry={G.shinGuard} material={M.gold} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0.05]}>
+              <boxGeometry args={[0.07, 0.24, 0.03]} />
+              <meshStandardMaterial color={CYBER.gold} metalness={0.9} roughness={0.15} />
+            </mesh>
 
             {/* Shin LED strip */}
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0.07]} geometry={G.shinLed} material={M.shinLed} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0.07]}>
+              <boxGeometry args={[0.04, 0.18, 0.01]} />
+              <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.7} toneMapped={false} />
+            </mesh>
 
             {/* Cyberpunk boot */}
-            <mesh position={[0, -BODY.lowerLegLength - BODY.footHeight / 2 + 0.02, 0.03]} geometry={G.boot} material={M.boots} />
+            <mesh position={[0, -BODY.lowerLegLength - BODY.footHeight / 2 + 0.02, 0.03]}>
+              <boxGeometry args={[0.1, BODY.footHeight + 0.02, BODY.footLength]} />
+              <meshStandardMaterial color={CYBER.boots} metalness={0.6} roughness={0.4} />
+            </mesh>
 
             {/* Boot LED - VIBRANT */}
-            <mesh ref={bootLedLeftRef} position={[0, -BODY.lowerLegLength - 0.02, 0.12]} geometry={G.bootLed} material={M.bootLed} />
+            <mesh ref={bootLedLeftRef} position={[0, -BODY.lowerLegLength - 0.02, 0.12]}>
+              <boxGeometry args={[0.09, 0.02, 0.1]} />
+              <meshBasicMaterial color={CYBER.neonPink} transparent opacity={0.9} toneMapped={false} />
+            </mesh>
 
             {/* Boot chrome accent */}
-            <mesh position={[0, -BODY.lowerLegLength + 0.02, 0.05]} geometry={G.bootChrome} material={M.chrome} />
+            <mesh position={[0, -BODY.lowerLegLength + 0.02, 0.05]}>
+              <boxGeometry args={[0.11, 0.04, 0.02]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
           </group>
         </group>
 
         {/* ===== RIGHT LEG ===== */}
         <group ref={rightUpperLegRef} position={[0.1, -0.08, 0]}>
-          <mesh position={[0, -BODY.upperLegLength / 2, 0]} geometry={G.upperLeg} material={M.pants} />
+          <mesh position={[0, -BODY.upperLegLength / 2, 0]}>
+            <capsuleGeometry args={[BODY.legThickness, BODY.upperLegLength - 0.16, 8, 16]} />
+            <meshStandardMaterial color={CYBER.pants} metalness={0.4} roughness={0.6} />
+          </mesh>
 
-          <mesh position={[0, -BODY.upperLegLength / 2, 0.06]} geometry={G.thighArmor} material={M.chrome} />
+          <mesh position={[0, -BODY.upperLegLength / 2, 0.06]}>
+            <boxGeometry args={[0.09, 0.2, 0.035]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
-          <mesh ref={thighLedRightRef} position={[0.07, -BODY.upperLegLength / 2, 0.02]} geometry={G.thighLed} material={M.thighLed} />
+          <mesh ref={thighLedRightRef} position={[0.07, -BODY.upperLegLength / 2, 0.02]}>
+            <boxGeometry args={[0.01, 0.15, 0.02]} />
+            <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.8} toneMapped={false} />
+          </mesh>
 
           <group ref={rightLowerLegRef} position={[0, -BODY.upperLegLength, 0]}>
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0]} geometry={G.lowerLeg} material={M.pants} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0]}>
+              <capsuleGeometry args={[BODY.legThickness * 0.85, BODY.lowerLegLength - 0.14, 8, 16]} />
+              <meshStandardMaterial color={CYBER.pants} metalness={0.4} roughness={0.6} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0.05]} geometry={G.shinGuard} material={M.gold} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0.05]}>
+              <boxGeometry args={[0.07, 0.24, 0.03]} />
+              <meshStandardMaterial color={CYBER.gold} metalness={0.9} roughness={0.15} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerLegLength / 2, 0.07]} geometry={G.shinLed} material={M.shinLed} />
+            <mesh position={[0, -BODY.lowerLegLength / 2, 0.07]}>
+              <boxGeometry args={[0.04, 0.18, 0.01]} />
+              <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.7} toneMapped={false} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerLegLength - BODY.footHeight / 2 + 0.02, 0.03]} geometry={G.boot} material={M.boots} />
+            <mesh position={[0, -BODY.lowerLegLength - BODY.footHeight / 2 + 0.02, 0.03]}>
+              <boxGeometry args={[0.1, BODY.footHeight + 0.02, BODY.footLength]} />
+              <meshStandardMaterial color={CYBER.boots} metalness={0.6} roughness={0.4} />
+            </mesh>
 
-            <mesh ref={bootLedRightRef} position={[0, -BODY.lowerLegLength - 0.02, 0.12]} geometry={G.bootLed} material={M.bootLed} />
+            <mesh ref={bootLedRightRef} position={[0, -BODY.lowerLegLength - 0.02, 0.12]}>
+              <boxGeometry args={[0.09, 0.02, 0.1]} />
+              <meshBasicMaterial color={CYBER.neonPink} transparent opacity={0.9} toneMapped={false} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerLegLength + 0.02, 0.05]} geometry={G.bootChrome} material={M.chrome} />
+            <mesh position={[0, -BODY.lowerLegLength + 0.02, 0.05]}>
+              <boxGeometry args={[0.11, 0.04, 0.02]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
           </group>
         </group>
       </group>
@@ -795,161 +738,340 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
       {/* ===== SPINE/TORSO ===== */}
       <group ref={spineRef} position={[0, hipY, 0]}>
         {/* Lower torso */}
-        <mesh position={[0, 0.15, 0]} geometry={G.lowerTorso} material={M.jacketBody} />
+        <mesh position={[0, 0.15, 0]}>
+          <boxGeometry args={[BODY.waistWidth + 0.04, 0.22, 0.18]} />
+          <meshStandardMaterial color={CYBER.jacket} metalness={0.5} roughness={0.4} />
+        </mesh>
 
         {/* Chest */}
-        <mesh position={[0, 0.38, 0.01]} geometry={G.chest} material={M.jacketBody} />
+        <mesh position={[0, 0.38, 0.01]}>
+          <boxGeometry args={[BODY.shoulderWidth + 0.06, BODY.chestHeight, 0.2]} />
+          <meshStandardMaterial color={CYBER.jacket} metalness={0.5} roughness={0.4} />
+        </mesh>
 
         {/* High collar */}
-        <mesh position={[0, 0.54, 0]} geometry={G.collar} material={M.jacketHighlight} />
+        <mesh position={[0, 0.54, 0]}>
+          <cylinderGeometry args={[0.08, 0.1, 0.08, 12]} />
+          <meshStandardMaterial color={CYBER.jacketHighlight} metalness={0.4} roughness={0.5} />
+        </mesh>
 
         {/* Collar LED ring */}
-        <mesh ref={neckLedRef} position={[0, 0.54, 0]} geometry={G.collarLedRing} material={M.collarLed} />
+        <mesh ref={neckLedRef} position={[0, 0.54, 0]}>
+          <torusGeometry args={[0.09, 0.008, 8, 24]} />
+          <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.8} toneMapped={false} />
+        </mesh>
 
         {/* ===== POWER CORE - CENTER CHEST ===== */}
-        <mesh ref={powerCoreRef} position={[0, 0.36, 0.115]} geometry={G.powerCore} material={M.powerCoreMat} />
+        <mesh ref={powerCoreRef} position={[0, 0.36, 0.115]}>
+          <sphereGeometry args={[0.04, 16, 16]} />
+          <meshBasicMaterial color={CYBER.powerCore} transparent opacity={0.9} toneMapped={false} />
+        </mesh>
 
         {/* Power core outer ring */}
-        <mesh position={[0, 0.36, 0.11]} geometry={G.powerCoreRing} material={M.powerCoreRing} />
+        <mesh position={[0, 0.36, 0.11]}>
+          <torusGeometry args={[0.05, 0.008, 8, 24]} />
+          <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.7} toneMapped={false} />
+        </mesh>
 
         {/* Chest LED panel */}
-        <mesh ref={chestLedRef} position={[0, 0.44, 0.115]} geometry={G.chestLedPanel} material={M.chestLed} />
+        <mesh ref={chestLedRef} position={[0, 0.44, 0.115]}>
+          <boxGeometry args={[0.12, 0.04, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonBlue} transparent opacity={0.8} toneMapped={false} />
+        </mesh>
 
         {/* Chest side LEDs */}
-        <mesh position={[-0.18, 0.38, 0.1]} geometry={G.chestSideLed} material={M.chestSideLed} />
-        <mesh position={[0.18, 0.38, 0.1]} geometry={G.chestSideLed} material={M.chestSideLed} />
+        <mesh position={[-0.18, 0.38, 0.1]}>
+          <boxGeometry args={[0.02, 0.08, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.7} toneMapped={false} />
+        </mesh>
+        <mesh position={[0.18, 0.38, 0.1]}>
+          <boxGeometry args={[0.02, 0.08, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.7} toneMapped={false} />
+        </mesh>
 
         {/* Shoulder pads - GOLD */}
-        <mesh position={[-BODY.shoulderWidth / 2 - 0.04, 0.44, 0]} geometry={G.shoulderPad} material={M.goldShoulder} />
-        <mesh position={[BODY.shoulderWidth / 2 + 0.04, 0.44, 0]} geometry={G.shoulderPad} material={M.goldShoulder} />
+        <mesh position={[-BODY.shoulderWidth / 2 - 0.04, 0.44, 0]}>
+          <boxGeometry args={[0.12, 0.1, 0.16]} />
+          <meshStandardMaterial color={CYBER.gold} metalness={0.9} roughness={0.15} />
+        </mesh>
+        <mesh position={[BODY.shoulderWidth / 2 + 0.04, 0.44, 0]}>
+          <boxGeometry args={[0.12, 0.1, 0.16]} />
+          <meshStandardMaterial color={CYBER.gold} metalness={0.9} roughness={0.15} />
+        </mesh>
 
         {/* Shoulder LEDs */}
-        <mesh ref={shoulderLedLeftRef} position={[-BODY.shoulderWidth / 2 - 0.04, 0.44, 0.09]} geometry={G.shoulderLed} material={M.shoulderLed} />
-        <mesh ref={shoulderLedRightRef} position={[BODY.shoulderWidth / 2 + 0.04, 0.44, 0.09]} geometry={G.shoulderLed} material={M.shoulderLed} />
+        <mesh ref={shoulderLedLeftRef} position={[-BODY.shoulderWidth / 2 - 0.04, 0.44, 0.09]}>
+          <boxGeometry args={[0.08, 0.04, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.9} toneMapped={false} />
+        </mesh>
+        <mesh ref={shoulderLedRightRef} position={[BODY.shoulderWidth / 2 + 0.04, 0.44, 0.09]}>
+          <boxGeometry args={[0.08, 0.04, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.9} toneMapped={false} />
+        </mesh>
 
         {/* Back spine LED - LONG */}
-        <mesh ref={spineLedRef} position={[0, 0.3, -0.1]} geometry={G.spineLed} material={M.spineLedMat} />
+        <mesh ref={spineLedRef} position={[0, 0.3, -0.1]}>
+          <boxGeometry args={[0.025, 0.35, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.8} toneMapped={false} />
+        </mesh>
 
         {/* Back LED strips - sides */}
-        <mesh ref={backLedRef} position={[-0.08, 0.35, -0.1]} geometry={G.backLedStrip} material={M.backLedStrip} />
-        <mesh position={[0.08, 0.35, -0.1]} geometry={G.backLedStrip} material={M.backLedStrip} />
+        <mesh ref={backLedRef} position={[-0.08, 0.35, -0.1]}>
+          <boxGeometry args={[0.015, 0.25, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.7} toneMapped={false} />
+        </mesh>
+        <mesh position={[0.08, 0.35, -0.1]}>
+          <boxGeometry args={[0.015, 0.25, 0.01]} />
+          <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.7} toneMapped={false} />
+        </mesh>
 
         {/* ===== LEFT ARM ===== */}
         <group ref={leftUpperArmRef} position={[-BODY.shoulderWidth / 2 - 0.04, 0.42, 0]}>
           {/* Shoulder joint - CHROME */}
-          <mesh position={[-0.02, 0, 0]} geometry={G.shoulderJoint} material={M.chrome} />
+          <mesh position={[-0.02, 0, 0]}>
+            <sphereGeometry args={[0.06, 12, 12]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
           {/* Upper arm */}
-          <mesh position={[0, -BODY.upperArmLength / 2, 0]} geometry={G.upperArm} material={M.jacketBody} />
+          <mesh position={[0, -BODY.upperArmLength / 2, 0]}>
+            <capsuleGeometry args={[BODY.armThickness + 0.01, BODY.upperArmLength - 0.1, 8, 16]} />
+            <meshStandardMaterial color={CYBER.jacket} metalness={0.5} roughness={0.4} />
+          </mesh>
 
           {/* Arm LED strip */}
-          <mesh ref={leftArmLedRef} position={[-0.05, -BODY.upperArmLength / 2, 0]} geometry={G.armLedStrip} material={M.armLed} />
+          <mesh ref={leftArmLedRef} position={[-0.05, -BODY.upperArmLength / 2, 0]}>
+            <boxGeometry args={[0.012, 0.18, 0.025]} />
+            <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.9} toneMapped={false} />
+          </mesh>
 
           {/* Arm armor plate */}
-          <mesh position={[0, -BODY.upperArmLength / 2, 0.04]} geometry={G.armArmorPlate} material={M.chrome} />
+          <mesh position={[0, -BODY.upperArmLength / 2, 0.04]}>
+            <boxGeometry args={[0.06, 0.12, 0.02]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.9} roughness={0.1} />
+          </mesh>
 
           <group ref={leftLowerArmRef} position={[0, -BODY.upperArmLength, 0]}>
             {/* Elbow joint */}
-            <mesh position={[0, 0, 0]} geometry={G.elbowJoint} material={M.chrome} />
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.035, 12, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
 
             {/* Lower arm - cybernetic */}
-            <mesh position={[0, -BODY.lowerArmLength / 2, 0]} geometry={G.lowerArm} material={M.jacketHighlightArm} />
+            <mesh position={[0, -BODY.lowerArmLength / 2, 0]}>
+              <capsuleGeometry args={[BODY.armThickness * 0.85, BODY.lowerArmLength - 0.08, 8, 16]} />
+              <meshStandardMaterial color={CYBER.jacketHighlight} metalness={0.6} roughness={0.4} />
+            </mesh>
 
             {/* Wrist tech band */}
-            <mesh position={[0, -BODY.lowerArmLength + 0.05, 0]} geometry={G.wristBand} material={M.chrome} />
+            <mesh position={[0, -BODY.lowerArmLength + 0.05, 0]}>
+              <cylinderGeometry args={[0.045, 0.05, 0.07, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
 
             {/* Wrist LED */}
-            <mesh ref={wristLedLeftRef} position={[0, -BODY.lowerArmLength + 0.05, 0.045]} geometry={G.wristLed} material={M.wristLed} />
+            <mesh ref={wristLedLeftRef} position={[0, -BODY.lowerArmLength + 0.05, 0.045]}>
+              <boxGeometry args={[0.04, 0.05, 0.01]} />
+              <meshBasicMaterial color={CYBER.neonGreen} transparent opacity={0.9} toneMapped={false} />
+            </mesh>
 
             {/* Cybernetic hand */}
-            <mesh position={[0, -BODY.lowerArmLength - 0.04, 0]} geometry={G.hand} material={M.chromeHand} />
+            <mesh position={[0, -BODY.lowerArmLength - 0.04, 0]}>
+              <sphereGeometry args={[0.045, 12, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.9} roughness={0.15} />
+            </mesh>
           </group>
         </group>
 
         {/* ===== RIGHT ARM ===== */}
         <group ref={rightUpperArmRef} position={[BODY.shoulderWidth / 2 + 0.04, 0.42, 0]}>
-          <mesh position={[0.02, 0, 0]} geometry={G.shoulderJoint} material={M.chrome} />
+          <mesh position={[0.02, 0, 0]}>
+            <sphereGeometry args={[0.06, 12, 12]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
-          <mesh position={[0, -BODY.upperArmLength / 2, 0]} geometry={G.upperArm} material={M.jacketBody} />
+          <mesh position={[0, -BODY.upperArmLength / 2, 0]}>
+            <capsuleGeometry args={[BODY.armThickness + 0.01, BODY.upperArmLength - 0.1, 8, 16]} />
+            <meshStandardMaterial color={CYBER.jacket} metalness={0.5} roughness={0.4} />
+          </mesh>
 
-          <mesh ref={rightArmLedRef} position={[0.05, -BODY.upperArmLength / 2, 0]} geometry={G.armLedStrip} material={M.armLed} />
+          <mesh ref={rightArmLedRef} position={[0.05, -BODY.upperArmLength / 2, 0]}>
+            <boxGeometry args={[0.012, 0.18, 0.025]} />
+            <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.9} toneMapped={false} />
+          </mesh>
 
-          <mesh position={[0, -BODY.upperArmLength / 2, 0.04]} geometry={G.armArmorPlate} material={M.chrome} />
+          <mesh position={[0, -BODY.upperArmLength / 2, 0.04]}>
+            <boxGeometry args={[0.06, 0.12, 0.02]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.9} roughness={0.1} />
+          </mesh>
 
           <group ref={rightLowerArmRef} position={[0, -BODY.upperArmLength, 0]}>
-            <mesh position={[0, 0, 0]} geometry={G.elbowJoint} material={M.chrome} />
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.035, 12, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerArmLength / 2, 0]} geometry={G.lowerArm} material={M.jacketHighlightArm} />
+            <mesh position={[0, -BODY.lowerArmLength / 2, 0]}>
+              <capsuleGeometry args={[BODY.armThickness * 0.85, BODY.lowerArmLength - 0.08, 8, 16]} />
+              <meshStandardMaterial color={CYBER.jacketHighlight} metalness={0.6} roughness={0.4} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerArmLength + 0.05, 0]} geometry={G.wristBand} material={M.chrome} />
+            <mesh position={[0, -BODY.lowerArmLength + 0.05, 0]}>
+              <cylinderGeometry args={[0.045, 0.05, 0.07, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+            </mesh>
 
-            <mesh ref={wristLedRightRef} position={[0, -BODY.lowerArmLength + 0.05, 0.045]} geometry={G.wristLed} material={M.wristLed} />
+            <mesh ref={wristLedRightRef} position={[0, -BODY.lowerArmLength + 0.05, 0.045]}>
+              <boxGeometry args={[0.04, 0.05, 0.01]} />
+              <meshBasicMaterial color={CYBER.neonGreen} transparent opacity={0.9} toneMapped={false} />
+            </mesh>
 
-            <mesh position={[0, -BODY.lowerArmLength - 0.04, 0]} geometry={G.hand} material={M.chromeHand} />
+            <mesh position={[0, -BODY.lowerArmLength - 0.04, 0]}>
+              <sphereGeometry args={[0.045, 12, 12]} />
+              <meshStandardMaterial color={CYBER.chrome} metalness={0.9} roughness={0.15} />
+            </mesh>
           </group>
         </group>
 
         {/* ===== HEAD ===== */}
         <group ref={headRef} position={[0, 0.6, 0]}>
           {/* Neck - cybernetic */}
-          <mesh position={[0, 0, 0]} geometry={G.neck} material={M.skin} />
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.045, 0.05, BODY.neckHeight, 12]} />
+            <meshStandardMaterial color={CYBER.skin} roughness={0.85} />
+          </mesh>
 
           {/* Neck tech rings - multiple */}
-          <mesh position={[0, 0.02, 0]} geometry={G.neckRingChrome} material={M.chrome} />
-          <mesh position={[0, -0.01, 0]} geometry={G.neckRingGlow} material={M.neckRingGlow} />
+          <mesh position={[0, 0.02, 0]}>
+            <torusGeometry args={[0.052, 0.008, 8, 24]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
+          <mesh position={[0, -0.01, 0]}>
+            <torusGeometry args={[0.048, 0.006, 8, 24]} />
+            <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.6} toneMapped={false} />
+          </mesh>
 
           {/* Head */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius, 0]} geometry={G.head} material={M.skin} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius, 0]}>
+            <sphereGeometry args={[BODY.headRadius, 16, 16]} />
+            <meshStandardMaterial color={CYBER.skin} roughness={0.85} />
+          </mesh>
 
           {/* Cyberpunk hair */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.04, -0.02]} geometry={G.hair} material={M.hair} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.04, -0.02]}>
+            <sphereGeometry args={[BODY.headRadius * 0.85, 16, 16]} />
+            <meshStandardMaterial color={CYBER.hair} roughness={0.9} metalness={0.1} />
+          </mesh>
 
           {/* Top hair volume */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.08, -0.01]} geometry={G.topHairVol} material={M.hairTop} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.08, -0.01]}>
+            <boxGeometry args={[0.08, 0.04, 0.12]} />
+            <meshStandardMaterial color={CYBER.hair} roughness={0.9} />
+          </mesh>
 
           {/* Hair highlight LED */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.1, -0.06]} geometry={G.hairLed} material={M.hairLed} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.1, -0.06]}>
+            <boxGeometry args={[0.04, 0.01, 0.06]} />
+            <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.5} toneMapped={false} />
+          </mesh>
 
           {/* ===== VISOR / CYBER GLASSES - ULTIMATE ===== */}
-          <mesh ref={visorRef} position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.088]} geometry={G.visor} material={M.visorMat} />
+          <mesh ref={visorRef} position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.088]}>
+            <boxGeometry args={[0.22, 0.045, 0.035]} />
+            <meshBasicMaterial color={CYBER.visor} transparent opacity={0.95} toneMapped={false} />
+          </mesh>
 
           {/* Visor scanline effect */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.02, 0.091]} geometry={G.visorScanline} material={M.visorScanline1} />
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.005, 0.091]} geometry={G.visorScanline} material={M.visorScanline2} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.02, 0.091]}>
+            <boxGeometry args={[0.2, 0.002, 0.01]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.4} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.005, 0.091]}>
+            <boxGeometry args={[0.2, 0.002, 0.01]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} toneMapped={false} />
+          </mesh>
 
           {/* Visor frame - GOLD */}
-          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.08]} geometry={G.visorFrame} material={M.gold} />
+          <mesh position={[0, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.08]}>
+            <boxGeometry args={[0.24, 0.055, 0.02]} />
+            <meshStandardMaterial color={CYBER.gold} metalness={0.95} roughness={0.1} />
+          </mesh>
 
           {/* Visor side connectors - CHROME */}
-          <mesh position={[-0.12, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.04]} geometry={G.visorSideConn} material={M.chrome} />
-          <mesh position={[0.12, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.04]} geometry={G.visorSideConn} material={M.chrome} />
+          <mesh position={[-0.12, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.04]}>
+            <boxGeometry args={[0.025, 0.035, 0.1]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
+          <mesh position={[0.12, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.04]}>
+            <boxGeometry args={[0.025, 0.035, 0.1]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
           {/* Visor corner LEDs */}
-          <mesh position={[-0.11, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.095]} geometry={G.visorCornerLed} material={M.visorCornerLed} />
-          <mesh position={[0.11, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.095]} geometry={G.visorCornerLed} material={M.visorCornerLed} />
+          <mesh position={[-0.11, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.095]}>
+            <boxGeometry args={[0.015, 0.04, 0.01]} />
+            <meshBasicMaterial color={CYBER.neonRed} transparent opacity={0.9} toneMapped={false} />
+          </mesh>
+          <mesh position={[0.11, BODY.neckHeight / 2 + BODY.headRadius + 0.01, 0.095]}>
+            <boxGeometry args={[0.015, 0.04, 0.01]} />
+            <meshBasicMaterial color={CYBER.neonRed} transparent opacity={0.9} toneMapped={false} />
+          </mesh>
 
           {/* Ear tech implants - LARGER */}
-          <mesh position={[-BODY.headRadius - 0.025, BODY.neckHeight / 2 + BODY.headRadius, 0]} geometry={G.earImplant} material={M.chrome} />
-          <mesh position={[BODY.headRadius + 0.025, BODY.neckHeight / 2 + BODY.headRadius, 0]} geometry={G.earImplant} material={M.chrome} />
+          <mesh position={[-BODY.headRadius - 0.025, BODY.neckHeight / 2 + BODY.headRadius, 0]}>
+            <boxGeometry args={[0.04, 0.06, 0.05]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
+          <mesh position={[BODY.headRadius + 0.025, BODY.neckHeight / 2 + BODY.headRadius, 0]}>
+            <boxGeometry args={[0.04, 0.06, 0.05]} />
+            <meshStandardMaterial color={CYBER.chrome} metalness={0.95} roughness={0.1} />
+          </mesh>
 
           {/* Ear LEDs - BRIGHT */}
-          <mesh ref={earLedLeftRef} position={[-BODY.headRadius - 0.045, BODY.neckHeight / 2 + BODY.headRadius, 0]} geometry={G.earLed} material={M.earLed} />
-          <mesh ref={earLedRightRef} position={[BODY.headRadius + 0.045, BODY.neckHeight / 2 + BODY.headRadius, 0]} geometry={G.earLed} material={M.earLed} />
+          <mesh ref={earLedLeftRef} position={[-BODY.headRadius - 0.045, BODY.neckHeight / 2 + BODY.headRadius, 0]}>
+            <sphereGeometry args={[0.012, 8, 8]} />
+            <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.95} toneMapped={false} />
+          </mesh>
+          <mesh ref={earLedRightRef} position={[BODY.headRadius + 0.045, BODY.neckHeight / 2 + BODY.headRadius, 0]}>
+            <sphereGeometry args={[0.012, 8, 8]} />
+            <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.95} toneMapped={false} />
+          </mesh>
 
           {/* Secondary ear LEDs */}
-          <mesh position={[-BODY.headRadius - 0.035, BODY.neckHeight / 2 + BODY.headRadius + 0.025, 0]} geometry={G.secondaryEarLed} material={M.secondaryEarLed} />
-          <mesh position={[BODY.headRadius + 0.035, BODY.neckHeight / 2 + BODY.headRadius + 0.025, 0]} geometry={G.secondaryEarLed} material={M.secondaryEarLed} />
+          <mesh position={[-BODY.headRadius - 0.035, BODY.neckHeight / 2 + BODY.headRadius + 0.025, 0]}>
+            <sphereGeometry args={[0.006, 8, 8]} />
+            <meshBasicMaterial color={CYBER.neonCyan} toneMapped={false} />
+          </mesh>
+          <mesh position={[BODY.headRadius + 0.035, BODY.neckHeight / 2 + BODY.headRadius + 0.025, 0]}>
+            <sphereGeometry args={[0.006, 8, 8]} />
+            <meshBasicMaterial color={CYBER.neonCyan} toneMapped={false} />
+          </mesh>
 
           {/* Temple circuit lines */}
-          <mesh position={[-BODY.headRadius - 0.01, BODY.neckHeight / 2 + BODY.headRadius + 0.03, 0.04]} geometry={G.templeCircuit} material={M.templeCircuit} />
-          <mesh position={[BODY.headRadius + 0.01, BODY.neckHeight / 2 + BODY.headRadius + 0.03, 0.04]} geometry={G.templeCircuit} material={M.templeCircuit} />
+          <mesh position={[-BODY.headRadius - 0.01, BODY.neckHeight / 2 + BODY.headRadius + 0.03, 0.04]}>
+            <boxGeometry args={[0.008, 0.025, 0.04]} />
+            <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.6} toneMapped={false} />
+          </mesh>
+          <mesh position={[BODY.headRadius + 0.01, BODY.neckHeight / 2 + BODY.headRadius + 0.03, 0.04]}>
+            <boxGeometry args={[0.008, 0.025, 0.04]} />
+            <meshBasicMaterial color={CYBER.neonPurple} transparent opacity={0.6} toneMapped={false} />
+          </mesh>
         </group>
       </group>
 
       {/* ===== LIGHTING ===== */}
+      {/* Main character glow - BRIGHTER */}
       <pointLight position={[0, 1.2, 0.5]} color={CYBER.neonCyan} intensity={1.5} distance={3} />
+
+      {/* Power core glow */}
       <pointLight position={[0, 1.4, 0.2]} color={CYBER.powerCore} intensity={0.8} distance={2} />
-      <pointLight position={[0, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.7} distance={2.5} />
+
+      {/* Secondary accent lights */}
+      <pointLight position={[-0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
+      <pointLight position={[0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
+
+      {/* Ground glow */}
       <pointLight position={[0, 0.1, 0]} color={CYBER.neonCyan} intensity={0.6} distance={1.5} />
     </group>
   )
