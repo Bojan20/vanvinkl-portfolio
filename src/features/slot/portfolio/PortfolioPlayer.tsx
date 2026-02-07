@@ -362,14 +362,25 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     return () => clearTimeout(timer)
   }, [])
 
-  // Orientation / visibility → resume paused media + update portrait state
-  // NO resize listener — it fires too often and causes audio seeks
+  // Orientation → update portrait state only (NO audio seeks — AudioContext keeps sync)
+  // Visibility → resume + re-sync (tab suspend may have diverged positions)
   useEffect(() => {
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    let orientTimer: ReturnType<typeof setTimeout> | null = null
+    let visTimer: ReturnType<typeof setTimeout> | null = null
 
-    const handleResume = () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(() => {
+    // Orientation change: just update layout, don't touch audio at all
+    const handleOrientation = () => {
+      if (orientTimer) clearTimeout(orientTimer)
+      orientTimer = setTimeout(() => {
+        setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
+      }, 300)
+    }
+
+    // Visibility change: resume paused media + re-sync (only case where positions diverge)
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      if (visTimer) clearTimeout(visTimer)
+      visTimer = setTimeout(() => {
         const video = videoRef.current
         const music = musicRef.current
         const sfx = sfxRef.current
@@ -378,27 +389,23 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         setIsMobilePortrait(isMobile && window.innerHeight > window.innerWidth)
 
         if (playStateRef.current === 'playing') {
-          // Only resume if paused by browser (tab switch, orientation)
           if (video.paused) video.play().catch(() => {})
           if (music.paused) music.play().catch(() => {})
           if (sfx.paused) sfx.play().catch(() => {})
-          // Sync only after tab return — position may have diverged while suspended
+          // Re-sync only after tab return — positions may have diverged while suspended
           music.currentTime = video.currentTime
           sfx.currentTime = video.currentTime
         }
       }, 500)
     }
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleResume()
-    }
-
-    window.addEventListener('orientationchange', handleResume)
+    window.addEventListener('orientationchange', handleOrientation)
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      window.removeEventListener('orientationchange', handleResume)
+      if (orientTimer) clearTimeout(orientTimer)
+      if (visTimer) clearTimeout(visTimer)
+      window.removeEventListener('orientationchange', handleOrientation)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
