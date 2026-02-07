@@ -97,9 +97,9 @@ export function CasinoCanvas({
         position: [0, 5, 18]
       }}
       performance={{
-        min: 0.5,
+        min: 0.8,
         max: 1,
-        debounce: 200
+        debounce: 500
       }}
       frameloop={tabVisible && !spinningSlot ? 'always' : 'never'}
       flat
