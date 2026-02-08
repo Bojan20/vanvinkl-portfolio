@@ -64,16 +64,25 @@ Kada korisnik kaže **POKRENI** (ili "pokreni"), izvrši sledeće korake BEZ PIT
 1. npm run build          — build mora proći sa 0 grešaka
 2. git add + git commit   — commit sa opisom promena
 3. git push               — push na remote
-4. ./deploy.sh            — deploy na Vercel production
-   (ili: vercel --prod --yes ako deploy.sh ne postoji)
-5. Proveri status sa: vercel ls --prod | head -8
-6. Prijavi rezultat: commit hash + deploy status + live URL
+4. vercel build --prod    — lokalni build (generiše .vercel/output/)
+5. vercel deploy --prebuilt --prod — deploy prebuilt output
+6. Prijavi rezultat: commit hash + deploy URL
 ```
 
 **Pravila:**
 - Ako build FAILUJE — ne nastavljaj, popravi grešku prvo
 - Commit poruka: opisna, engleski, sa Co-Authored-By
 - Deploy se NE čeka interaktivno — pokreni u pozadini i proveri status
+
+### 7. Komanda "deploy" (ili "DEPLOY")
+Kada korisnik kaže **deploy** — UVEK koristi prebuilt workflow:
+```
+1. vercel build --prod                    — lokalni build (~20s)
+2. vercel deploy --prebuilt --prod        — upload samo gotov output (~8KB)
+```
+**NIKADA ne koristi `vercel --prod`** — to uploaduje SVE fajlove (851+) i builduje na serveru (sporije).
+Prebuilt workflow: 177 fajlova, 8KB upload, preskače remote build.
+Ako `vercel build` failuje sa "No Project Settings" → pokreni `vercel pull --yes` prvo.
 
 ---
 
@@ -613,9 +622,10 @@ This document is FINAL and NON-NEGOTIABLE.
 
 ### 1. Deployment Pipeline
 - **Platform:** Vercel (manual CLI deploy, no GitHub connection)
-- **Command:** `vercel --prod`
+- **Command:** `vercel build --prod && vercel deploy --prebuilt --prod`
+- **NEVER use:** `vercel --prod` (uploads all 851+ files, remote build = slow)
 - **Build:** `npm run build` (Vite 6)
-- **Output:** `dist/`
+- **Output:** `dist/` (local), `.vercel/output/` (prebuilt for deploy)
 - **Live URL:** https://www.vanvinkl.design
 
 ### 2. Media Asset Architecture
@@ -653,7 +663,7 @@ public/
 1. Verify all videos exist in `public/videoSlotPortfolio/`
 2. Verify all audio exists in `public/audioSlotPortfolio/`
 3. Run `npm run build` — must succeed with zero errors
-4. Run `vercel --prod`
+4. Run `vercel build --prod && vercel deploy --prebuilt --prod`
 5. Test on https://www.vanvinkl.design after deploy
 
 ### 5. Cache Strategy (vercel.json)

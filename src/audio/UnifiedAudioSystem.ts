@@ -95,23 +95,23 @@ class UnifiedAudioSystem {
       this.masterGain = this.ctx.createGain()
       this.masterGain.connect(this.ctx.destination)
 
-      // Init gains use DAW-grade Dr. Lex curve to match store defaults
+      // Init gains use unified -48dB curve to match store defaults
       // Store defaults: music=0.6, sfx=0.7, ui=0.6, spatial=0.5
-      // sliderToGain: 0.6→0.063, 0.7→0.126, 0.5→0.032
+      // sliderToGain: 0.6→0.10 (-20dB), 0.7→0.14 (-17dB), 0.5→0.07 (-23dB)
       this.musicGain = this.ctx.createGain()
-      this.musicGain.gain.value = sliderToGain(0.6)  // ~0.063 (-24 dB)
+      this.musicGain.gain.value = sliderToGain(0.6)
       this.musicGain.connect(this.masterGain)
 
       this.sfxGain = this.ctx.createGain()
-      this.sfxGain.gain.value = sliderToGain(0.7)  // ~0.126 (-18 dB)
+      this.sfxGain.gain.value = sliderToGain(0.7)
       this.sfxGain.connect(this.masterGain)
 
       this.uiGain = this.ctx.createGain()
-      this.uiGain.gain.value = sliderToGain(0.6)  // ~0.063 (-24 dB)
+      this.uiGain.gain.value = sliderToGain(0.6)
       this.uiGain.connect(this.masterGain)
 
       this.spatialGain = this.ctx.createGain()
-      this.spatialGain.gain.value = sliderToGain(0.5)  // ~0.032 (-30 dB)
+      this.spatialGain.gain.value = sliderToGain(0.5)
       this.spatialGain.connect(this.masterGain)
 
       // Create analyzer for visualization (connected to music bus)
@@ -276,7 +276,7 @@ class UnifiedAudioSystem {
   }
 
   /**
-   * Set volume for a bus (perceptual curve + sample-accurate smoothing)
+   * Set volume for a bus (perceptual curve + exponential smoothing)
    */
   setVolume(bus: 'master' | 'music' | 'sfx' | 'ui' | 'spatial', volume: number, fadeTime = 0.1): void {
     if (!this.ctx) return
@@ -289,12 +289,13 @@ class UnifiedAudioSystem {
     if (!gain) return
 
     const perceptual = this.perceptualGain(bus, Math.max(0, Math.min(1, volume)))
-    const smoothTime = (bus === 'sfx' || bus === 'ui') ? 0.008 : 0.015 // 8ms SFX, 15ms music
+    // setTargetAtTime gives smooth exponential approach (no zipper noise)
+    const smoothing = fadeTime > 0 ? Math.max(0.02, fadeTime) : 0.02
 
     const now = this.ctx.currentTime
     gain.gain.cancelScheduledValues(now)
     gain.gain.setValueAtTime(gain.gain.value, now)
-    gain.gain.linearRampToValueAtTime(perceptual, now + Math.max(smoothTime, fadeTime))
+    gain.gain.setTargetAtTime(perceptual, now, smoothing)
   }
 
   /**
@@ -1215,29 +1216,38 @@ export function uaGetContext(): AudioContext | null {
 }
 
 /**
- * DAW-grade fader curve: slider [0,1] → linear gain
+ * Unified volume curve: slider [0,1] → linear gain
  *
- * Dr. Lex exponential curve with 60dB dynamic range.
- * Industry standard for software volume faders (Cubase, Pro Tools, Ableton).
+ * Power-shaped dB mapping with -48 dB range and 0.60 exponent.
+ * Same curve for Music AND SFX — one fader feel everywhere.
  *
+ * Key points:
  * - Slider 1.0 → 0 dB (unity gain = 1.0)
- * - Slider 0.5 → ~-24 dB (gain ≈ 0.063)
- * - Slider 0.1 → ~-54 dB (gain ≈ 0.002)
- * - Slider 0.0 → -∞ (true silence = 0)
- *
- * Bottom 5% uses linear ramp to reach true zero (exp never hits 0).
- * This matches how real console faders have a dead-zone at the bottom.
+ * - Slider 0.5 → ~-16 dB (gain ≈ 0.15) — audible and usable
+ * - Slider 0.25 → ~-27 dB (gain ≈ 0.044)
+ * - Slider 0.1 → ~-36 dB (gain ≈ 0.016)
+ * - Slider 0.0 → -∞ (hard mute = 0)
  */
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x))
+}
+
+function sliderToDb(s: number): number {
+  if (s <= 0.0001) return -Infinity
+  const dB_min = -48
+  const dB_max = 0
+  const exp = 0.60
+  const shaped = Math.pow(clamp01(s), exp)
+  return dB_min + (dB_max - dB_min) * shaped
+}
+
+function dbToGain(db: number): number {
+  if (db === -Infinity) return 0
+  return Math.pow(10, db / 20)
+}
+
 export function sliderToGain(x: number): number {
   if (x <= 0) return 0
   if (x >= 1) return 1
-  // Dr. Lex constants for 60dB range: a = 10^(-60/20) = 0.001, b = ln(1/a) = ln(1000) ≈ 6.908
-  const a = 0.001
-  const b = 6.908
-  if (x < 0.05) {
-    // Linear ramp in bottom 5% — bridges true zero to curve value at x=0.05
-    // Prevents the exponential's asymptotic approach to zero
-    return x * 20 * a * Math.exp(b * 0.05)  // 20 = 1/0.05
-  }
-  return a * Math.exp(b * x)
+  return dbToGain(sliderToDb(x))
 }
