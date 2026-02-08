@@ -58,6 +58,23 @@ Kada se razgovor nastavlja iz summarized konteksta:
 3. Tek onda nastavi sa radom
 ```
 
+### 6. Komanda "POKRENI"
+Kada korisnik kaže **POKRENI** (ili "pokreni"), izvrši sledeće korake BEZ PITANJA:
+```
+1. npm run build          — build mora proći sa 0 grešaka
+2. git add + git commit   — commit sa opisom promena
+3. git push               — push na remote
+4. ./deploy.sh            — deploy na Vercel production
+   (ili: vercel --prod --yes ako deploy.sh ne postoji)
+5. Proveri status sa: vercel ls --prod | head -8
+6. Prijavi rezultat: commit hash + deploy status + live URL
+```
+
+**Pravila:**
+- Ako build FAILUJE — ne nastavljaj, popravi grešku prvo
+- Commit poruka: opisna, engleski, sa Co-Authored-By
+- Deploy se NE čeka interaktivno — pokreni u pozadini i proveri status
+
 ---
 
 ## JEZIK
