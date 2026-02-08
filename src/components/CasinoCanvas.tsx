@@ -93,15 +93,7 @@ export function CasinoCanvas({
         far: isLowMobile ? 35 : isMobile ? 50 : 80,
         position: [0, 5, 18]
       }}
-      performance={isMobile ? {
-        min: 0.8,
-        max: 1,
-        debounce: 500
-      } : {
-        min: 0.9,
-        max: 1,
-        debounce: 300
-      }}
+      performance={undefined}
       frameloop={tabVisible && !spinningSlot ? 'always' : 'never'}
       flat
       onCreated={({ gl }) => {
