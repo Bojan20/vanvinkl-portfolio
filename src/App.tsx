@@ -193,7 +193,8 @@ export function App() {
       pulling = false
       // Skip pull-to-refresh when touch starts on interactive elements (joystick, sliders, buttons)
       const el = e.target as HTMLElement
-      startedOnInteractive = !!el.closest('input, button, [role="toolbar"], [role="slider"]')
+      startedOnInteractive = !!el.closest('input, button, [role="toolbar"], [role="slider"]') ||
+        getComputedStyle(el).touchAction === 'none'
     }
 
     const handleTouchMove = (e: TouchEvent) => {

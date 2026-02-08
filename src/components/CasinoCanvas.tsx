@@ -93,7 +93,7 @@ export function CasinoCanvas({
         far: isLowMobile ? 35 : isMobile ? 50 : 80,
         position: [0, 5, 18]
       }}
-      performance={undefined}
+      performance={isLowMobile ? { min: 0.5, max: 1, debounce: 200 } : undefined}
       frameloop={tabVisible && !spinningSlot ? 'always' : 'never'}
       flat
       onCreated={({ gl }) => {
@@ -101,7 +101,7 @@ export function CasinoCanvas({
         gl.domElement.addEventListener('webglcontextlost', onContextLost)
       }}
     >
-      <FrameloopResumer active={tabVisible && !spinningSlot} />
+      <FrameloopResumer active={tabVisible && !spinningSlot && !isLowMobile} />
       <Suspense fallback={<LoadingScreen />}>
         {showIntro && (
           <IntroCamera

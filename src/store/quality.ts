@@ -152,36 +152,65 @@ export const useQualityStore = create<QualityState>()(
         const loseExt = gl.getExtension('WEBGL_lose_context')
         loseExt?.loseContext()
 
-        // Heuristic device tier detection
+        const r = renderer.toLowerCase()
+        const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
         let tier: 'low' | 'medium' | 'high' = 'medium'
 
-        const r = renderer.toLowerCase()
-
-        // High-end GPUs
-        if (
-          r.includes('nvidia') ||
-          r.includes('radeon') ||
-          r.includes('rtx') ||
-          r.includes('geforce') ||
-          r.includes('apple m') // Catches M1, M2, M3, M4, M5+
-        ) {
-          tier = 'high'
+        if (mobile) {
+          // === MOBILE GPU TIERING ===
+          // HIGH: Apple GPU A15+ (iPhone 13+), Adreno 7xx/8xx (Snapdragon 8 Gen1+)
+          if (
+            r.includes('apple gpu') ||           // All modern Apple (A12+, WebGL reports "Apple GPU")
+            r.includes('apple a') ||              // Explicit Apple A-series
+            r.includes('adreno (tm) 7') ||        // Snapdragon 8 Gen1/Gen2/Gen3
+            r.includes('adreno (tm) 8') ||        // Snapdragon 8 Elite
+            r.includes('mali-g7') ||              // ARM Mali G77/G78/G710 (flagship Android)
+            r.includes('mali-g6') ||              // ARM Mali G68/G610 (upper-mid Android)
+            r.includes('adreno (tm) 6')           // Adreno 6xx (Snapdragon 855-888, solid mid-range)
+          ) {
+            tier = 'high'
+          }
+          // LOW: Old/budget GPUs
+          else if (
+            r.includes('powervr') ||              // Old iOS / budget Android
+            r.includes('adreno (tm) 5') ||        // Snapdragon 6xx/7xx (2017-2019)
+            r.includes('adreno (tm) 4') ||        // Very old Qualcomm
+            r.includes('adreno (tm) 3') ||        // Ancient Qualcomm
+            r.includes('mali-g5') ||              // Mali G51/G52 (budget 2018-2020)
+            r.includes('mali-t') ||               // Mali T-series (very old)
+            r.includes('mali-4') ||               // Mali 400 (ancient)
+            r.includes('sgx') ||                  // PowerVR SGX (ancient)
+            r.includes('vivante') ||              // Budget SoC GPU
+            r === ''                              // No renderer info = assume low
+          ) {
+            tier = 'low'
+          }
+          // MEDIUM: everything else (unknown but modern enough for WebGL2)
+          // else tier stays 'medium'
+        } else {
+          // === DESKTOP GPU TIERING ===
+          // High-end: discrete NVIDIA/AMD, Apple Silicon
+          if (
+            r.includes('nvidia') ||
+            r.includes('radeon') ||
+            r.includes('rtx') ||
+            r.includes('geforce') ||
+            r.includes('apple m')
+          ) {
+            tier = 'high'
+          }
+          // Low-end: integrated Intel
+          else if (
+            r.includes('intel hd') ||
+            r.includes('intel uhd') ||
+            r.includes('intel iris')
+          ) {
+            tier = 'low'
+          }
         }
 
-        // Low-end indicators (integrated graphics)
-        else if (
-          r.includes('intel hd') ||
-          r.includes('intel uhd') ||
-          r.includes('intel iris') ||
-          r.includes('powervr') ||
-          r.includes('adreno 5') || // Older Qualcomm
-          r.includes('mali-g5') ||   // Older ARM
-          /iPhone|iPad|Android/i.test(navigator.userAgent)
-        ) {
-          tier = 'low'
-        }
-
-        console.log(`[Quality] Device tier detected: ${tier} (GPU: ${renderer})`)
+        console.log(`[Quality] Device tier: ${tier} | Mobile: ${mobile} | GPU: ${renderer}`)
         set({ deviceTier: tier })
 
         // Set initial quality based on tier
@@ -204,17 +233,20 @@ export const useQualityStore = create<QualityState>()(
  * Call this once on app mount
  */
 export function initQualitySystem(): void {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   const store = useQualityStore.getState()
 
+  // Detect GPU tier first — sets resolvedQuality based on actual hardware
   store.detectDeviceTier()
 
-  // MOBILE OPTIMIZATION: Pre-set LOW quality to avoid initial frame drops
-  if (isMobile) {
-    store.setPreset('low')
-    console.log('[Quality] Mobile detected - forced LOW quality for instant 60fps')
+  const { deviceTier } = store
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+  if (mobile) {
+    // Mobile: lock to detected tier (no auto-upgrade to avoid frame drops)
+    const mobileQuality = deviceTier === 'low' ? 'low' : deviceTier === 'high' ? 'medium' : 'medium'
+    store.setPreset(mobileQuality)
+    console.log(`[Quality] Mobile ${deviceTier} → quality: ${mobileQuality}`)
   } else if (store.preset === 'auto') {
-    // Desktop remains AUTO (adapts based on FPS)
     console.log('[Quality] Desktop detected - using AUTO quality')
   }
 }
