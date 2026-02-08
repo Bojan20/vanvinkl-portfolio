@@ -34,7 +34,7 @@ import {
   FloatingLetters
 } from './scene'
 
-import { uaPlay, uaPlaySynth } from '../audio'
+import { uaPlaySynth } from '../audio'
 import { getEffectiveQuality } from '../store/quality'
 
 // ============================================
@@ -94,8 +94,6 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   const avatarPos = useRef(new THREE.Vector3(0, 0, 10))
   const avatarRotation = useRef(0)
   const isMovingRef = useRef(false)
-  const lastFootstepTime = useRef(0)
-  const footstepFoot = useRef(0) // 0 = left, 1 = right (alternating)
 
   // Track slotOpen as ref for event handlers with stable deps
   const slotOpenRef = useRef(slotOpen)
@@ -241,17 +239,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   useFrame((state) => {
     if (introActive) return
 
-    // Footstep sounds - alternate between feet for realism
-    if (isMovingRef.current && !isSittingRef.current && !introActive) {
-      const now = state.clock.elapsedTime
-      if (now - lastFootstepTime.current > 0.4) {
-        // Alternate between footstep1 and footstep2 (left/right foot)
-        const step = footstepFoot.current === 0 ? 'footstep1' : 'footstep2'
-        uaPlay(step)
-        footstepFoot.current = footstepFoot.current === 0 ? 1 : 0
-        lastFootstepTime.current = now
-      }
-    }
+    // Footstep sounds are now synced to Avatar walk cycle (zero-crossing detection in Avatar.tsx)
 
     // Camera control
     if (isSittingRef.current) {

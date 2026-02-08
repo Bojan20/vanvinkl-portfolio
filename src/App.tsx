@@ -185,16 +185,26 @@ export function App() {
       return el
     }
 
+    // Check if element or any ancestor has touchAction: none (slider containers, joystick)
+    const hasTouchActionNone = (el: HTMLElement): boolean => {
+      let node: HTMLElement | null = el
+      for (let i = 0; i < 6 && node; i++) {
+        if (getComputedStyle(node).touchAction === 'none') return true
+        node = node.parentElement
+      }
+      return false
+    }
+
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0]
       startX = touch.clientX
       startY = touch.clientY
       startTime = Date.now()
       pulling = false
-      // Skip pull-to-refresh when touch starts on interactive elements (joystick, sliders, buttons)
+      // Skip pull-to-refresh when touch starts on/near interactive elements (sliders, buttons, joystick)
       const el = e.target as HTMLElement
       startedOnInteractive = !!el.closest('input, button, [role="toolbar"], [role="slider"]') ||
-        getComputedStyle(el).touchAction === 'none'
+        hasTouchActionNone(el)
     }
 
     const handleTouchMove = (e: TouchEvent) => {

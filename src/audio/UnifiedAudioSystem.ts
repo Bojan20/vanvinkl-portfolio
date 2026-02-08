@@ -30,7 +30,7 @@ type SynthSoundType =
   | 'tick' | 'select' | 'back' | 'click'
   | 'whoosh' | 'swoosh' | 'reveal' | 'transition'
   | 'win' | 'jackpot' | 'spinMech'
-  | 'introWhoosh' | 'footstep'
+  | 'introWhoosh' | 'footstep' | 'footstepL' | 'footstepR'
   | 'cyberGlitch' | 'cyberSweep' | 'cyberReveal' | 'cyberBass' | 'cyberWow'
   | 'magicReveal' | 'leverPull' | 'leverRelease'
   | 'uiOpen' | 'uiClose'
@@ -470,6 +470,12 @@ class UnifiedAudioSystem {
           break
         case 'footstep':
           this.playFootstep(ctx, now, volume)
+          break
+        case 'footstepL':
+          this.playFootstepRealistic(ctx, now, volume, 'left')
+          break
+        case 'footstepR':
+          this.playFootstepRealistic(ctx, now, volume, 'right')
           break
         case 'cyberReveal':
           this.playCyberReveal(ctx, now, volume)
@@ -971,6 +977,83 @@ class UnifiedAudioSystem {
 
     osc.start(now)
     osc.stop(now + 0.1)
+  }
+
+  /**
+   * Realistic footstep — hard floor (casino tile/marble)
+   * Layers: heel impact + sole contact + subtle resonance
+   * Left/right have slightly different pitch for realism
+   * Random variation per step
+   */
+  private playFootstepRealistic(ctx: AudioContext, now: number, vol: number, foot: 'left' | 'right'): void {
+    // Random variation per step
+    const pitchVar = 0.9 + Math.random() * 0.2    // ±10% pitch
+    const volVar = 0.85 + Math.random() * 0.3      // ±15% volume
+    const timingVar = Math.random() * 0.008         // 0-8ms timing jitter
+    const stepVol = vol * volVar
+
+    // Left foot slightly lower pitch, right slightly higher
+    const footPitch = foot === 'left' ? 0.95 : 1.05
+
+    const t = now + timingVar
+
+    // Layer 1: Heel impact — sharp transient, low-mid thud
+    const heelOsc = ctx.createOscillator()
+    heelOsc.type = 'sine'
+    const heelFreq = 90 * pitchVar * footPitch
+    heelOsc.frequency.setValueAtTime(heelFreq, t)
+    heelOsc.frequency.exponentialRampToValueAtTime(heelFreq * 0.4, t + 0.04)
+
+    const heelGain = ctx.createGain()
+    heelGain.gain.setValueAtTime(stepVol * 0.5, t)
+    heelGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
+
+    heelOsc.connect(heelGain)
+    heelGain.connect(this.sfxGain!)
+
+    heelOsc.start(t)
+    heelOsc.stop(t + 0.07)
+
+    // Layer 2: Sole contact — higher, snappier click
+    const soleOsc = ctx.createOscillator()
+    soleOsc.type = 'triangle'
+    const soleFreq = 320 * pitchVar * footPitch
+    soleOsc.frequency.setValueAtTime(soleFreq, t + 0.005)
+    soleOsc.frequency.exponentialRampToValueAtTime(soleFreq * 0.3, t + 0.03)
+
+    const soleGain = ctx.createGain()
+    soleGain.gain.setValueAtTime(0, t)
+    soleGain.gain.linearRampToValueAtTime(stepVol * 0.3, t + 0.005)
+    soleGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04)
+
+    // Bandpass filter for sole — removes harshness
+    const soleFilter = ctx.createBiquadFilter()
+    soleFilter.type = 'bandpass'
+    soleFilter.frequency.value = 400 * pitchVar
+    soleFilter.Q.value = 2
+
+    soleOsc.connect(soleFilter)
+    soleFilter.connect(soleGain)
+    soleGain.connect(this.sfxGain!)
+
+    soleOsc.start(t + 0.005)
+    soleOsc.stop(t + 0.05)
+
+    // Layer 3: Floor resonance — very low, subtle body
+    const resOsc = ctx.createOscillator()
+    resOsc.type = 'sine'
+    resOsc.frequency.setValueAtTime(55 * footPitch, t)
+    resOsc.frequency.exponentialRampToValueAtTime(30, t + 0.08)
+
+    const resGain = ctx.createGain()
+    resGain.gain.setValueAtTime(stepVol * 0.2, t)
+    resGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1)
+
+    resOsc.connect(resGain)
+    resGain.connect(this.sfxGain!)
+
+    resOsc.start(t)
+    resOsc.stop(t + 0.12)
   }
 
   private playCyberReveal(ctx: AudioContext, now: number, vol: number): void {

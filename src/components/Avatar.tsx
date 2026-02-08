@@ -14,6 +14,7 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { uaPlaySynth } from '../audio'
 
 interface CollisionBox {
   x: number
@@ -104,6 +105,7 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
   const glowTime = useRef(Math.random() * 100)
 
   const velocityRef = useRef({ x: 0, z: 0 })
+  const prevLegSin = useRef(0) // For footstep zero-crossing detection
 
   const keysRef = useRef({
     forward: false,
@@ -437,10 +439,21 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
     const idle = idleTime.current
 
     if (moving) {
-      const legSwing = Math.sin(t) * 0.5
-      const armSwing = Math.sin(t) * 0.4
+      const sinT = Math.sin(t)
+      const legSwing = sinT * 0.5
+      const armSwing = sinT * 0.4
       const kneeAngle = Math.max(0, Math.sin(t - 0.5)) * 0.8
       const elbowAngle = Math.max(0, Math.sin(t + 0.5)) * 0.5
+
+      // Footstep sync: detect zero-crossing of leg swing (foot hits ground)
+      // sin goes + → - : left foot strikes (leg swings back past center)
+      // sin goes - → + : right foot strikes
+      if (prevLegSin.current > 0 && sinT <= 0) {
+        uaPlaySynth('footstepL', 0.35)
+      } else if (prevLegSin.current < 0 && sinT >= 0) {
+        uaPlaySynth('footstepR', 0.35)
+      }
+      prevLegSin.current = sinT
 
       const bodyBob = Math.abs(Math.sin(t * 2)) * 0.03
       groupRef.current.position.y = bodyBob
