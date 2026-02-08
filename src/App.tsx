@@ -372,20 +372,23 @@ export function App() {
       <AudioVolumeSync />
 
       {/* 3D Scene — lazy loaded (PERFORMANCE POLICY §4-5: Three.js deferred from initial bundle) */}
-      <Suspense fallback={<LoadingScreen />}>
-        <CasinoCanvas
-          isMobile={isMobile}
-          tabVisible={tabVisible}
-          showIntro={showIntro}
-          spinningSlot={spinningSlot}
-          audioSettingsOpen={audioSettingsOpen}
-          mobileMovementRef={mobileMovementRef}
-          onSlotSpin={handleSlotSpin}
-          onSitChange={setIsSitting}
-          onIntroCameraComplete={handleIntroCameraComplete}
-          onContextLost={handleContextLost}
-        />
-      </Suspense>
+      {/* NOT rendered while splash is active — prevents lounge flash during fullscreen toggle on splash */}
+      {!showSplash && (
+        <Suspense fallback={<LoadingScreen />}>
+          <CasinoCanvas
+            isMobile={isMobile}
+            tabVisible={tabVisible}
+            showIntro={showIntro}
+            spinningSlot={spinningSlot}
+            audioSettingsOpen={audioSettingsOpen}
+            mobileMovementRef={mobileMovementRef}
+            onSlotSpin={handleSlotSpin}
+            onSitChange={setIsSitting}
+            onIntroCameraComplete={handleIntroCameraComplete}
+            onContextLost={handleContextLost}
+          />
+        </Suspense>
+      )}
 
       {/* Sound Toggle - lounge only (slot has its own audio controls) */}
       {!showIntro && !spinningSlot && <SoundToggle />}

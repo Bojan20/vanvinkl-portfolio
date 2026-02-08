@@ -404,10 +404,14 @@ export function IntroOverlay({
     const interval = setInterval(() => {
       let newText = ''
       for (let i = 0; i < originalText.length; i++) {
-        if (Math.random() < 0.4) {
+        const c = originalText[i]
+        // Preserve newlines and spaces — only glitch visible characters
+        if (c === '\n' || c === ' ') {
+          newText += c
+        } else if (Math.random() < 0.4) {
           newText += glitchChars[Math.floor(Math.random() * glitchChars.length)]
         } else {
-          newText += originalText[i]
+          newText += c
         }
       }
       setGlitchText(newText)
@@ -445,8 +449,8 @@ export function IntroOverlay({
 
     const interval = setInterval(() => {
       currentChar++
-      // Play cyber reveal sound for each letter (not for spaces), unless skipped
-      if (originalText[currentChar - 1] !== ' ' && !skippedRef.current) {
+      // Play cyber reveal sound for each letter (not for spaces/newlines), unless skipped
+      if (originalText[currentChar - 1] !== ' ' && originalText[currentChar - 1] !== '\n' && !skippedRef.current) {
         uaPlaySynth('cyberReveal',0.25)
       }
       if (currentChar >= originalText.length) {
@@ -470,11 +474,12 @@ export function IntroOverlay({
       const interval = setInterval(() => {
         let newText = ''
         for (let i = 0; i < originalText.length; i++) {
+          const c = originalText[i]
           if (i < revealedChars) {
-            // This letter is revealed
-            newText += originalText[i]
+            newText += c
+          } else if (c === '\n' || c === ' ') {
+            newText += c // Preserve whitespace
           } else {
-            // Still glitching
             newText += glitchChars[Math.floor(Math.random() * glitchChars.length)]
           }
         }
@@ -557,6 +562,11 @@ export function IntroOverlay({
             // Reveal phase - letter by letter with individual animations
             <span>
               {originalText.split('').map((char, i) => {
+                // Handle newline — insert line break
+                if (char === '\n') {
+                  return <br key={i} />
+                }
+
                 const isRevealed = i < revealedChars
                 const isCurrentlyRevealing = i === revealedChars - 1
 
@@ -803,7 +813,6 @@ export function IntroOverlay({
             filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)) brightness(1);
           }
         }
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
       `}</style>
     </div>
   )

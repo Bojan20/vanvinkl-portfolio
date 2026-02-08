@@ -342,7 +342,7 @@ export function MobileControls({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 max(30px, env(safe-area-inset-left, 0px)) max(30px, env(safe-area-inset-bottom, 0px)) max(30px, env(safe-area-inset-right, 0px));
+          padding: 0 max(48px, env(safe-area-inset-left, 0px)) max(40px, env(safe-area-inset-bottom, 0px)) max(48px, env(safe-area-inset-right, 0px));
           pointer-events: none;
           z-index: 500;
           transition: height 0.2s ease;
