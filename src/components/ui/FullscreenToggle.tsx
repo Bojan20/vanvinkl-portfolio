@@ -29,7 +29,16 @@ function enterFullscreen() {
   if (el.requestFullscreen) {
     el.requestFullscreen().then(() => {
       // Lock orientation to 'any' — prevents browser from exiting fullscreen on rotation
-      try { (screen.orientation as any).lock?.('any').catch?.(() => {}) } catch {}
+      // Also lock to 'natural' first then 'any' — some browsers need the initial lock
+      try {
+        const so = screen.orientation as any
+        if (so.lock) {
+          so.lock('any').catch(() => {
+            // Fallback: try 'natural' which has better support
+            so.lock('natural').catch(() => {})
+          })
+        }
+      } catch {}
     }).catch(() => {})
   } else if (el.webkitRequestFullscreen) {
     el.webkitRequestFullscreen()
@@ -47,36 +56,29 @@ function exitFullscreen() {
   }
 }
 
-export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}) {
+export function FullscreenToggle({ compact = false, hidden = false }: { compact?: boolean, hidden?: boolean } = {}) {
   const isMobile = isMobileDevice()
   const [isFullscreen, setIsFullscreen] = useState(isInFullscreen)
   // Track whether USER intentionally wants fullscreen (vs browser auto-exiting on rotation)
   const userWantsFullscreenRef = useRef(isInFullscreen())
+  // Track if currently rotating (to distinguish rotation exit from user exit)
+  const rotatingRef = useRef(false)
 
-  // Sync state with actual fullscreen changes + auto re-enter on rotation exit
+  // Sync state with actual fullscreen changes
   useEffect(() => {
     const onChange = () => {
       const inFS = isInFullscreen()
       setIsFullscreen(inFS)
 
-      // If user wanted fullscreen but browser exited it (rotation on Chrome Android),
-      // re-enter fullscreen after a short delay to let browser finish layout
-      if (!inFS && userWantsFullscreenRef.current && isMobile) {
-        setTimeout(() => {
-          if (!isInFullscreen() && userWantsFullscreenRef.current) {
-            enterFullscreen()
-          }
-        }, 100)
-      }
-
-      // If fullscreen was exited and we didn't re-enter, update intent
-      if (!inFS) {
-        // Give re-enter attempt time to work before clearing intent
+      // If fullscreen was exited by user (not rotation), clear intent
+      // For rotation exits, the orientationchange handler below handles re-entry
+      if (!inFS && userWantsFullscreenRef.current && !rotatingRef.current) {
+        // Not a rotation — user or browser intentionally exited
         setTimeout(() => {
           if (!isInFullscreen()) {
             userWantsFullscreenRef.current = false
           }
-        }, 300)
+        }, 500)
       }
     }
     document.addEventListener('fullscreenchange', onChange)
@@ -84,6 +86,52 @@ export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}
     return () => {
       document.removeEventListener('fullscreenchange', onChange)
       document.removeEventListener('webkitfullscreenchange', onChange)
+    }
+  }, [])
+
+  // Re-enter fullscreen on orientation change (rotation)
+  // orientationchange is treated as user-initiated by some browsers,
+  // allowing requestFullscreen() to succeed without a tap
+  useEffect(() => {
+    if (!isMobile) return
+
+    const onOrientationChange = () => {
+      if (!userWantsFullscreenRef.current) return
+
+      rotatingRef.current = true
+      setTimeout(() => { rotatingRef.current = false }, 1000)
+
+      // Try re-enter from orientationchange (some browsers treat as user-initiated)
+      if (!isInFullscreen()) {
+        enterFullscreen()
+      }
+      // Backup attempts at staggered intervals — different browsers settle at different times
+      const delays = [100, 250, 500]
+      const timers = delays.map(d => setTimeout(() => {
+        if (!isInFullscreen() && userWantsFullscreenRef.current) {
+          enterFullscreen()
+        }
+      }, d))
+      // Store timers for cleanup — use closure
+      ;(onOrientationChange as any)._timers = timers
+    }
+
+    // Also listen to resize — fires after orientation settles, more reliable than orientationchange alone
+    const onResize = () => {
+      if (!userWantsFullscreenRef.current || isInFullscreen()) return
+      // Only act during rotation window
+      if (!rotatingRef.current) return
+      enterFullscreen()
+    }
+
+    window.addEventListener('orientationchange', onOrientationChange)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('orientationchange', onOrientationChange)
+      window.removeEventListener('resize', onResize)
+      // Clear any pending timers
+      const timers = (onOrientationChange as any)._timers
+      if (timers) timers.forEach((t: number) => clearTimeout(t))
     }
   }, [isMobile])
 
@@ -113,6 +161,11 @@ export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}
 
   // Hide if browser doesn't support Fullscreen API at all
   if (!canFullscreen()) {
+    return null
+  }
+
+  // Hidden mode: mount component (keep useEffect handlers active for rotation re-entry) but render nothing visible
+  if (hidden) {
     return null
   }
 

@@ -794,6 +794,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         className="aop-volume-bar"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.preventDefault()}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -801,7 +802,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           border: `1px solid ${playerVolume === 0 ? 'rgba(255,68,68,0.4)' : 'rgba(0,255,255,0.3)'}`,
           borderRadius: '20px',
           backdropFilter: 'blur(8px)',
-          zIndex: 1000
+          zIndex: 1000,
+          touchAction: 'none'
         }}
       >
         {/* Speaker icon — click to mute/unmute */}
@@ -848,7 +850,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
             borderRadius: '2px',
             outline: 'none',
             cursor: 'pointer',
-            margin: 0
+            margin: 0,
+            touchAction: 'none'
           }}
         />
 

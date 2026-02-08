@@ -232,7 +232,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
                       setMusicVolume(vol)
                       uaVolume('music', vol)
                     }}
-                    style={{ width: '100px', height: '6px', cursor: 'pointer' }}
+                    style={{ width: '100px', height: '6px', cursor: 'pointer', touchAction: 'none' }}
                   />
                 ) : (
                   <div style={{
@@ -296,7 +296,7 @@ export function AudioSettings({ isOpen, setIsOpen }: AudioSettingsProps) {
                       uaVolume('sfx', vol)
                       uaVolume('ui', vol)
                     }}
-                    style={{ width: '100px', height: '6px', cursor: 'pointer' }}
+                    style={{ width: '100px', height: '6px', cursor: 'pointer', touchAction: 'none' }}
                   />
                 ) : (
                   <div style={{

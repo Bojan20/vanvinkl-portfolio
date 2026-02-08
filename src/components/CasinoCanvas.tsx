@@ -97,7 +97,7 @@ export function CasinoCanvas({
         position: [0, 5, 18]
       }}
       performance={isMobile ? {
-        min: 0.7,
+        min: 0.8,
         max: 1,
         debounce: 500
       } : undefined}

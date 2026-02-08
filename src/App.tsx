@@ -45,7 +45,7 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 // Unified Audio System
-import { initUnifiedAudio, unifiedAudio, uaPlay, uaStop, uaVolume, uaIsPlaying } from './audio'
+import { initUnifiedAudio, unifiedAudio, uaPlay, uaStop, uaVolume, uaIsPlaying, uaResume } from './audio'
 import { useAudioStore } from './store/audio'
 import { achievementStore } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
@@ -320,6 +320,9 @@ export function App() {
     setSpinningSlot(machineId)
     // Push history entry so browser back closes the slot
     history.pushState({ slot: machineId }, '')
+    // Fade out lounge music when entering slot — prevents duplication
+    uaVolume('music', 0, 0.3)
+    setTimeout(() => uaStop('lounge', 0), 350)
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -393,8 +396,8 @@ export function App() {
       {/* Sound Toggle - lounge only (slot has its own audio controls) */}
       {!showIntro && !spinningSlot && <SoundToggle />}
 
-      {/* Fullscreen Toggle - always visible (compact icon-only in slot to avoid overlap with ESC button) */}
-      {!showIntro && <FullscreenToggle compact={!!spinningSlot} />}
+      {/* Fullscreen Toggle - always mounted (rotation re-entry handlers must stay active during intro) */}
+      <FullscreenToggle compact={!!spinningSlot} hidden={showIntro} />
 
       {/* Audio Settings - lounge only (slot has its own audio controls) */}
       {!showIntro && !spinningSlot && <AudioSettings isOpen={audioSettingsOpen} setIsOpen={setAudioSettingsOpen} />}
@@ -442,6 +445,8 @@ export function App() {
                 qualityStore.setPreset('auto')
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
+              // Resume AudioContext — mobile browsers may suspend it during slot (no active audio sources)
+              uaResume()
               // Resume lounge music — seamless fade in
               const { musicVolume, sfxVolume } = useAudioStore.getState()
               if (!uaIsPlaying('lounge')) {
@@ -450,14 +455,21 @@ export function App() {
               }
               // Smooth fade in to stored volume (no dropout)
               uaVolume('music', musicVolume, 0.8)
-              // Restore SFX + UI bus volumes — immediate + delayed (PortfolioPlayer cleanup is async)
+              // Restore SFX + UI bus volumes — immediate + staggered delayed (PortfolioPlayer cleanup is async)
               uaVolume('sfx', sfxVolume, 0)
               uaVolume('ui', sfxVolume, 0)
               setTimeout(() => {
+                uaResume()
                 const { sfxVolume: v } = useAudioStore.getState()
                 uaVolume('sfx', v, 0)
                 uaVolume('ui', v, 0)
               }, 200)
+              setTimeout(() => {
+                uaResume()
+                const { sfxVolume: v } = useAudioStore.getState()
+                uaVolume('sfx', v, 0)
+                uaVolume('ui', v, 0)
+              }, 600)
               console.log(`[Music] Slot closed - lounge resumed, music=${musicVolume.toFixed(2)} sfx=${sfxVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {

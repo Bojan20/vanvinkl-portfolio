@@ -213,7 +213,8 @@ export const ProjectDetail = memo(function ProjectDetail({
               outline: 'none',
               cursor: 'pointer',
               WebkitAppearance: 'none',
-              appearance: 'none'
+              appearance: 'none',
+              touchAction: 'none'
             }}
           />
         </div>
@@ -257,7 +258,8 @@ export const ProjectDetail = memo(function ProjectDetail({
               outline: 'none',
               cursor: 'pointer',
               WebkitAppearance: 'none',
-              appearance: 'none'
+              appearance: 'none',
+              touchAction: 'none'
             }}
           />
         </div>

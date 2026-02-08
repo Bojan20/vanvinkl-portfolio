@@ -94,13 +94,14 @@ const AboutView = memo(function AboutView({ section, focusIndex, onSelect }: { s
       <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${statColumns}, 1fr)`,
-        gridTemplateRows: `repeat(${statRows}, 1fr)`,
+        gridAutoRows: isMobile ? (isLandscape ? '1fr' : 'minmax(0, 120px)') : 'minmax(0, 160px)',
         gap: `${gridGap}px`,
         maxWidth: '1000px',
         width: '100%',
         margin: '0 auto',
         flex: 1,
-        minHeight: 0
+        minHeight: 0,
+        alignContent: 'center'
       }}>
         {section.stats.map((stat, i) => {
           const isFocused = focusIndex === i

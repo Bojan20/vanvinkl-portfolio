@@ -71,13 +71,14 @@ const ContactView = memo(function ContactView({ section, focusIndex }: { section
       <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        gridAutoRows: isMobile ? (isLandscape ? '1fr' : 'minmax(0, 140px)') : 'minmax(0, 180px)',
         gap: `${gridGap}px`,
         maxWidth: columns === 2 ? '700px' : '1000px',
         width: '100%',
         margin: '0 auto',
         flex: 1,
-        minHeight: 0
+        minHeight: 0,
+        alignContent: 'center'
       }}>
         {section.methods.map((method, i) => {
           const isFocused = focusIndex === i

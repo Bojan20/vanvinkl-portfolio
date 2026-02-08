@@ -504,7 +504,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
     let rafId = 0
     let lastProgressUpdate = 0
 
-    // Progress bar only — no drift correction in RAF loop
+    // Progress bar + mobile drift correction
+    let lastDriftCheck = 0
     const progressLoop = () => {
       rafId = requestAnimationFrame(progressLoop)
 
@@ -516,6 +517,19 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
         lastProgressUpdate = now
         if (video.duration > 0) {
           setVideoProgress((video.currentTime / video.duration) * 100)
+        }
+      }
+
+      // Mobile drift correction — slow decoders can drift >300ms
+      // Check every 3s, only correct if drift exceeds threshold
+      if (isMobile && now - lastDriftCheck > 3000) {
+        lastDriftCheck = now
+        const vt = video.currentTime
+        if (Math.abs(music.currentTime - vt) > 0.3) {
+          music.currentTime = vt
+        }
+        if (Math.abs(sfx.currentTime - vt) > 0.3) {
+          sfx.currentTime = vt
         }
       }
     }
@@ -1082,7 +1096,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
                 outline: 'none',
                 cursor: 'pointer',
                 WebkitAppearance: 'none',
-                appearance: 'none'
+                appearance: 'none',
+                touchAction: 'none'
               }}
             />
           </div>
@@ -1157,7 +1172,8 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
                 outline: 'none',
                 cursor: 'pointer',
                 WebkitAppearance: 'none',
-                appearance: 'none'
+                appearance: 'none',
+                touchAction: 'none'
               }}
             />
           </div>

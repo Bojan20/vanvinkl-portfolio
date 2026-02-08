@@ -327,35 +327,41 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
   })
 
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  const quality = getEffectiveQuality()
+  const isLowMobile = isMobile && quality === 'low'
 
   return (
     <>
       {/* ===== LIGHTING ===== */}
-      <ambientLight intensity={0.4} color="#ffffff" />
+      <ambientLight intensity={isLowMobile ? 0.5 : 0.4} color="#ffffff" />
       <directionalLight position={[10, 20, 10]} intensity={0.6} color="#ffffff" />
       <pointLight position={[0, 6, 0]} color={COLORS.purple} intensity={4} distance={40} />
-      <pointLight position={[0, 4, 10]} color={COLORS.cyan} intensity={2} distance={30} />
+      {!isLowMobile && <pointLight position={[0, 4, 10]} color={COLORS.cyan} intensity={2} distance={30} />}
 
       {/* ===== FLOOR ===== */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 5]}>
         <planeGeometry args={[70, 55]} />
-        <MeshReflectorMaterial
-          blur={[100, 40]}
-          resolution={128}
-          mixBlur={1}
-          mixStrength={0.3}
-          roughness={0.9}
-          depthScale={0.8}
-          minDepthThreshold={0.5}
-          maxDepthThreshold={1.2}
-          color="#1a1520"
-          metalness={0.3}
-          mirror={0.15}
-        />
+        {isLowMobile ? (
+          <meshStandardMaterial color="#1a1520" roughness={0.9} metalness={0.3} />
+        ) : (
+          <MeshReflectorMaterial
+            blur={[100, 40]}
+            resolution={128}
+            mixBlur={1}
+            mixStrength={0.3}
+            roughness={0.9}
+            depthScale={0.8}
+            minDepthThreshold={0.5}
+            maxDepthThreshold={1.2}
+            color="#1a1520"
+            metalness={0.3}
+            mirror={0.15}
+          />
+        )}
       </mesh>
 
       {/* ===== CONTACT SHADOWS ===== */}
-      <ContactShadows position={[0, 0.01, 5]} opacity={0.25} scale={80} blur={1.5} far={12} resolution={64} color="#000000" frames={1} />
+      {!isLowMobile && <ContactShadows position={[0, 0.01, 5]} opacity={0.25} scale={80} blur={1.5} far={12} resolution={64} color="#000000" frames={1} />}
 
       {/* Floor neon grid */}
       {[-20, -10, 0, 10, 20].map(x => (
@@ -371,23 +377,27 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       <mesh position={[-34, 4.5, 10]} material={SHARED_MATERIALS.wall}><boxGeometry args={[0.3, 11, 60]} /></mesh>
       <mesh position={[34, 4.5, 10]} material={SHARED_MATERIALS.wall}><boxGeometry args={[0.3, 11, 60]} /></mesh>
 
-      {/* Wall neon accents */}
-      <NeonStrip color={COLORS.magenta} position={[0, 1, -11.7]} size={[65, 0.06, 0.06]} holographic />
-      <NeonStrip color={COLORS.cyan} position={[0, 8.5, -11.7]} size={[65, 0.06, 0.06]} holographic />
-      <NeonStrip color={COLORS.purple} position={[-33.7, 4.5, 10]} size={[0.06, 8, 0.06]} audioReactive />
-      <NeonStrip color={COLORS.purple} position={[33.7, 4.5, 10]} size={[0.06, 8, 0.06]} audioReactive />
+      {/* Wall neon accents — low mobile: static (no per-frame shader uniforms) */}
+      <NeonStrip color={COLORS.magenta} position={[0, 1, -11.7]} size={[65, 0.06, 0.06]} holographic={!isLowMobile} />
+      <NeonStrip color={COLORS.cyan} position={[0, 8.5, -11.7]} size={[65, 0.06, 0.06]} holographic={!isLowMobile} />
+      <NeonStrip color={COLORS.purple} position={[-33.7, 4.5, 10]} size={[0.06, 8, 0.06]} audioReactive={!isLowMobile} />
+      <NeonStrip color={COLORS.purple} position={[33.7, 4.5, 10]} size={[0.06, 8, 0.06]} audioReactive={!isLowMobile} />
 
-      {/* God Ray sources */}
-      <GodRaySource position={[0, 9, -10]} color={COLORS.purple} intensity={3} />
-      <GodRaySource position={[-15, 9, 0]} color={COLORS.magenta} intensity={2} />
-      <GodRaySource position={[15, 9, 0]} color={COLORS.cyan} intensity={2} />
+      {/* God Ray sources — disabled on low mobile (invisible to user, still cost draw calls) */}
+      {!isLowMobile && (
+        <>
+          <GodRaySource position={[0, 9, -10]} color={COLORS.purple} intensity={3} />
+          <GodRaySource position={[-15, 9, 0]} color={COLORS.magenta} intensity={2} />
+          <GodRaySource position={[15, 9, 0]} color={COLORS.cyan} intensity={2} />
+        </>
+      )}
 
       {/* ===== CEILING ===== */}
       <mesh position={[0, 9.5, 10]} material={SHARED_MATERIALS.ceiling}><boxGeometry args={[70, 0.2, 60]} /></mesh>
-      <NeonStrip color={COLORS.magenta} position={[-15, 9.3, 10]} size={[0.04, 0.04, 55]} holographic />
-      <NeonStrip color={COLORS.cyan} position={[15, 9.3, 10]} size={[0.04, 0.04, 55]} holographic />
-      <NeonStrip color={COLORS.purple} position={[0, 9.3, -5]} size={[65, 0.04, 0.04]} audioReactive />
-      <NeonStrip color={COLORS.purple} position={[0, 9.3, 15]} size={[65, 0.04, 0.04]} audioReactive />
+      <NeonStrip color={COLORS.magenta} position={[-15, 9.3, 10]} size={[0.04, 0.04, 55]} holographic={!isLowMobile} />
+      <NeonStrip color={COLORS.cyan} position={[15, 9.3, 10]} size={[0.04, 0.04, 55]} holographic={!isLowMobile} />
+      <NeonStrip color={COLORS.purple} position={[0, 9.3, -5]} size={[65, 0.04, 0.04]} audioReactive={!isLowMobile} />
+      <NeonStrip color={COLORS.purple} position={[0, 9.3, 15]} size={[65, 0.04, 0.04]} audioReactive={!isLowMobile} />
 
       {/* Ceiling panels */}
       {[-22, -11, 0, 11, 22].map(x => (
@@ -403,7 +413,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[0, 0, 0]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <CoffeeTable position={[1.5, 0, 2]} />
-        <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />
+        {!isLowMobile && <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />}
         <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.magenta} />
       </group>
 
@@ -411,7 +421,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[0, 0, 0]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <CoffeeTable position={[-1.5, 0, 2]} />
-        <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />
+        {!isLowMobile && <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />}
         <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.cyan} />
       </group>
 
@@ -419,7 +429,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[-4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
         <VIPCouch position={[4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
         <CoffeeTable position={[0, 0, 1.5]} />
-        <pointLight position={[0, 2.5, 0]} color={COLORS.purple} intensity={1.5} distance={8} />
+        {!isLowMobile && <pointLight position={[0, 2.5, 0]} color={COLORS.purple} intensity={1.5} distance={8} />}
         <FloatingSitSign position={[0, 2.8, 0]} color={COLORS.purple} />
       </group>
 
@@ -499,26 +509,25 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       ))}
 
       {/* ===== AMBIENT DUST ===== */}
-      <DustParticles count={isMobile ? 10 : 30} area={[60, 9, 50]} color="#8866ff" opacity={0.25} size={0.04} />
+      {!isLowMobile && <DustParticles count={isMobile ? 10 : 30} area={[60, 9, 50]} color="#8866ff" opacity={0.25} size={0.04} />}
 
       {/* ===== FOG ===== */}
       <fog attach="fog" args={['#080412', 18, isMobile ? 40 : 55]} />
 
       {/* ===== POST-PROCESSING ===== */}
       {isMobile ? (
-        (() => {
-          const q = getEffectiveQuality()
-          // LOW: only Vignette (cheapest). MEDIUM+: add light Bloom
-          return (
-            <EffectComposer multisampling={0}>
-              {q !== 'low' && <Bloom intensity={0.3} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={2} />}
-              <Vignette offset={0.3} darkness={0.5} />
-            </EffectComposer>
-          )
-        })()
+        // LOW mobile: skip EffectComposer entirely — Vignette alone isn't worth the
+        // full-screen compositor overhead (extra render target + blit per frame).
+        // MEDIUM+: lightweight Bloom + Vignette
+        quality !== 'low' ? (
+          <EffectComposer multisampling={0}>
+            <Bloom intensity={0.3} luminanceThreshold={0.9} luminanceSmoothing={0.9} levels={2} />
+            <Vignette offset={0.3} darkness={0.5} />
+          </EffectComposer>
+        ) : null
       ) : (
         <PostProcessing
-          quality={getEffectiveQuality()}
+          quality={quality}
           enableSSAO={false}
           enableBloom={true}
           enableChromatic={true}

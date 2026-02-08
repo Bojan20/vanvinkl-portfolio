@@ -886,8 +886,8 @@ export function SlotFullScreen({
             position: 'fixed',
             top: 0,
             left: 0,
-            width: '100dvw',
-            height: '100dvh',
+            width: '100%',
+            height: '100%',
             background: '#060414',
             overflow: 'hidden',
             border: `2px solid ${primaryColor}30`,
@@ -1141,8 +1141,8 @@ export function SlotFullScreen({
         <div
           ref={containerRef}
           style={{
-            width: '100dvw',
-            height: '100dvh',
+            width: '100%',
+            height: '100%',
             overflow: 'hidden',
             padding: selectedProject ? '0' : (window.matchMedia('(pointer: coarse)').matches ? 'clamp(8px, 1.5vh, 16px) clamp(8px, 2vw, 16px)' : 'clamp(16px, 3vh, 40px) clamp(12px, 3vw, 40px)'),
             animation: 'contentWowEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -1290,6 +1290,34 @@ export function SlotFullScreen({
                 history.back()
               }}
             />
+          )}
+
+          {/* Mobile back button - top left */}
+          {!selectedProject && window.matchMedia('(pointer: coarse)').matches && (
+            <div
+              onClick={(e) => { e.stopPropagation(); onClose() }}
+              style={{
+                position: 'fixed',
+                top: 'max(12px, env(safe-area-inset-top, 0px))',
+                left: 'max(12px, env(safe-area-inset-left, 0px))',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                background: 'rgba(0,0,0,0.75)',
+                border: `1px solid ${primaryColor}50`,
+                color: primaryColor,
+                fontSize: '13px',
+                fontWeight: 600,
+                zIndex: 1001,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                animation: 'fadeSlideIn 0.5s ease-out 0.5s both',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ← BACK
+            </div>
           )}
 
           {/* Controls hint - top left (desktop only - keyboard controls) */}

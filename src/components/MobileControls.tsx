@@ -350,6 +350,8 @@ export function MobileControls({
         @media (max-height: 500px) and (orientation: landscape) {
           .mobile-controls-bar {
             height: 100px;
+            padding-left: max(20%, env(safe-area-inset-left, 0px)) !important;
+            padding-right: max(20%, env(safe-area-inset-right, 0px)) !important;
           }
         }
       `}</style>

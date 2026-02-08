@@ -144,24 +144,26 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         overflow: 'hidden'
       }}
     >
-      {/* Scanlines overlay */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
-        pointerEvents: 'none',
-        opacity: 0.5
-      }} />
+      {/* Scanlines overlay — disabled on mobile (full-screen gradient is compositor-heavy) */}
+      {!isMobile && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+          pointerEvents: 'none',
+          opacity: 0.5
+        }} />
+      )}
 
-      {/* Glowing orb behind text */}
+      {/* Glowing orb behind text — mobile: no blur filter (GPU-heavy) */}
       <div className="splash-orb" style={{
         position: 'absolute',
-        width: '400px',
-        height: '400px',
+        width: isMobile ? '300px' : '400px',
+        height: isMobile ? '300px' : '400px',
         borderRadius: '50%',
         background: 'radial-gradient(circle, rgba(0,255,255,0.15) 0%, rgba(255,0,170,0.1) 40%, transparent 70%)',
-        filter: 'blur(60px)',
-        animation: 'splashPulse 3s ease-in-out infinite',
+        filter: isMobile ? undefined : 'blur(60px)',
+        animation: isMobile ? undefined : 'splashPulse 3s ease-in-out infinite',
         transform: isHovered ? 'scale(1.2)' : 'scale(1)',
         transition: 'transform 0.5s ease'
       }} />
@@ -189,19 +191,21 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           transition: 'font-size 0.3s ease, letter-spacing 0.3s ease'
         }}>
           VANVINKL
-          {/* Glitch layer */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'inherit',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            animation: 'splashGlitch 2s infinite',
-            opacity: 0.8
-          }}>
-            VANVINKL
-          </div>
+          {/* Glitch layer — disabled on mobile (clip-path animation is GPU-heavy) */}
+          {!isMobile && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'inherit',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              animation: 'splashGlitch 2s infinite',
+              opacity: 0.8
+            }}>
+              VANVINKL
+            </div>
+          )}
         </div>
 
         {/* STUDIO - below main title */}
@@ -406,14 +410,14 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
       {/* Fullscreen toggle - available on splash screen */}
       <FullscreenToggle />
 
-      {/* Floating particles */}
+      {/* Floating particles — fewer on mobile to reduce GPU compositor load */}
       <div style={{
         position: 'absolute',
         inset: 0,
         overflow: 'hidden',
         pointerEvents: 'none'
       }}>
-        {Array.from({ length: 30 }, (_, i) => (
+        {Array.from({ length: isMobile ? 12 : 30 }, (_, i) => (
           <div key={i} style={{
             position: 'absolute',
             left: `${Math.random() * 100}%`,

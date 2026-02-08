@@ -57,12 +57,13 @@ const ServicesView = memo(function ServicesView({ section, focusIndex, onSelect 
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gridTemplateRows: `repeat(${rows}, 1fr)`,
+      gridAutoRows: isMobile ? (isLandscape ? '1fr' : 'minmax(0, 180px)') : 'minmax(0, 220px)',
       gap: `${gridGap}px`,
       maxWidth: '1000px',
       width: '100%',
       height: '100%',
-      margin: '0 auto'
+      margin: '0 auto',
+      alignContent: 'center'
     }}>
       {section.items.map((item, i) => {
         const isFocused = focusIndex === i

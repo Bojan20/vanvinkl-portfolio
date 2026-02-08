@@ -159,8 +159,8 @@ const DetailModal = memo(function DetailModal({
         onClick={e => e.stopPropagation()}
         style={{
           background: 'linear-gradient(180deg, #18182e 0%, #0c0c18 100%)',
-          borderRadius: '28px',
-          padding: 'clamp(20px, 5vw, 60px)',
+          borderRadius: window.innerWidth > window.innerHeight && Math.min(window.innerWidth, window.innerHeight) < 600 ? '16px' : '28px',
+          padding: window.innerWidth > window.innerHeight && Math.min(window.innerWidth, window.innerHeight) < 600 ? '14px 18px' : 'clamp(20px, 5vw, 60px)',
           maxWidth: '650px',
           width: '90%',
           maxHeight: '85dvh',
@@ -194,10 +194,10 @@ const DetailModal = memo(function DetailModal({
 
         {/* Close hint with enhanced style */}
         <div style={{
-          marginTop: 'clamp(20px, 4vw, 50px)',
+          marginTop: window.innerWidth > window.innerHeight && Math.min(window.innerWidth, window.innerHeight) < 600 ? '8px' : 'clamp(20px, 4vw, 50px)',
           textAlign: 'center',
           color: '#444',
-          fontSize: '14px',
+          fontSize: window.innerWidth > window.innerHeight && Math.min(window.innerWidth, window.innerHeight) < 600 ? '11px' : '14px',
           animation: 'modalHintReveal 0.5s ease-out 0.5s both'
         }}>
           {window.matchMedia('(pointer: coarse)').matches ? (

@@ -288,6 +288,7 @@ export const SpinButton = memo(function SpinButton({
   color: string
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  const isMobileLandscape = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && window.innerWidth > window.innerHeight
 
   return (
     <button
@@ -297,8 +298,8 @@ export const SpinButton = memo(function SpinButton({
       onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'absolute',
-        bottom: '15%',
-        right: '5%',
+        bottom: isMobileLandscape ? '10%' : '15%',
+        right: isMobileLandscape ? '15%' : '5%',
         width: 'clamp(64px, 10vw, 100px)',
         height: 'clamp(64px, 10vw, 100px)',
         borderRadius: '50%',
