@@ -20,6 +20,21 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
   const [loadProgress, setLoadProgress] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
   const isMobile = isMobileDevice()
+  const [isLandscape, setIsLandscape] = useState(
+    () => isMobileDevice() && window.innerWidth > window.innerHeight
+  )
+
+  // Track orientation changes for mobile landscape layout
+  useEffect(() => {
+    if (!isMobile) return
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight)
+    window.addEventListener('resize', check)
+    window.addEventListener('orientationchange', () => setTimeout(check, 100))
+    return () => {
+      window.removeEventListener('resize', check)
+      window.removeEventListener('orientationchange', check)
+    }
+  }, [isMobile])
 
   // Preload critical assets before allowing entry
   useEffect(() => {
@@ -132,13 +147,15 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         inset: 0,
         background: 'radial-gradient(ellipse at center, #0a0a14 0%, #050508 50%, #000000 100%)',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: isLandscape ? 'row' : 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: isLandscape ? '40px' : undefined,
         zIndex: 50000,
         opacity: isClicking ? 0 : 1,
         transition: 'opacity 0.4s ease-out',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        overflow: 'hidden'
       }}
     >
       {/* Scanlines overlay */}
@@ -153,8 +170,8 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
       {/* Glowing orb behind text */}
       <div style={{
         position: 'absolute',
-        width: '400px',
-        height: '400px',
+        width: isLandscape ? '250px' : '400px',
+        height: isLandscape ? '250px' : '400px',
         borderRadius: '50%',
         background: 'radial-gradient(circle, rgba(0,255,255,0.15) 0%, rgba(255,0,170,0.1) 40%, transparent 70%)',
         filter: 'blur(60px)',
@@ -168,13 +185,14 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        marginBottom: '60px'
+        marginBottom: isLandscape ? 0 : '60px',
+        flexShrink: 0
       }}>
         {/* VANVINKL - main title */}
         <div style={{
-          fontSize: 'clamp(2rem, 10vw, 4rem)',
+          fontSize: isLandscape ? 'clamp(1.8rem, 5vw, 3rem)' : 'clamp(2rem, 10vw, 4rem)',
           fontWeight: 900,
-          letterSpacing: 'clamp(4px, 2vw, 12px)',
+          letterSpacing: isLandscape ? 'clamp(3px, 1vw, 8px)' : 'clamp(4px, 2vw, 12px)',
           background: 'linear-gradient(90deg, #00ffff, #ff00aa, #00ffff)',
           backgroundSize: '200% 100%',
           WebkitBackgroundClip: 'text',
@@ -202,15 +220,30 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
 
         {/* STUDIO - below main title */}
         <div style={{
-          fontSize: 'clamp(1.2rem, 6vw, 2rem)',
+          fontSize: isLandscape ? 'clamp(0.9rem, 3vw, 1.4rem)' : 'clamp(1.2rem, 6vw, 2rem)',
           fontWeight: 700,
-          letterSpacing: 'clamp(6px, 3vw, 16px)',
-          marginTop: '8px',
+          letterSpacing: isLandscape ? 'clamp(4px, 2vw, 10px)' : 'clamp(6px, 3vw, 16px)',
+          marginTop: isLandscape ? '4px' : '8px',
           color: '#00ffff',
           textShadow: '0 0 30px rgba(0, 255, 255, 0.8), 0 0 60px rgba(136, 68, 255, 0.5)'
         }}>
           STUDIO
         </div>
+
+        {/* CASINO LOUNGE — moved under logo in landscape */}
+        {isLandscape && (
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '4px',
+            marginTop: '12px',
+            color: '#ffd700',
+            textShadow: '0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3)',
+            opacity: 0.85
+          }}>
+            CASINO LOUNGE
+          </div>
+        )}
       </div>
 
       {/* Click to Enter button area */}
@@ -218,7 +251,8 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '20px'
+        gap: isLandscape ? '10px' : '20px',
+        flexShrink: 0
       }}>
         {/* Hexagon border effect — ONLY this is tappable */}
         <div
@@ -226,7 +260,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           style={{
-          padding: '24px 64px',
+          padding: isLandscape ? '14px 40px' : '24px 64px',
           background: isLoaded && isHovered
             ? 'rgba(0, 255, 255, 0.15)'
             : 'rgba(0, 255, 255, 0.05)',
@@ -238,7 +272,7 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
             ? '0 0 40px rgba(0, 255, 255, 0.4), inset 0 0 40px rgba(0, 255, 255, 0.1)'
             : '0 0 20px rgba(0, 255, 255, 0.2)',
           transform: isLoaded && isHovered ? 'scale(1.05)' : 'scale(1)',
-          minWidth: 'clamp(280px, 80vw, 340px)',
+          minWidth: isLandscape ? '220px' : 'clamp(280px, 80vw, 340px)',
           cursor: isLoaded ? 'pointer' : 'default',
           WebkitTapHighlightColor: 'transparent'
         }}>
@@ -305,9 +339,9 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
           {isLoaded && (
             <span style={{
               color: '#00ffff',
-              fontSize: 'clamp(1rem, 4vw, 1.5rem)',
+              fontSize: isLandscape ? 'clamp(0.85rem, 2.5vw, 1.1rem)' : 'clamp(1rem, 4vw, 1.5rem)',
               fontWeight: 'bold',
-              letterSpacing: 'clamp(2px, 1vw, 6px)',
+              letterSpacing: isLandscape ? 'clamp(2px, 0.5vw, 4px)' : 'clamp(2px, 1vw, 6px)',
               textTransform: 'uppercase',
               textShadow: isHovered ? '0 0 20px #00ffff' : 'none',
               animation: 'splashReady 0.5s ease-out',
@@ -323,57 +357,61 @@ export function ClickToEnterSplash({ onEnter }: ClickToEnterSplashProps) {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
           color: 'rgba(255, 255, 255, 0.4)',
-          fontSize: '12px',
-          letterSpacing: '2px'
+          fontSize: isLandscape ? '10px' : '12px',
+          letterSpacing: isLandscape ? '1px' : '2px'
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width={isLandscape ? '12' : '16'} height={isLandscape ? '12' : '16'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M11 5L6 9H2v6h4l5 4V5z" />
             <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
           </svg>
-          <span>SOUND ON FOR BEST EXPERIENCE</span>
+          <span>{isLandscape ? 'SOUND ON' : 'SOUND ON FOR BEST EXPERIENCE'}</span>
         </div>
 
-        {/* CASINO LOUNGE */}
-        <div style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          letterSpacing: '6px',
-          marginTop: '30px',
-          color: '#ffd700',
-          textShadow: '0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3)',
-          opacity: 0.85
-        }}>
-          CASINO LOUNGE
-        </div>
+        {/* CASINO LOUNGE — portrait only (in landscape it's under logo) */}
+        {!isLandscape && (
+          <div style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            letterSpacing: '6px',
+            marginTop: '30px',
+            color: '#ffd700',
+            textShadow: '0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3)',
+            opacity: 0.85
+          }}>
+            CASINO LOUNGE
+          </div>
+        )}
 
         {/* Ownership notice */}
         <div style={{
-          marginTop: '40px',
+          marginTop: isLandscape ? '8px' : '40px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '6px'
+          gap: isLandscape ? '2px' : '6px'
         }}>
           <div style={{
-            fontSize: '12px',
+            fontSize: isLandscape ? '10px' : '12px',
             fontWeight: 600,
             letterSpacing: '2px',
             color: 'rgba(255, 255, 255, 0.45)'
           }}>
             © 2026 VanVinkl Studio. All rights reserved.
           </div>
-          <div style={{
-            fontSize: '10px',
-            letterSpacing: '1px',
-            color: 'rgba(255, 255, 255, 0.25)',
-            textAlign: 'center',
-            maxWidth: '340px',
-            lineHeight: 1.4
-          }}>
-            All content is the exclusive intellectual property of VanVinkl Studio.
-          </div>
+          {!isLandscape && (
+            <div style={{
+              fontSize: '10px',
+              letterSpacing: '1px',
+              color: 'rgba(255, 255, 255, 0.25)',
+              textAlign: 'center',
+              maxWidth: '340px',
+              lineHeight: 1.4
+            }}>
+              All content is the exclusive intellectual property of VanVinkl Studio.
+            </div>
+          )}
         </div>
       </div>
 
