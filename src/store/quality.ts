@@ -221,8 +221,9 @@ export const useQualityStore = create<QualityState>()(
     {
       name: 'vanvinkl-quality', // localStorage key
       partialize: (state) => ({
-        // Only persist user preference, not runtime state
-        preset: state.preset
+        // Only persist user preference on desktop, not runtime state.
+        // Mobile always re-detects from GPU tier on each load.
+        preset: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'auto' : state.preset
       })
     }
   )
@@ -233,17 +234,24 @@ export const useQualityStore = create<QualityState>()(
  * Call this once on app mount
  */
 export function initQualitySystem(): void {
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+  // Nuke stale localStorage preset for mobile — old deploy forced 'low' for ALL mobile.
+  // Must clear BEFORE Zustand hydration reads it back.
+  if (mobile) {
+    try { localStorage.removeItem('vanvinkl-quality') } catch {}
+  }
+
   const store = useQualityStore.getState()
 
-  // Detect GPU tier first — sets resolvedQuality based on actual hardware
+  // Detect GPU tier — sets deviceTier + resolvedQuality based on actual hardware
   store.detectDeviceTier()
 
   const { deviceTier } = store
-  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
   if (mobile) {
-    // Mobile: lock to detected tier (no auto-upgrade to avoid frame drops)
-    const mobileQuality = deviceTier === 'low' ? 'low' : deviceTier === 'high' ? 'medium' : 'medium'
+    // Lock quality based on GPU tier (no auto-upgrade to avoid frame drops)
+    const mobileQuality = deviceTier === 'low' ? 'low' : 'medium'
     store.setPreset(mobileQuality)
     console.log(`[Quality] Mobile ${deviceTier} → quality: ${mobileQuality}`)
   } else if (store.preset === 'auto') {
