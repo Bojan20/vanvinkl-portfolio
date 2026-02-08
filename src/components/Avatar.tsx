@@ -32,6 +32,7 @@ interface AvatarProps {
   sittingRotationRef: React.MutableRefObject<number>
   inputDisabled?: boolean
   mobileMovementRef?: React.MutableRefObject<{ x: number; y: number }>
+  isLowMobile?: boolean
 }
 
 // Movement config
@@ -95,7 +96,7 @@ const CYBER = {
   hair: '#1a1a2a'
 }
 
-export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef, inputDisabled = false, mobileMovementRef }: AvatarProps) {
+export function Avatar({ positionRef, rotationRef: externalRotationRef, isMovingRef, machinePositions = [], collisionBoxes = [], isSittingRef, sittingRotationRef, inputDisabled = false, mobileMovementRef, isLowMobile = false }: AvatarProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const rotationRef = useRef(0)
   const walkCycle = useRef(0)
@@ -243,131 +244,53 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
 
     const glow = glowTime.current
 
-    // ====== ULTIMATE GLOW ANIMATIONS ======
-    // Different frequencies for each element creates organic feel
-    const pulse1 = 0.6 + Math.sin(glow * 3) * 0.4
-    const pulse2 = 0.7 + Math.sin(glow * 4 + 1) * 0.3
-    const pulse3 = 0.5 + Math.sin(glow * 5 + 2) * 0.5
-    const pulse4 = 0.8 + Math.sin(glow * 2) * 0.2
-    const fastPulse = 0.6 + Math.sin(glow * 8) * 0.4
-    const slowPulse = 0.7 + Math.sin(glow * 1.5) * 0.3
+    // ====== GLOW ANIMATIONS ======
+    // Low mobile: skip all per-frame material updates (20+ sin() + material writes)
+    if (!isLowMobile) {
+      const pulse1 = 0.6 + Math.sin(glow * 3) * 0.4
+      const pulse2 = 0.7 + Math.sin(glow * 4 + 1) * 0.3
+      const pulse3 = 0.5 + Math.sin(glow * 5 + 2) * 0.5
+      const pulse4 = 0.8 + Math.sin(glow * 2) * 0.2
+      const fastPulse = 0.6 + Math.sin(glow * 8) * 0.4
+      const slowPulse = 0.7 + Math.sin(glow * 1.5) * 0.3
 
-    // Visor - scanning effect
-    if (visorRef.current) {
-      const mat = visorRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = 0.85 + Math.sin(glow * 6) * 0.15
-    }
-
-    // Power core - heartbeat
-    if (powerCoreRef.current) {
-      const mat = powerCoreRef.current.material as THREE.MeshBasicMaterial
-      const heartbeat = Math.pow(Math.sin(glow * 4), 2)
-      mat.opacity = 0.7 + heartbeat * 0.3
-      powerCoreRef.current.scale.setScalar(1 + heartbeat * 0.15)
-    }
-
-    // Outer aura - slow rotation and pulse
-    if (auraRef.current) {
-      auraRef.current.rotation.y = glow * 0.5
-      const mat = auraRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = moving ? 0.25 + Math.sin(glow * 3) * 0.1 : 0.15 + Math.sin(glow * 2) * 0.05
-    }
-
-    // Inner aura - faster counter-rotation
-    if (innerAuraRef.current) {
-      innerAuraRef.current.rotation.y = -glow * 0.8
-      const mat = innerAuraRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = moving ? 0.2 + Math.sin(glow * 4) * 0.1 : 0.1 + Math.sin(glow * 3) * 0.05
-    }
-
-    // Chest LED
-    if (chestLedRef.current) {
-      const mat = chestLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse1
-    }
-
-    // Back LED - slower
-    if (backLedRef.current) {
-      const mat = backLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse2
-    }
-
-    // Belt LED - medium
-    if (beltLedRef.current) {
-      const mat = beltLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse3
-    }
-
-    // Neck LED - fast
-    if (neckLedRef.current) {
-      const mat = neckLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = fastPulse
-    }
-
-    // Arm LEDs - opposite phase
-    if (leftArmLedRef.current) {
-      const mat = leftArmLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse1
-    }
-    if (rightArmLedRef.current) {
-      const mat = rightArmLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse2
-    }
-
-    // Shoulder LEDs
-    if (shoulderLedLeftRef.current) {
-      const mat = shoulderLedLeftRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse4
-    }
-    if (shoulderLedRightRef.current) {
-      const mat = shoulderLedRightRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse4
-    }
-
-    // Spine LED - slow wave
-    if (spineLedRef.current) {
-      const mat = spineLedRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = slowPulse
-    }
-
-    // Wrist LEDs
-    if (wristLedLeftRef.current) {
-      const mat = wristLedLeftRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = fastPulse
-    }
-    if (wristLedRightRef.current) {
-      const mat = wristLedRightRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = fastPulse
-    }
-
-    // Thigh LEDs
-    if (thighLedLeftRef.current) {
-      const mat = thighLedLeftRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse3
-    }
-    if (thighLedRightRef.current) {
-      const mat = thighLedRightRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse3
-    }
-
-    // Boot LEDs - bright when moving
-    if (bootLedLeftRef.current) {
-      const mat = bootLedLeftRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = moving ? 1.0 : 0.5 + Math.sin(glow * 2.5) * 0.3
-    }
-    if (bootLedRightRef.current) {
-      const mat = bootLedRightRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = moving ? 1.0 : 0.5 + Math.sin(glow * 2.5 + 1) * 0.3
-    }
-
-    // Ear LEDs
-    if (earLedLeftRef.current) {
-      const mat = earLedLeftRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse1
-    }
-    if (earLedRightRef.current) {
-      const mat = earLedRightRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = pulse2
+      if (visorRef.current) {
+        const mat = visorRef.current.material as THREE.MeshBasicMaterial
+        mat.opacity = 0.85 + Math.sin(glow * 6) * 0.15
+      }
+      if (powerCoreRef.current) {
+        const mat = powerCoreRef.current.material as THREE.MeshBasicMaterial
+        const heartbeat = Math.pow(Math.sin(glow * 4), 2)
+        mat.opacity = 0.7 + heartbeat * 0.3
+        powerCoreRef.current.scale.setScalar(1 + heartbeat * 0.15)
+      }
+      if (auraRef.current) {
+        auraRef.current.rotation.y = glow * 0.5
+        const mat = auraRef.current.material as THREE.MeshBasicMaterial
+        mat.opacity = moving ? 0.25 + Math.sin(glow * 3) * 0.1 : 0.15 + Math.sin(glow * 2) * 0.05
+      }
+      if (innerAuraRef.current) {
+        innerAuraRef.current.rotation.y = -glow * 0.8
+        const mat = innerAuraRef.current.material as THREE.MeshBasicMaterial
+        mat.opacity = moving ? 0.2 + Math.sin(glow * 4) * 0.1 : 0.1 + Math.sin(glow * 3) * 0.05
+      }
+      if (chestLedRef.current) (chestLedRef.current.material as THREE.MeshBasicMaterial).opacity = pulse1
+      if (backLedRef.current) (backLedRef.current.material as THREE.MeshBasicMaterial).opacity = pulse2
+      if (beltLedRef.current) (beltLedRef.current.material as THREE.MeshBasicMaterial).opacity = pulse3
+      if (neckLedRef.current) (neckLedRef.current.material as THREE.MeshBasicMaterial).opacity = fastPulse
+      if (leftArmLedRef.current) (leftArmLedRef.current.material as THREE.MeshBasicMaterial).opacity = pulse1
+      if (rightArmLedRef.current) (rightArmLedRef.current.material as THREE.MeshBasicMaterial).opacity = pulse2
+      if (shoulderLedLeftRef.current) (shoulderLedLeftRef.current.material as THREE.MeshBasicMaterial).opacity = pulse4
+      if (shoulderLedRightRef.current) (shoulderLedRightRef.current.material as THREE.MeshBasicMaterial).opacity = pulse4
+      if (spineLedRef.current) (spineLedRef.current.material as THREE.MeshBasicMaterial).opacity = slowPulse
+      if (wristLedLeftRef.current) (wristLedLeftRef.current.material as THREE.MeshBasicMaterial).opacity = fastPulse
+      if (wristLedRightRef.current) (wristLedRightRef.current.material as THREE.MeshBasicMaterial).opacity = fastPulse
+      if (thighLedLeftRef.current) (thighLedLeftRef.current.material as THREE.MeshBasicMaterial).opacity = pulse3
+      if (thighLedRightRef.current) (thighLedRightRef.current.material as THREE.MeshBasicMaterial).opacity = pulse3
+      if (bootLedLeftRef.current) (bootLedLeftRef.current.material as THREE.MeshBasicMaterial).opacity = moving ? 1.0 : 0.5 + Math.sin(glow * 2.5) * 0.3
+      if (bootLedRightRef.current) (bootLedRightRef.current.material as THREE.MeshBasicMaterial).opacity = moving ? 1.0 : 0.5 + Math.sin(glow * 2.5 + 1) * 0.3
+      if (earLedLeftRef.current) (earLedLeftRef.current.material as THREE.MeshBasicMaterial).opacity = pulse1
+      if (earLedRightRef.current) (earLedRightRef.current.material as THREE.MeshBasicMaterial).opacity = pulse2
     }
 
     // SITTING POSE
@@ -591,23 +514,23 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
 
   return (
     <group ref={groupRef}>
-      {/* ===== ENERGY AURA - OUTER ===== */}
-      <mesh ref={auraRef} position={[0, 1.0, 0]}>
-        <torusGeometry args={[0.8, 0.02, 8, 32]} />
-        <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.2} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* ===== ENERGY AURA - INNER ===== */}
-      <mesh ref={innerAuraRef} position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.6, 0.015, 8, 32]} />
-        <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.15} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* ===== GROUND GLOW RING ===== */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.4, 0.6, 32]} />
-        <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.3} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
+      {/* ===== ENERGY AURAS — disabled on low mobile (3 extra meshes + per-frame rotation) ===== */}
+      {!isLowMobile && (
+        <>
+          <mesh ref={auraRef} position={[0, 1.0, 0]}>
+            <torusGeometry args={[0.8, 0.02, 8, 32]} />
+            <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.2} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh ref={innerAuraRef} position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.6, 0.015, 8, 32]} />
+            <meshBasicMaterial color={CYBER.neonMagenta} transparent opacity={0.15} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.4, 0.6, 32]} />
+            <meshBasicMaterial color={CYBER.neonCyan} transparent opacity={0.3} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+        </>
+      )}
 
       {/* ===== HIPS ===== */}
       <group ref={hipsRef} position={[0, hipY, 0]}>
@@ -1068,19 +991,16 @@ export function Avatar({ positionRef, rotationRef: externalRotationRef, isMoving
         </group>
       </group>
 
-      {/* ===== LIGHTING ===== */}
-      {/* Main character glow - BRIGHTER */}
+      {/* ===== LIGHTING — low mobile: 1 light instead of 5 ===== */}
       <pointLight position={[0, 1.2, 0.5]} color={CYBER.neonCyan} intensity={1.5} distance={3} />
-
-      {/* Power core glow */}
-      <pointLight position={[0, 1.4, 0.2]} color={CYBER.powerCore} intensity={0.8} distance={2} />
-
-      {/* Secondary accent lights */}
-      <pointLight position={[-0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
-      <pointLight position={[0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
-
-      {/* Ground glow */}
-      <pointLight position={[0, 0.1, 0]} color={CYBER.neonCyan} intensity={0.6} distance={1.5} />
+      {!isLowMobile && (
+        <>
+          <pointLight position={[0, 1.4, 0.2]} color={CYBER.powerCore} intensity={0.8} distance={2} />
+          <pointLight position={[-0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
+          <pointLight position={[0.5, 0.8, 0]} color={CYBER.neonMagenta} intensity={0.4} distance={1.5} />
+          <pointLight position={[0, 0.1, 0]} color={CYBER.neonCyan} intensity={0.6} distance={1.5} />
+        </>
+      )}
     </group>
   )
 }

@@ -10,6 +10,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { Suspense, lazy, useRef, useEffect } from 'react'
 import { CasinoScene } from './CasinoScene'
 import { LoadingScreen } from './ui'
+import { getEffectiveQuality } from '../store/quality'
 
 /**
  * Forces R3F to resume rendering when frameloop switches back to 'always'.
@@ -66,6 +67,7 @@ export function CasinoCanvas({
   onContextLost
 }: CasinoCanvasProps) {
   const glRef = useRef<{ domElement: HTMLCanvasElement } | null>(null)
+  const isLowMobile = isMobile && getEffectiveQuality() === 'low'
 
   // Cleanup WebGL context lost listener on unmount
   useEffect(() => {
@@ -93,7 +95,7 @@ export function CasinoCanvas({
       camera={{
         fov: 55,
         near: 0.5,
-        far: isMobile ? 50 : 80,
+        far: isLowMobile ? 35 : isMobile ? 50 : 80,
         position: [0, 5, 18]
       }}
       performance={isMobile ? {

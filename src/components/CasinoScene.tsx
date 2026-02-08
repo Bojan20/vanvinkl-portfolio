@@ -414,7 +414,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[0, 0, 4]} rotation={Math.PI / 2} material={SHARED_MATERIALS.velvetPurple} />
         <CoffeeTable position={[1.5, 0, 2]} />
         {!isLowMobile && <pointLight position={[0, 2.5, 2]} color={COLORS.magenta} intensity={1.5} distance={8} />}
-        <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.magenta} />
+        {!isLowMobile && <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.magenta} />}
       </group>
 
       <group position={[26, 0, 8]}>
@@ -422,7 +422,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[0, 0, 4]} rotation={-Math.PI / 2} material={SHARED_MATERIALS.velvetTeal} />
         <CoffeeTable position={[-1.5, 0, 2]} />
         {!isLowMobile && <pointLight position={[0, 2.5, 2]} color={COLORS.cyan} intensity={1.5} distance={8} />}
-        <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.cyan} />
+        {!isLowMobile && <FloatingSitSign position={[0, 2.8, 2]} color={COLORS.cyan} />}
       </group>
 
       <group position={[0, 0, -8]}>
@@ -430,7 +430,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <VIPCouch position={[4, 0, 0]} rotation={0} material={SHARED_MATERIALS.velvetWine} />
         <CoffeeTable position={[0, 0, 1.5]} />
         {!isLowMobile && <pointLight position={[0, 2.5, 0]} color={COLORS.purple} intensity={1.5} distance={8} />}
-        <FloatingSitSign position={[0, 2.8, 0]} color={COLORS.purple} />
+        {!isLowMobile && <FloatingSitSign position={[0, 2.8, 0]} color={COLORS.purple} />}
       </group>
 
       {/* ===== BAR AREA ===== */}
@@ -442,15 +442,19 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         <NeonStrip color={COLORS.cyan} position={[0, 0.05, 0.5]} size={[18, 0.02, 0.02]} />
       </group>
 
-      {/* ===== TROPHY ROOM ===== */}
-      <TrophyRoom position={[-28, 0, -8]} />
+      {/* ===== TROPHY ROOM — disabled on low mobile (useFrame per trophy) ===== */}
+      {!isLowMobile && <TrophyRoom position={[-28, 0, -8]} />}
 
-      {/* ===== LOGO ===== */}
-      <LogoWall position={[25, 5, -11.5]} scale={1.5} />
-      <LogoHint active={nearLogo} position={[25, 1.5, -10]} />
+      {/* ===== LOGO — disabled on low mobile (complex noise shader + 4 pulse NeonStrips + pointLight) ===== */}
+      {!isLowMobile && (
+        <>
+          <LogoWall position={[25, 5, -11.5]} scale={1.5} />
+          <LogoHint active={nearLogo} position={[25, 1.5, -10]} />
+        </>
+      )}
 
-      {/* ===== FLOATING LETTERS ===== */}
-      <FloatingLetters />
+      {/* ===== FLOATING LETTERS — disabled on low mobile (8 shader instances + audio + orbit) ===== */}
+      {!isLowMobile && <FloatingLetters />}
 
       {/* ===== VIP ROPE BARRIERS ===== */}
       {[-20, 20].map((x, i) => (
@@ -474,10 +478,11 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
         sittingRotationRef={sittingRotationRef}
         inputDisabled={slotOpen || audioSettingsOpen}
         mobileMovementRef={mobileMovementRef}
+        isLowMobile={isLowMobile}
       />
 
-      {/* ===== AVATAR EFFECTS ===== */}
-      <AvatarEffects positionRef={avatarPos} isMovingRef={isMovingRef} />
+      {/* ===== AVATAR EFFECTS — disabled on low mobile (60 CPU particles per frame) ===== */}
+      {!isLowMobile && <AvatarEffects positionRef={avatarPos} isMovingRef={isMovingRef} />}
 
       {/* ===== PROXIMITY FEEDBACK ===== */}
       {!introActive && (
@@ -512,7 +517,7 @@ export function CasinoScene({ onSlotSpin, onSitChange, introActive = false, slot
       {!isLowMobile && <DustParticles count={isMobile ? 10 : 30} area={[60, 9, 50]} color="#8866ff" opacity={0.25} size={0.04} />}
 
       {/* ===== FOG ===== */}
-      <fog attach="fog" args={['#080412', 18, isMobile ? 40 : 55]} />
+      <fog attach="fog" args={['#080412', isLowMobile ? 12 : 18, isLowMobile ? 30 : isMobile ? 40 : 55]} />
 
       {/* ===== POST-PROCESSING ===== */}
       {isMobile ? (
