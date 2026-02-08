@@ -347,8 +347,15 @@ export function IntroOverlay({
         skipIntro()
       }
     }
+    // Orientation change during intro → skip (prevents black screen from fullscreen re-entry)
+    const handleOrientation = () => skipIntro()
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('orientationchange', handleOrientation)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('orientationchange', handleOrientation)
+    }
   }, [active, skipIntro])
 
   useEffect(() => {

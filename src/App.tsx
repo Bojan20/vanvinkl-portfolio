@@ -45,7 +45,7 @@ import {
 } from './components/WebGLErrorBoundary'
 import { gameRefs } from './store'
 // Unified Audio System
-import { initUnifiedAudio, unifiedAudio, uaPlay, uaStop, uaVolume, uaIsPlaying, uaResume } from './audio'
+import { initUnifiedAudio, unifiedAudio, uaPlay, uaVolume, uaResume } from './audio'
 import { useAudioStore } from './store/audio'
 import { achievementStore } from './store/achievements'
 import { trackSession } from './hooks/useAnalytics'
@@ -159,6 +159,7 @@ export function App() {
     let startTime = 0
     let pulling = false
     let pullIndicator: HTMLDivElement | null = null
+    let startedOnInteractive = false
     const PULL_THRESHOLD = 120
 
     const createPullIndicator = () => {
@@ -190,6 +191,9 @@ export function App() {
       startY = touch.clientY
       startTime = Date.now()
       pulling = false
+      // Skip pull-to-refresh when touch starts on interactive elements (joystick, sliders, buttons)
+      const el = e.target as HTMLElement
+      startedOnInteractive = !!el.closest('input, button, [role="toolbar"], [role="slider"]')
     }
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -198,7 +202,8 @@ export function App() {
       const dx = touch.clientX - startX
 
       // Pull-to-refresh: vertical pull down, minimal horizontal movement
-      if (dy > 20 && Math.abs(dx) < dy * 0.5) {
+      // Skip when touch started on interactive elements (joystick, sliders, canvas)
+      if (!startedOnInteractive && dy > 20 && Math.abs(dx) < dy * 0.5) {
         pulling = true
         if (!pullIndicator) pullIndicator = createPullIndicator()
         const progress = Math.min(dy / PULL_THRESHOLD, 1)
@@ -320,9 +325,6 @@ export function App() {
     setSpinningSlot(machineId)
     // Push history entry so browser back closes the slot
     history.pushState({ slot: machineId }, '')
-    // Fade out lounge music when entering slot — prevents duplication
-    uaVolume('music', 0, 0.3)
-    setTimeout(() => uaStop('lounge', 0), 350)
   }, [])
 
   const handleIntroOverlayComplete = useCallback(() => {
@@ -445,17 +447,10 @@ export function App() {
                 qualityStore.setPreset('auto')
                 console.log('[Quality] Slot closed - reset to AUTO (remove blur)')
               }
-              // Resume AudioContext — mobile browsers may suspend it during slot (no active audio sources)
+              // Resume AudioContext — mobile browsers may suspend it during slot
               uaResume()
-              // Resume lounge music — seamless fade in
-              const { musicVolume, sfxVolume } = useAudioStore.getState()
-              if (!uaIsPlaying('lounge')) {
-                uaVolume('music', 0, 0) // Ensure bus at 0 before restart
-                uaPlay('lounge')
-              }
-              // Smooth fade in to stored volume (no dropout)
-              uaVolume('music', musicVolume, 0.8)
-              // Restore SFX + UI bus volumes — immediate + staggered delayed (PortfolioPlayer cleanup is async)
+              // Restore SFX + UI bus volumes — PortfolioPlayer cleanup is async so stagger restores
+              const { sfxVolume } = useAudioStore.getState()
               uaVolume('sfx', sfxVolume, 0)
               uaVolume('ui', sfxVolume, 0)
               setTimeout(() => {
@@ -470,7 +465,6 @@ export function App() {
                 uaVolume('sfx', v, 0)
                 uaVolume('ui', v, 0)
               }, 600)
-              console.log(`[Music] Slot closed - lounge resumed, music=${musicVolume.toFixed(2)} sfx=${sfxVolume.toFixed(2)}`)
             }}
             onNavigate={(machineId) => {
               setSpinningSlot(machineId)

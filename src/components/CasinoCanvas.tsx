@@ -21,18 +21,13 @@ function FrameloopResumer({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (active) {
-      const restore = () => {
-        const dpr = Math.min(window.devicePixelRatio, 2)
-        setDpr(dpr)
-        gl.setPixelRatio(dpr)
-        gl.setSize(gl.domElement.clientWidth, gl.domElement.clientHeight, false)
-        invalidate()
-      }
-      // Immediate restore
-      restore()
-      // Second restore after performance adaptor settles (it can override setDpr)
-      const t = setTimeout(restore, 300)
-      return () => clearTimeout(t)
+      // Restore full DPR immediately on resume (clears adaptor-downgraded blur)
+      const dpr = Math.min(window.devicePixelRatio, 2)
+      setDpr(dpr)
+      gl.setPixelRatio(dpr)
+      gl.setSize(gl.domElement.clientWidth, gl.domElement.clientHeight, false)
+      invalidate()
+      // No delayed restore — let the performance adaptor manage DPR from here
     }
   }, [active, invalidate, gl, setDpr])
 
@@ -102,7 +97,11 @@ export function CasinoCanvas({
         min: 0.8,
         max: 1,
         debounce: 500
-      } : undefined}
+      } : {
+        min: 0.9,
+        max: 1,
+        debounce: 300
+      }}
       frameloop={tabVisible && !spinningSlot ? 'always' : 'never'}
       flat
       onCreated={({ gl }) => {
