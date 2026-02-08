@@ -340,10 +340,14 @@ export function SlotFullScreen({
     }
   }, [phase, targetIndices, segmentConfig, isJackpot, section])
 
-  // Inspect Mode - subtle scale-down after result reels settle
+  // Inspect Mode + auto-transition: reels stop → 400ms settle → jump to content immediately
   useEffect(() => {
     if (phase === 'result') {
-      const timer = setTimeout(() => setInspectMode(true), 400)
+      const timer = setTimeout(() => {
+        setInspectMode(true)
+        setPhase('content')
+        uaPlaySynth('select', 0.5)
+      }, 400)
       return () => clearTimeout(timer)
     } else {
       setInspectMode(false)
