@@ -76,15 +76,15 @@ export function CasinoCanvas({
   return (
     <Canvas
       shadows={false}
-      dpr={isMobile ? [1, 1.2] : [1, 2]}
+      dpr={isLowMobile ? [1, 1.2] : isMobile ? [1, 2] : [1, 2]}
       gl={{
-        antialias: !isMobile,
+        antialias: !isLowMobile,
         alpha: false,
-        powerPreference: isMobile ? 'low-power' : 'high-performance',
+        powerPreference: isLowMobile ? 'low-power' : 'high-performance',
         stencil: false,
         depth: true,
         logarithmicDepthBuffer: false,
-        precision: isMobile ? 'mediump' : 'highp',
+        precision: isLowMobile ? 'mediump' : 'highp',
         failIfMajorPerformanceCaveat: false
       }}
       camera={{

@@ -201,6 +201,11 @@ class UnifiedAudioSystem {
   private async playAsync(id: string, instanceId: string): Promise<void> {
     if (!this.ctx || this.muted) return
 
+    // Auto-resume suspended context (slot exit, tab return)
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume() } catch {}
+    }
+
     const config = this.sounds.get(id)
     if (!config) return
 
