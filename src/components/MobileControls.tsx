@@ -316,72 +316,61 @@ export function MobileControls({
   actionButtonSize = 90
 }: MobileControlsProps) {
   const [isMobile, setIsMobile] = useState(false)
-  const [isLandscape, setIsLandscape] = useState(false)
 
   useEffect(() => {
-    // Safe window access in useEffect (SSR-compatible)
     setIsMobile(isMobileDevice())
-
-    const checkLandscape = () => {
-      setIsLandscape(window.innerWidth / window.innerHeight > 1.2)
-    }
-
-    // Initial check
-    checkLandscape()
-
-    // Track orientation changes
-    window.addEventListener('resize', checkLandscape)
-    window.addEventListener('orientationchange', checkLandscape)
-
-    return () => {
-      window.removeEventListener('resize', checkLandscape)
-      window.removeEventListener('orientationchange', checkLandscape)
-    }
   }, [])
 
   // Don't render on desktop
   if (!isMobile || !visible) return null
 
-  // Responsive sizing for landscape + screen width
-  const controlsHeight = isLandscape ? 100 : 200
-  const maxJoystick = Math.min(joystickSize, window.innerWidth * 0.35)  // Max 35% width
-  const maxAction = Math.min(actionButtonSize, window.innerWidth * 0.23)  // Max 23% width
-  const finalJoystickSize = isLandscape ? Math.min(90, maxJoystick) : maxJoystick
-  const finalActionButtonSize = isLandscape ? Math.min(60, maxAction) : maxAction
+  // Use compact sizes for both orientations — CSS handles container height
+  // On mobile, joystick 90px and action 60px work well in both orientations
+  const finalJoystickSize = Math.min(joystickSize, 90, window.innerWidth * 0.35)
+  const finalActionSize = Math.min(actionButtonSize, 60, window.innerWidth * 0.23)
 
   return (
-    <div
-      role="toolbar"
-      aria-label="Game controls"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: `${controlsHeight}px`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '0 max(30px, env(safe-area-inset-left, 0px)) max(30px, env(safe-area-inset-bottom, 0px)) max(30px, env(safe-area-inset-right, 0px))',
-        pointerEvents: 'none',
-        zIndex: 500
-      }}>
-      {/* Left: Movement joystick */}
-      <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Movement joystick">
-        <VirtualJoystick
-          size={finalJoystickSize}
-          onMove={onMove}
-        />
-      </div>
+    <>
+      {/* CSS media query handles landscape vs portrait — zero re-renders on rotation */}
+      <style>{`
+        .mobile-controls-bar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 200px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0 max(30px, env(safe-area-inset-left, 0px)) max(30px, env(safe-area-inset-bottom, 0px)) max(30px, env(safe-area-inset-right, 0px));
+          pointer-events: none;
+          z-index: 500;
+          transition: height 0.2s ease;
+        }
+        @media (max-height: 500px) and (orientation: landscape) {
+          .mobile-controls-bar {
+            height: 100px;
+          }
+        }
+      `}</style>
+      <div className="mobile-controls-bar" role="toolbar" aria-label="Game controls">
+        {/* Left: Movement joystick */}
+        <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Movement joystick">
+          <VirtualJoystick
+            size={finalJoystickSize}
+            onMove={onMove}
+          />
+        </div>
 
-      {/* Right: Action button */}
-      <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Action button">
-        <ActionButton
-          size={finalActionButtonSize}
-          onPress={onAction}
-        />
+        {/* Right: Action button */}
+        <div style={{ pointerEvents: 'auto' }} role="group" aria-label="Action button">
+          <ActionButton
+            size={finalActionSize}
+            onPress={onAction}
+          />
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

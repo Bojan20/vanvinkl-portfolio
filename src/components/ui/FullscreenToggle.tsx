@@ -2,9 +2,13 @@
  * FullscreenToggle - Site-wide fullscreen toggle button
  * Works in lounge AND inside slot views (z-index above SlotFullScreen)
  * Cross-browser: standard + webkit (iOS Safari)
+ *
+ * Mobile rotation handling:
+ * - screen.orientation.lock('any') prevents Chrome from exiting FS on rotation
+ * - Fallback: auto re-enter fullscreen if browser exits during rotation
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 function isMobileDevice(): boolean {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
@@ -23,13 +27,18 @@ function isInFullscreen(): boolean {
 function enterFullscreen() {
   const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }
   if (el.requestFullscreen) {
-    el.requestFullscreen().catch(() => {})
+    el.requestFullscreen().then(() => {
+      // Lock orientation to 'any' — prevents browser from exiting fullscreen on rotation
+      try { (screen.orientation as any).lock?.('any').catch?.(() => {}) } catch {}
+    }).catch(() => {})
   } else if (el.webkitRequestFullscreen) {
     el.webkitRequestFullscreen()
   }
 }
 
 function exitFullscreen() {
+  // Unlock orientation when exiting fullscreen
+  try { screen.orientation.unlock() } catch {}
   const doc = document as Document & { webkitExitFullscreen?: () => void }
   if (document.exitFullscreen) {
     document.exitFullscreen().catch(() => {})
@@ -41,22 +50,49 @@ function exitFullscreen() {
 export function FullscreenToggle({ compact = false }: { compact?: boolean } = {}) {
   const isMobile = isMobileDevice()
   const [isFullscreen, setIsFullscreen] = useState(isInFullscreen)
+  // Track whether USER intentionally wants fullscreen (vs browser auto-exiting on rotation)
+  const userWantsFullscreenRef = useRef(isInFullscreen())
 
-  // Sync state with actual fullscreen changes (e.g. user presses Esc)
+  // Sync state with actual fullscreen changes + auto re-enter on rotation exit
   useEffect(() => {
-    const onChange = () => setIsFullscreen(isInFullscreen())
+    const onChange = () => {
+      const inFS = isInFullscreen()
+      setIsFullscreen(inFS)
+
+      // If user wanted fullscreen but browser exited it (rotation on Chrome Android),
+      // re-enter fullscreen after a short delay to let browser finish layout
+      if (!inFS && userWantsFullscreenRef.current && isMobile) {
+        setTimeout(() => {
+          if (!isInFullscreen() && userWantsFullscreenRef.current) {
+            enterFullscreen()
+          }
+        }, 100)
+      }
+
+      // If fullscreen was exited and we didn't re-enter, update intent
+      if (!inFS) {
+        // Give re-enter attempt time to work before clearing intent
+        setTimeout(() => {
+          if (!isInFullscreen()) {
+            userWantsFullscreenRef.current = false
+          }
+        }, 300)
+      }
+    }
     document.addEventListener('fullscreenchange', onChange)
     document.addEventListener('webkitfullscreenchange', onChange)
     return () => {
       document.removeEventListener('fullscreenchange', onChange)
       document.removeEventListener('webkitfullscreenchange', onChange)
     }
-  }, [])
+  }, [isMobile])
 
   const toggleFullscreen = useCallback(() => {
     if (isInFullscreen()) {
+      userWantsFullscreenRef.current = false
       exitFullscreen()
     } else {
+      userWantsFullscreenRef.current = true
       enterFullscreen()
     }
   }, [])

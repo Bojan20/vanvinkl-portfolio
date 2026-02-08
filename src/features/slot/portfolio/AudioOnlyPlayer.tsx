@@ -59,21 +59,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   const sourceRefs = useRef<(MediaElementAudioSourceNode | null)[]>([])
   const gainRefs = useRef<(GainNode | null)[]>([])
 
-  // Landscape detection for compact layout
-  const [isLandscape, setIsLandscape] = useState(
-    isMobile && typeof window !== 'undefined' && window.innerWidth > window.innerHeight
-  )
-  useEffect(() => {
-    if (!isMobile) return
-    const update = () => setIsLandscape(window.innerWidth > window.innerHeight)
-    window.addEventListener('resize', update)
-    window.addEventListener('orientationchange', () => setTimeout(update, 100))
-    return () => {
-      window.removeEventListener('resize', update)
-      window.removeEventListener('orientationchange', update)
-    }
-  }, [])
-
   // Staggered reveal
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100)
@@ -383,34 +368,133 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
   }
 
   return (
-    <div style={{
+    <div className="aop-root" style={{
       position: 'fixed',
       top: 0,
       left: 0,
       width: '100%',
       height: '100dvh',
       animation: showContent ? 'fadeSlideIn 0.5s ease-out' : 'none',
-      overflowY: isLandscape ? 'hidden' : 'auto',
       overflowX: 'hidden',
-      WebkitOverflowScrolling: 'touch' as any,
       backgroundColor: '#000',
       display: 'flex',
-      flexDirection: isLandscape ? 'row' : 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: isLandscape ? '16px' : '0',
-      padding: isLandscape
-        ? `max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(50px, env(safe-area-inset-left, 0px))`
-        : `max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))`,
       zIndex: 900
     }}>
-      {/* Volume slider thumb styling */}
+      {/* CSS-only landscape/portrait layout — zero re-renders on rotation */}
       <style>{`
+        .aop-root {
+          overflow-y: auto;
+          flex-direction: column;
+          gap: 0;
+          padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+          transition: padding 0.2s ease, gap 0.2s ease;
+        }
+        .aop-back-btn {
+          padding: 10px 16px;
+          font-size: 14px;
+          transition: padding 0.2s ease, font-size 0.2s ease;
+        }
+        .aop-header {
+          text-align: center;
+          margin-bottom: clamp(16px, 4vh, 40px);
+          flex-shrink: 0;
+          transition: margin-bottom 0.2s ease;
+        }
+        .aop-icon {
+          font-size: clamp(48px, 15vw, 80px);
+          margin-bottom: clamp(8px, 2vw, 16px);
+          transition: font-size 0.2s ease, margin-bottom 0.2s ease;
+        }
+        .aop-title {
+          font-size: clamp(22px, 6vw, 36px);
+          margin: 0 0 8px 0;
+          transition: font-size 0.2s ease, margin 0.2s ease;
+        }
+        .aop-year {
+          font-size: 14px;
+          transition: font-size 0.2s ease;
+        }
+        .aop-tracks {
+          width: 90%;
+          max-width: 600px;
+          gap: 16px;
+          transition: width 0.2s ease, max-width 0.2s ease, gap 0.2s ease;
+        }
+        .aop-track-card {
+          border-radius: 16px;
+          padding: 20px 24px;
+          transition: border-radius 0.2s ease, padding 0.2s ease;
+        }
+        .aop-track-header {
+          margin-bottom: 12px;
+          transition: margin-bottom 0.2s ease;
+        }
+        .aop-track-header-inner {
+          gap: 12px;
+          transition: gap 0.2s ease;
+        }
+        .aop-play-btn {
+          width: 48px;
+          height: 48px;
+          font-size: 18px;
+          transition: width 0.2s ease, height 0.2s ease, font-size 0.2s ease;
+        }
+        .aop-track-label {
+          font-size: 16px;
+          transition: font-size 0.2s ease;
+        }
+        .aop-track-time {
+          font-size: 12px;
+          margin-top: 2px;
+          transition: font-size 0.2s ease, margin-top 0.2s ease;
+        }
+        .aop-restart-btn {
+          min-height: 44px;
+          padding: 0 14px;
+          border-radius: 22px;
+          font-size: 14px;
+          transition: min-height 0.2s ease, padding 0.2s ease, border-radius 0.2s ease, font-size 0.2s ease;
+        }
+        .aop-restart-key {
+          display: inline;
+        }
+        .aop-progress-bar {
+          height: ${isMobile ? '24px' : '6px'};
+          border-radius: ${isMobile ? '12px' : '3px'};
+          transition: height 0.2s ease, border-radius 0.2s ease;
+        }
+        .aop-progress-fill {
+          border-radius: ${isMobile ? '12px' : '3px'};
+          transition: border-radius 0.2s ease;
+        }
+        .aop-volume-bar {
+          margin-top: 12px;
+          width: 90%;
+          max-width: 600px;
+          gap: 12px;
+          padding: 10px 20px;
+          transition: margin-top 0.2s ease, width 0.2s ease, max-width 0.2s ease, gap 0.2s ease, padding 0.2s ease;
+        }
+        .aop-speaker-icon {
+          width: 20px;
+          height: 20px;
+          transition: width 0.2s ease, height 0.2s ease;
+        }
+        .aop-volume-slider {
+          height: ${isMobile ? '6px' : '4px'};
+          transition: height 0.2s ease;
+        }
+        .aop-volume-pct {
+          font-size: 12px;
+          transition: font-size 0.2s ease;
+        }
         .aop-volume-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
-          height: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
+          width: ${isMobile ? '22px' : '16px'};
+          height: ${isMobile ? '22px' : '16px'};
           border-radius: 50%;
           background: #00ffff;
           border: 2px solid rgba(0,0,0,0.3);
@@ -418,8 +502,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           box-shadow: 0 0 8px rgba(0,255,255,0.5);
         }
         .aop-volume-slider::-moz-range-thumb {
-          width: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
-          height: ${isLandscape ? '14px' : (isMobile ? '22px' : '16px')};
+          width: ${isMobile ? '22px' : '16px'};
+          height: ${isMobile ? '22px' : '16px'};
           border-radius: 50%;
           background: #00ffff;
           border: 2px solid rgba(0,0,0,0.3);
@@ -427,30 +511,70 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           box-shadow: 0 0 8px rgba(0,255,255,0.5);
         }
         .aop-volume-slider::-webkit-slider-runnable-track {
-          height: ${isLandscape ? '4px' : (isMobile ? '6px' : '4px')};
+          height: ${isMobile ? '6px' : '4px'};
           border-radius: 2px;
         }
         .aop-volume-slider::-moz-range-track {
-          height: ${isLandscape ? '4px' : (isMobile ? '6px' : '4px')};
+          height: ${isMobile ? '6px' : '4px'};
           border-radius: 2px;
           background: transparent;
+        }
+        @media (max-height: 500px) and (orientation: landscape) {
+          .aop-root {
+            overflow-y: hidden;
+            flex-direction: row;
+            gap: 16px;
+            padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(50px, env(safe-area-inset-left, 0px));
+          }
+          .aop-back-btn {
+            padding: 6px 10px;
+            font-size: 11px;
+          }
+          .aop-header {
+            margin-bottom: 0;
+            width: 30%;
+            max-width: 200px;
+          }
+          .aop-icon { font-size: 36px; margin-bottom: 4px; }
+          .aop-title { font-size: 16px; margin: 0 0 2px 0; }
+          .aop-year { font-size: 10px; }
+          .aop-tracks { width: 65%; max-width: 500px; gap: 6px; }
+          .aop-track-card { border-radius: 10px; padding: 8px 12px; }
+          .aop-track-header { margin-bottom: 4px; }
+          .aop-track-header-inner { gap: 8px; }
+          .aop-play-btn { width: 30px; height: 30px; font-size: 12px; }
+          .aop-track-label { font-size: 12px; }
+          .aop-track-time { font-size: 9px; margin-top: 0; }
+          .aop-restart-btn { min-height: 30px; padding: 0 8px; border-radius: 15px; font-size: 11px; }
+          .aop-restart-key { display: none; }
+          .aop-progress-bar { height: 14px; border-radius: 7px; }
+          .aop-progress-fill { border-radius: 7px; }
+          .aop-volume-bar { margin-top: 8px; width: 65%; max-width: 500px; gap: 8px; padding: 6px 12px; }
+          .aop-speaker-icon { width: 16px; height: 16px; }
+          .aop-volume-slider {
+            height: 4px;
+          }
+          .aop-volume-slider::-webkit-slider-thumb { width: 14px; height: 14px; }
+          .aop-volume-slider::-moz-range-thumb { width: 14px; height: 14px; }
+          .aop-volume-slider::-webkit-slider-runnable-track { height: 4px; }
+          .aop-volume-slider::-moz-range-track { height: 4px; }
+          .aop-volume-pct { font-size: 10px; }
         }
       `}</style>
 
       {/* Mobile back button (no ESC key on touch devices) */}
       {isMobile && (
         <div
+          className="aop-back-btn"
           onClick={() => { uaPlaySynth('back', 0.4); onBack() }}
           style={{
             position: 'fixed',
             top: 'max(16px, env(safe-area-inset-top, 0px))',
             left: 'max(16px, env(safe-area-inset-left, 0px))',
-            padding: isLandscape ? '6px 10px' : '10px 16px',
             borderRadius: '8px',
             background: 'rgba(0,0,0,0.75)',
             border: '1px solid rgba(255,215,0,0.3)',
             color: '#ffd700',
-            fontSize: isLandscape ? '11px' : '14px',
             fontWeight: 600,
             zIndex: 1001,
             cursor: 'pointer',
@@ -472,32 +596,21 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       }} />
 
       {/* Project Header */}
-      <div style={{
-        textAlign: 'center',
-        marginBottom: isLandscape ? '0' : 'clamp(16px, 4vh, 40px)',
-        zIndex: 1,
-        flexShrink: 0,
-        ...(isLandscape ? { width: '30%', maxWidth: '200px' } : {})
-      }}>
-        <div style={{
-          fontSize: isLandscape ? '36px' : 'clamp(48px, 15vw, 80px)',
-          marginBottom: isLandscape ? '4px' : 'clamp(8px, 2vw, 16px)',
+      <div className="aop-header" style={{ zIndex: 1 }}>
+        <div className="aop-icon" style={{
           filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.4))'
         }}>
           {project.icon}
         </div>
-        <h1 style={{
+        <h1 className="aop-title" style={{
           color: '#ffd700',
-          fontSize: isLandscape ? '16px' : 'clamp(22px, 6vw, 36px)',
           fontWeight: 900,
-          margin: isLandscape ? '0 0 2px 0' : '0 0 8px 0',
           textShadow: '0 0 20px rgba(255,215,0,0.4)'
         }}>
           {project.title}
         </h1>
-        <div style={{
+        <div className="aop-year" style={{
           color: '#666',
-          fontSize: isLandscape ? '10px' : '14px',
           fontFamily: 'monospace'
         }}>
           {project.year}
@@ -505,12 +618,9 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       </div>
 
       {/* Audio Tracks */}
-      <div style={{
-        width: isLandscape ? '65%' : '90%',
-        maxWidth: isLandscape ? '500px' : '600px',
+      <div className="aop-tracks" style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: isLandscape ? '6px' : '16px',
         zIndex: 1
       }}>
         {project.audioTracks.map((track, index) => {
@@ -520,6 +630,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           return (
             <div
               key={track.label}
+              className="aop-track-card"
               onClick={() => {
                 setFocusedTrack(index)
                 togglePlayPause(index)
@@ -531,8 +642,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 border: isFocused
                   ? '2px solid rgba(255,215,0,0.6)'
                   : '1px solid rgba(255,255,255,0.1)',
-                borderRadius: isLandscape ? '10px' : '16px',
-                padding: isLandscape ? '8px 12px' : '20px 24px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: isFocused
@@ -541,21 +650,17 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
               }}
             >
               {/* Track header */}
-              <div style={{
+              <div className="aop-track-header" style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: isLandscape ? '4px' : '12px'
+                justifyContent: 'space-between'
               }}>
-                <div style={{
+                <div className="aop-track-header-inner" style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: isLandscape ? '8px' : '12px'
+                  alignItems: 'center'
                 }}>
                   {/* Play/Pause button */}
-                  <div style={{
-                    width: isLandscape ? '30px' : '48px',
-                    height: isLandscape ? '30px' : '48px',
+                  <div className="aop-play-btn" style={{
                     borderRadius: '50%',
                     background: state.playing
                       ? 'linear-gradient(135deg, #ffd700, #ffaa00)'
@@ -563,7 +668,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: isLandscape ? '12px' : '18px',
                     color: state.playing ? '#000' : (isFocused ? '#ffd700' : '#888'),
                     fontWeight: 'bold',
                     transition: 'all 0.2s ease',
@@ -573,18 +677,15 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                   </div>
 
                   <div>
-                    <div style={{
+                    <div className="aop-track-label" style={{
                       color: isFocused ? '#ffd700' : '#ccc',
-                      fontSize: isLandscape ? '12px' : '16px',
                       fontWeight: 700
                     }}>
                       {track.label}
                     </div>
-                    <div style={{
+                    <div className="aop-track-time" style={{
                       color: '#666',
-                      fontSize: isLandscape ? '9px' : '12px',
-                      fontFamily: 'monospace',
-                      marginTop: isLandscape ? '0' : '2px'
+                      fontFamily: 'monospace'
                     }}>
                       {state.duration > 0
                         ? `${formatTime(state.currentTime)} / ${formatTime(state.duration)}`
@@ -597,6 +698,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 {/* Restart button */}
                 {state.currentTime > 0 && (
                   <div
+                    className="aop-restart-btn"
                     onClick={(e) => {
                       e.stopPropagation()
                       const audio = audioRefs.current[index]
@@ -611,15 +713,11 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                       uaPlaySynth('tick', 0.3)
                     }}
                     style={{
-                      minHeight: isLandscape ? '30px' : '44px',
-                      padding: isLandscape ? '0 8px' : '0 14px',
-                      borderRadius: isLandscape ? '15px' : '22px',
                       background: isFocused ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '4px',
-                      fontSize: isLandscape ? '11px' : '14px',
                       color: isFocused ? '#ffd700' : '#666',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
@@ -627,13 +725,14 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                     }}
                     title="Restart track (R)"
                   >
-                    ⏮ {!isLandscape && <span style={{ fontSize: '10px', opacity: 0.7, fontFamily: 'monospace' }}>R</span>}
+                    ⏮ <span className="aop-restart-key" style={{ fontSize: '10px', opacity: 0.7, fontFamily: 'monospace' }}>R</span>
                   </div>
                 )}
               </div>
 
               {/* Progress bar */}
               <div
+                className="aop-progress-bar"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleSeek(index, e)
@@ -644,20 +743,17 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
                 }}
                 style={{
                   width: '100%',
-                  height: isLandscape ? '14px' : (isMobile ? '24px' : '6px'),
                   background: 'rgba(255,255,255,0.1)',
-                  borderRadius: isLandscape ? '7px' : (isMobile ? '12px' : '3px'),
                   overflow: 'hidden',
                   cursor: 'pointer'
                 }}
               >
-                <div style={{
+                <div className="aop-progress-fill" style={{
                   width: `${state.progress}%`,
                   height: '100%',
                   background: isFocused
                     ? 'linear-gradient(90deg, #ffd700, #ffaa00)'
                     : 'rgba(255,215,0,0.5)',
-                  borderRadius: isLandscape ? '7px' : (isMobile ? '12px' : '3px'),
                   transition: 'width 0.1s linear'
                 }} />
               </div>
@@ -695,16 +791,12 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
 
       {/* Player Volume Slider — below tracks */}
       <div
+        className="aop-volume-bar"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         style={{
-          marginTop: isLandscape ? '8px' : '12px',
-          width: isLandscape ? '65%' : '90%',
-          maxWidth: isLandscape ? '500px' : '600px',
           display: 'flex',
           alignItems: 'center',
-          gap: isLandscape ? '8px' : '12px',
-          padding: isLandscape ? '6px 12px' : '10px 20px',
           background: 'rgba(0,0,0,0.85)',
           border: `1px solid ${playerVolume === 0 ? 'rgba(255,68,68,0.4)' : 'rgba(0,255,255,0.3)'}`,
           borderRadius: '20px',
@@ -714,8 +806,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       >
         {/* Speaker icon — click to mute/unmute */}
         <svg
-          width={isLandscape ? '16' : '20'}
-          height={isLandscape ? '16' : '20'}
+          className="aop-speaker-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke={playerVolume === 0 ? '#ff4444' : '#00ffff'}
@@ -749,7 +840,6 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
           onTouchStart={(e) => e.stopPropagation()}
           style={{
             flex: 1,
-            height: isLandscape ? '4px' : (isMobile ? '6px' : '4px'),
             appearance: 'none',
             WebkitAppearance: 'none',
             background: `linear-gradient(to right, ${
@@ -763,9 +853,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
         />
 
         {/* Percentage */}
-        <span style={{
+        <span className="aop-volume-pct" style={{
           color: playerVolume === 0 ? '#ff4444' : '#00ffff',
-          fontSize: isLandscape ? '10px' : '12px',
           fontFamily: 'monospace',
           minWidth: '32px',
           textAlign: 'right',

@@ -127,6 +127,33 @@ const DetailModal = memo(function DetailModal({
         }} />
       ))}
 
+      {/* Mobile back button */}
+      {window.matchMedia('(pointer: coarse)').matches && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onClose() }}
+          style={{
+            position: 'fixed',
+            top: 'max(16px, env(safe-area-inset-top, 0px))',
+            left: 'max(16px, env(safe-area-inset-left, 0px))',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.75)',
+            border: `1px solid ${primaryColor}50`,
+            color: primaryColor,
+            fontSize: '14px',
+            fontWeight: 600,
+            zIndex: 2001,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            animation: 'modalCardReveal 0.3s ease-out'
+          }}
+        >
+          ← BACK
+        </div>
+      )}
+
       {/* Main modal card */}
       <div
         onClick={e => e.stopPropagation()}
@@ -174,7 +201,7 @@ const DetailModal = memo(function DetailModal({
           animation: 'modalHintReveal 0.5s ease-out 0.5s both'
         }}>
           {window.matchMedia('(pointer: coarse)').matches ? (
-            <>Tap outside to close</>
+            <>Tap outside or ← BACK to close</>
           ) : (
             <>Press <span style={{
               color: primaryColor,
