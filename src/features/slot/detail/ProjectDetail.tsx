@@ -6,6 +6,7 @@
 
 import { useRef, useEffect, memo } from 'react'
 import { useAudioStore } from '../../../store/audio'
+import { sliderToGain } from '../../../audio'
 
 interface ProjectData {
   icon: string
@@ -79,13 +80,13 @@ export const ProjectDetail = memo(function ProjectDetail({
     }
   }, [])
 
-  // Update audio volumes
+  // Update audio volumes — DAW-grade fader curve
   useEffect(() => {
-    if (musicRef.current) musicRef.current.volume = musicVolume
+    if (musicRef.current) musicRef.current.volume = sliderToGain(musicVolume)
   }, [musicVolume])
 
   useEffect(() => {
-    if (sfxRef.current) sfxRef.current.volume = sfxVolume
+    if (sfxRef.current) sfxRef.current.volume = sliderToGain(sfxVolume)
   }, [sfxVolume])
 
   return (

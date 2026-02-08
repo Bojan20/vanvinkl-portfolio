@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react'
-import { uaPlaySynth, uaGetContext } from '../../../audio'
+import { uaPlaySynth, uaGetContext, sliderToGain } from '../../../audio'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -89,8 +89,8 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     try {
       const source = ctx.createMediaElementSource(audio)
       const gainNode = ctx.createGain()
-      // Linear gain — slider 100% = original file volume (unity gain)
-      gainNode.gain.value = playerVolume
+      // DAW-grade fader curve — matches all other sliders in the system
+      gainNode.gain.value = sliderToGain(playerVolume)
       source.connect(gainNode)
       gainNode.connect(ctx.destination)
       sourceRefs.current[index] = source
@@ -120,10 +120,10 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
     }
   }, [])
 
-  // Player volume — linear gain (slider 100% = original file volume, no amplification)
+  // Player volume — DAW-grade Dr. Lex exponential curve (60dB range)
   // Independent from global musicVolume (this player has its own volume control)
   useEffect(() => {
-    const gain = playerVolume // Linear — no perceptual curve, unity gain at 100%
+    const gain = sliderToGain(playerVolume)
     const ctx = uaGetContext()
     let hasAudioContext = false
 
@@ -137,7 +137,7 @@ const AudioOnlyPlayer = memo(function AudioOnlyPlayer({
       }
     })
 
-    // Fallback: if no AudioContext routing, apply linear to <audio> elements
+    // Fallback: if no AudioContext routing, apply curve to <audio> elements
     if (!hasAudioContext) {
       audioRefs.current.forEach(audio => {
         if (audio) audio.volume = gain

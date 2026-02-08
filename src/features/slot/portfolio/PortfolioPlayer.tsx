@@ -26,7 +26,7 @@
  */
 
 import { useState, useEffect, useRef, memo, useCallback } from 'react'
-import { uaPlaySynth, uaGetContext } from '../../../audio'
+import { uaPlaySynth, uaGetContext, sliderToGain } from '../../../audio'
 import { isValidMediaPath } from '../../../utils/security'
 
 const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
@@ -637,11 +637,11 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   // ============================================================
   // LINEAR VOLUME — slider 100% = original file volume (unity gain)
   // ============================================================
-  // No perceptual curve — prevents distortion on mobile browsers
+  // DAW-grade Dr. Lex exponential curve (60dB range) — matches Cubase fader behavior
   // Smoothing via linearRampToValueAtTime — no clicks, no pops
 
   useEffect(() => {
-    const gain = musicMuted ? 0 : musicVolume // Linear, unity at 100%
+    const gain = musicMuted ? 0 : sliderToGain(musicVolume)
 
     const ctx = uaGetContext()
     if (musicGainRef.current && ctx) {
@@ -655,7 +655,7 @@ const PortfolioPlayer = memo(function PortfolioPlayer({
   }, [musicVolume, musicMuted])
 
   useEffect(() => {
-    const gain = sfxMuted ? 0 : sfxVolume // Linear, unity at 100%
+    const gain = sfxMuted ? 0 : sliderToGain(sfxVolume)
 
     const ctx = uaGetContext()
     if (sfxGainRef.current && ctx) {

@@ -95,23 +95,23 @@ class UnifiedAudioSystem {
       this.masterGain = this.ctx.createGain()
       this.masterGain.connect(this.ctx.destination)
 
-      // Init gains use perceptual curve to match store defaults
+      // Init gains use DAW-grade Dr. Lex curve to match store defaults
       // Store defaults: music=0.6, sfx=0.7, ui=0.6, spatial=0.5
-      // x^2 curve: 0.6²=0.36, 0.7²=0.49, 0.6²=0.36, 0.5²=0.25
+      // sliderToGain: 0.6→0.063, 0.7→0.126, 0.5→0.032
       this.musicGain = this.ctx.createGain()
-      this.musicGain.gain.value = 0.36  // 0.6² perceptual
+      this.musicGain.gain.value = sliderToGain(0.6)  // ~0.063 (-24 dB)
       this.musicGain.connect(this.masterGain)
 
       this.sfxGain = this.ctx.createGain()
-      this.sfxGain.gain.value = 0.49  // 0.7² perceptual
+      this.sfxGain.gain.value = sliderToGain(0.7)  // ~0.126 (-18 dB)
       this.sfxGain.connect(this.masterGain)
 
       this.uiGain = this.ctx.createGain()
-      this.uiGain.gain.value = 0.36  // 0.6² perceptual
+      this.uiGain.gain.value = sliderToGain(0.6)  // ~0.063 (-24 dB)
       this.uiGain.connect(this.masterGain)
 
       this.spatialGain = this.ctx.createGain()
-      this.spatialGain.gain.value = 0.25  // 0.5² perceptual
+      this.spatialGain.gain.value = sliderToGain(0.5)  // ~0.032 (-30 dB)
       this.spatialGain.connect(this.masterGain)
 
       // Create analyzer for visualization (connected to music bus)
@@ -267,14 +267,12 @@ class UnifiedAudioSystem {
   }
 
   /**
-   * Perceptual volume mapping — power curves for human hearing
-   * Simple x^2 for all buses: gradual, natural feel, no extreme attenuation
-   * slider 0.5 → gain 0.25 (audible), slider 0.1 → gain 0.01 (quiet)
+   * DAW-grade fader curve — Dr. Lex exponential, 60dB dynamic range
+   * Matches Cubase/Pro Tools/Ableton software fader behavior.
+   * slider 1.0 → 0 dB (unity), slider 0.5 → ~-24 dB, slider 0.0 → -∞
    */
   private perceptualGain(_bus: string, linear: number): number {
-    if (linear <= 0) return 0
-    if (linear >= 1) return 1
-    return linear * linear // x^2 — smooth, gradual, always audible
+    return sliderToGain(linear)
   }
 
   /**
@@ -1214,4 +1212,32 @@ export function uaDispose(): void {
  */
 export function uaGetContext(): AudioContext | null {
   return unifiedAudio.getContext()
+}
+
+/**
+ * DAW-grade fader curve: slider [0,1] → linear gain
+ *
+ * Dr. Lex exponential curve with 60dB dynamic range.
+ * Industry standard for software volume faders (Cubase, Pro Tools, Ableton).
+ *
+ * - Slider 1.0 → 0 dB (unity gain = 1.0)
+ * - Slider 0.5 → ~-24 dB (gain ≈ 0.063)
+ * - Slider 0.1 → ~-54 dB (gain ≈ 0.002)
+ * - Slider 0.0 → -∞ (true silence = 0)
+ *
+ * Bottom 5% uses linear ramp to reach true zero (exp never hits 0).
+ * This matches how real console faders have a dead-zone at the bottom.
+ */
+export function sliderToGain(x: number): number {
+  if (x <= 0) return 0
+  if (x >= 1) return 1
+  // Dr. Lex constants for 60dB range: a = 10^(-60/20) = 0.001, b = ln(1/a) = ln(1000) ≈ 6.908
+  const a = 0.001
+  const b = 6.908
+  if (x < 0.05) {
+    // Linear ramp in bottom 5% — bridges true zero to curve value at x=0.05
+    // Prevents the exponential's asymptotic approach to zero
+    return x * 20 * a * Math.exp(b * 0.05)  // 20 = 1/0.05
+  }
+  return a * Math.exp(b * x)
 }

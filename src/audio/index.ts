@@ -23,5 +23,6 @@ export {
   uaSuspend,
   uaResume,
   uaDispose,
-  uaGetContext
+  uaGetContext,
+  sliderToGain
 } from './UnifiedAudioSystem'
